@@ -1,15 +1,20 @@
-# Concepts Directory
+# Concepts Index
 
-This directory contains higher-level concept documents for NEW NFL.
-
-## Current Concept Documents
+Current concept documents:
 
 - `NEW_NFL_SYSTEM_CONCEPT_v0_1.md`
 - `NEW_NFL_SYSTEM_CONCEPT_v0_2.md`
 - `NEW_NFL_PHASE1_SCOPE_v0_1.md`
 - `NEW_NFL_SOURCE_GOVERNANCE_v0_1.md`
 - `NEW_NFL_METADATA_MODEL_v0_1.md`
+- `NEW_NFL_PHYSICAL_PLATFORM_BLUEPRINT_v0_1.md`
+- `NEW_NFL_METADATA_SCHEMA_OUTLINE_v0_1.md`
 
-## Usage Rule
+Recommended reading order for onboarding:
 
-Concept documents are used to shape architecture and operating assumptions before or alongside implementation. They may evolve through numbered versions until the underlying posture is sufficiently stable to translate into ADRs, schemas, and code.
+1. `NEW_NFL_SYSTEM_CONCEPT_v0_2.md`
+2. `NEW_NFL_PHASE1_SCOPE_v0_1.md`
+3. `NEW_NFL_SOURCE_GOVERNANCE_v0_1.md`
+4. `NEW_NFL_METADATA_MODEL_v0_1.md`
+5. `NEW_NFL_PHYSICAL_PLATFORM_BLUEPRINT_v0_1.md`
+6. `NEW_NFL_METADATA_SCHEMA_OUTLINE_v0_1.md`

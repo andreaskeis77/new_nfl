@@ -1,66 +1,61 @@
 # NEW NFL Project State
 
-## Current Phase
+Status: Active  
+Current phase: **A0.4 — Physical Platform Blueprint and Metadata Schema Outline**  
+Current repo posture: **architecture only, no runtime code yet**  
+Current branch target: `main`
 
-- Current tranche: **A0.3**
-- Status: **Green**
-- Repository posture: **documentation-first, architecture-active, runtime not started**
-- Current branch expectation: `main` remains stable and reviewable
+## Completed so far
 
-## Current Achievements
+### T0
+- engineering foundation established
+- workflow hardened
+- handoff and ops placeholders created
+- repo hygiene controls added
 
-Completed and committed:
-- engineering foundation
-- workflow hardening and repo hygiene
-- A0.1 system concept and ADR baseline
-- A0.2 data platform posture and Phase 1 scope boundary
-- A0.3 source governance and metadata model baseline
+### A0.1
+- system concept baseline defined
+- ADR baseline established
 
-## Current Architecture Posture
+### A0.2
+- data platform posture and phase-1 scope defined
 
-The current target posture is:
+### A0.3
+- source governance and metadata model defined
+- source tiering, provenance, and canonical key ADRs added
 
-- documentation-driven systems engineering
-- conservative Phase 1 scope
-- metadata-first multi-source platform
-- layered acquisition and consolidation model
-- read-only web surface before advanced analytics/simulation runtime
-- VPS deployment planned but not yet designed to implementation level
+### A0.4
+- physical storage and directory layout defined
+- metadata schema outline defined
+- schema-family boundary ADRs accepted
 
-## What Is Decided
+## Current architecture posture
 
-Decided at current architecture level:
-- repo and operating model
-- phase-1 boundary as a limited first operating scope
-- data platform posture direction
-- ingestion layering principle
-- source tiering and fallback policy
-- provenance and audit requirement
-- canonical key requirement for core entities
+The project currently assumes:
 
-## What Is Still Open
+- single-node phase-1 platform posture
+- Git + DuckDB + Parquet + filesystem zones
+- metadata-first operation
+- explicit schema families: `meta`, `raw`, `stg`, `core`, `mart`, `feat`, `sim`, `scratch`
+- later VPS deployment on Windows Server
+- browse-first web experience before heavier simulation features
 
-Open architecture topics:
-- physical storage layout and concrete schema draft
-- metadata schema structure
-- actual dataset-class-to-source matrix
-- scheduler/runtime topology
-- read model strategy detail
-- web app runtime design detail
-- retention, pruning, and snapshot policy
-- DQ rule catalog first cut
+## Immediate next step
 
-## Immediate Next Recommendation
+Recommended next tranche: **T1.0 Technical Bootstrap**
 
-Proceed with **A0.4**:
-- physical data platform blueprint
-- metadata schema outline
-- storage/layer mapping
-- runtime boundary between jobs and read-only web application
+T1.0 should create the initial implementation scaffolding for:
 
-## Operational Notes
+- repository runtime directories
+- initial config surface
+- bootstrap scripts
+- initial DuckDB bootstrap
+- metadata schema skeleton
+- health and smoke checks
 
-- No runtime code exists yet by design.
-- No VPS service setup exists yet by design.
-- No ingestion source is approved for implementation yet beyond architecture-level governance.
-- All next steps should continue to preserve small-batch, green-gate discipline.
+## Constraints
+
+- no runtime code has been introduced yet
+- no source adapters have been implemented yet
+- no web application code has been introduced yet
+- no scheduler/runtime services have been created yet

@@ -1,8 +1,6 @@
 # NEW NFL Documentation Index
 
-This index is the canonical navigation entry point for NEW NFL.
-
-## Core Governance
+## Core governance
 - `docs/ENGINEERING_MANIFEST.md`
 - `docs/WORKING_AGREEMENT.md`
 - `docs/HANDOFF_MANIFEST.md`
@@ -11,7 +9,7 @@ This index is the canonical navigation entry point for NEW NFL.
 - `docs/RELEASE_PROCESS.md`
 - `docs/PROJECT_STATE.md`
 
-## Operations and Navigation
+## Operating docs
 - `docs/QUICKSTART.md`
 - `docs/RUNBOOK.md`
 - `docs/OBSERVABILITY.md`
@@ -22,7 +20,8 @@ This index is the canonical navigation entry point for NEW NFL.
 - `docs/concepts/NEW_NFL_PHASE1_SCOPE_v0_1.md`
 - `docs/concepts/NEW_NFL_SOURCE_GOVERNANCE_v0_1.md`
 - `docs/concepts/NEW_NFL_METADATA_MODEL_v0_1.md`
-- `docs/concepts/README.md`
+- `docs/concepts/NEW_NFL_PHYSICAL_PLATFORM_BLUEPRINT_v0_1.md`
+- `docs/concepts/NEW_NFL_METADATA_SCHEMA_OUTLINE_v0_1.md`
 
 ## ADRs
 - `docs/adr/ADR-0001-repo-and-operating-model.md`
@@ -34,14 +33,15 @@ This index is the canonical navigation entry point for NEW NFL.
 - `docs/adr/ADR-0007-source-tiering-and-fallback-policy.md`
 - `docs/adr/ADR-0008-provenance-and-audit-model.md`
 - `docs/adr/ADR-0009-entity-identity-and-canonical-keys.md`
-- `docs/adr/README.md`
+- `docs/adr/ADR-0010-physical-storage-and-directory-layout.md`
+- `docs/adr/ADR-0011-metadata-registry-and-audit-schema.md`
+- `docs/adr/ADR-0012-canonical-schema-family-boundaries.md`
 
 ## Handoffs
 - `docs/_handoff/HANDOFF_A0_1_architecture_concept.md`
 - `docs/_handoff/HANDOFF_A0_2_data_platform_and_scope.md`
 - `docs/_handoff/HANDOFF_A0_3_source_governance_and_metadata.md`
-- `docs/_handoff/README.md`
+- `docs/_handoff/HANDOFF_A0_4_physical_platform_blueprint.md`
 
-## Ops Artifact Roots
-- `docs/_ops/releases/README.md`
-- `docs/_ops/quality_gates/README.md`
+## Current phase pointer
+Current active architectural baseline: **A0.4**
