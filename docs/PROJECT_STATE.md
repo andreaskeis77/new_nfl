@@ -1,70 +1,49 @@
 # NEW NFL Project State
 
-Last Updated: 2026-03-27  
-Current Phase: A0.1 – System concept definition  
-Overall Status: Green  
-Repository Status: Governance foundation established on `main`
+Status: Active architecture definition  
+Current Phase: A0.2  
+Last Updated: 2026-03-27
 
-## 1. What exists
+## Current Position
 
-The repository currently contains:
+The project is still intentionally **pre-implementation**.  
+Method foundation is established, A0.1 system concept has been created, and A0.2 now tightens the architecture with an accepted data platform posture and a formal phase-1 scope boundary.
 
-- foundational project documentation,
-- engineering method and working rules,
-- handoff conventions,
-- release and test process baselines,
-- repo hygiene files,
-- architecture concept draft v0.1,
-- initial ADR set defining the operating model and architecture decision frames.
+## Green State Summary
 
-No runtime code is intentionally present yet.
+- method baseline established,
+- repo hygiene and handoff structure established,
+- architecture concept advanced from v0.1 to v0.2,
+- ADR-0002 now accepted for DuckDB + Parquet phase-1 posture,
+- phase-1 scope formally bounded,
+- ingestion layering tightened.
 
-## 2. Current objective
+## Current Accepted Decisions
 
-The current objective is to define the architecture baseline clearly enough that the first implementation tranche can later start without revisiting basic operating assumptions.
+- Repo and operating model: accepted
+- Data platform and storage posture: accepted
+- Ingestion layering: accepted
+- Phase-1 scope boundary: accepted
 
-## 3. Current decisions already frozen
+## Still Open
 
-The following are already effectively frozen for the project unless explicitly changed by ADR:
+- exact physical data root convention,
+- first canonical entity field contracts,
+- operational metadata schema,
+- initial source registry design,
+- web query surface details,
+- scheduler/runtime implementation choice.
 
-- repository-first operating model,
-- tranche-based work progression,
-- green-gate progression,
-- explicit execution-location tagging,
-- handoff artifacts as repository evidence,
-- logical multi-layer data architecture,
-- separation of factual history from prediction/simulation artifacts.
+## Next Recommended Step
 
-## 4. Current open decisions
+Proceed to **A0.3** to define:
 
-Open architecture decisions:
+- source governance,
+- source registry structure,
+- reconciliation classes,
+- dataset freshness classes,
+- initial metadata schema expectations.
 
-- data platform and storage posture,
-- exact web stack,
-- scheduler/runtime topology on the VPS,
-- first canonical scope slice,
-- initial source portfolio,
-- metadata and data-quality baseline details.
+## Guardrail
 
-## 5. Current risks
-
-- architecture could be over-broadened before first scope slice is chosen,
-- source ambition could outrun governance,
-- implementation could start before storage/runtime posture is frozen.
-
-## 6. Recommended next step
-
-Proceed to **A0.2** and settle:
-
-1. storage/data platform posture,
-2. first canonical subject area scope,
-3. source-governance model,
-4. operating/runtime posture at a first concrete level.
-
-## 7. Gate status
-
-- Method / governance: Green
-- Repo hygiene: Green
-- Handoff structure: Green
-- Runtime implementation: Not started by design
-- Architecture concept: Draft in progress, acceptable for A0 transition
+No runtime implementation should start until A0.3 resolves the first source-governance and metadata-model decisions.

@@ -1,35 +1,71 @@
 # ADR-0003: Ingestion Layering
 
 Status: Accepted  
-Date: 2026-03-27
+Date: 2026-03-27  
+Decision Phase: A0.2
 
 ## Context
 
-The project requires data redundancy, later source expansion, and auditability. Without explicit layering, source-specific logic, UI concerns, and canonical truth maintenance would collapse into each other.
+NEW NFL intends to ingest data from multiple source types with varying reliability, structure, and cadence.  
+The project requires provenance, rebuildability, source-specific debugging, and later canonical reconciliation.
+
+Without explicit layers, source semantics, canonical truth, UI performance needs, and future model inputs will blur into one another.
 
 ## Decision
 
-NEW NFL will use at least the following logical layers:
+NEW NFL shall use the following explicit data layers:
 
-- Raw Landing
-- Source-Normalized Staging
-- Canonical Core
-- Read Models / UI Marts
-- Analytics / Feature Layer
-- Prediction / Simulation Registry
+1. **Raw Landing**
+2. **Source-Normalized Staging**
+3. **Canonical Core**
+4. **Read Models / UI Marts**
+5. **Analytics / Feature Layer**
+6. **Prediction / Simulation Registry**
+
+## Layer intent
+
+### 1. Raw Landing
+Retain retrieval artifacts and source-linked evidence.
+
+### 2. Source-Normalized Staging
+Express source-shaped tables after technical normalization but before cross-source consolidation.
+
+### 3. Canonical Core
+Represent the platform’s best factual truth with explicit reconciliation and traceable provenance.
+
+### 4. Read Models / UI Marts
+Provide denormalized, deterministic, performance-oriented views for the web interface.
+
+### 5. Analytics / Feature Layer
+Prepare reproducible model and analysis inputs.
+
+### 6. Prediction / Simulation Registry
+Preserve non-canonical future-facing outputs separately from factual history.
+
+## Rules
+
+- Predictions shall never be treated as canonical facts.
+- UI marts shall not become the de facto canonical truth.
+- Source staging shall remain source-aware.
+- Every canonicalized fact must remain traceable to source evidence and run context.
+- Layer skipping requires explicit ADR-level approval.
 
 ## Consequences
 
-Positive:
-- source-specific troubleshooting becomes possible,
-- provenance is preserved,
-- simulation outputs remain separate from factual history,
-- UI performance optimization can occur without damaging canonical integrity.
+### Positive
 
-Negative:
-- more upfront design work,
-- more tables and transforms to maintain.
+- simpler debugging,
+- clearer rebuild paths,
+- better provenance,
+- safer future extension into simulations,
+- less UI/data-model coupling.
 
-## Notes
+### Negative / trade-offs
 
-This ADR defines the mandatory logical layering only. It does not yet decide physical storage.
+- more explicit structures to maintain,
+- some additional transformation overhead,
+- stronger upfront modeling discipline required.
+
+## Review trigger
+
+Revisit if implementation experience proves that one layer is redundant or if an additional layer is needed for operational clarity.

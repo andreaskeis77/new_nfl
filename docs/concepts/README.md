@@ -1,13 +1,15 @@
-# Concepts Directory
+# Concepts Index
 
-This directory contains broader design and product concept documents that are larger than a single ADR.
+This directory contains architecture and product-concept documents that are broader than ADRs.
 
 ## Current concept documents
 
 - NEW_NFL_SYSTEM_CONCEPT_v0_1.md
+- NEW_NFL_SYSTEM_CONCEPT_v0_2.md
+- NEW_NFL_PHASE1_SCOPE_v0_1.md
 
-## Usage
+## Usage rule
 
-- Concept documents define the target picture and open design space.
-- ADRs freeze individual architecture or operating decisions.
-- Implementation should not start for major areas until the relevant concept and ADR baseline are in place.
+- Concept documents may evolve by version.
+- ADRs capture narrower decisions derived from concepts.
+- Implementation should not begin against unstable concept areas that still lack either scope clarity or ADR support.

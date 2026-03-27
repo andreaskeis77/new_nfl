@@ -1,18 +1,32 @@
-# ADR Directory
+# ADR Index
 
-This directory contains Architecture Decision Records for NEW NFL.
+This directory contains architecture decision records for NEW NFL.
 
-## Current ADR set
+## Current ADRs
 
-- ADR-0001 Repository and Operating Model — accepted
-- ADR-0002 Data Platform and Storage Decision Frame — proposed
-- ADR-0003 Ingestion Layering — accepted
-- ADR-0004 Web Application Strategy Frame — proposed
-- ADR-0005 Scheduler and VPS Runtime Model Frame — proposed
+- ADR-0001 – Repo and operating model
+- ADR-0002 – Data platform and storage decision
+- ADR-0003 – Ingestion layering
+- ADR-0004 – Web application strategy frame
+- ADR-0005 – Scheduler and VPS runtime model frame
+- ADR-0006 – Phase-1 scope boundary
 
-## Rules
+## State summary
 
-- Use ADRs for durable architectural or operational decisions.
-- Mark decision status clearly.
-- Prefer one decision per ADR.
-- When a decision is still under evaluation, use `Proposed` and move it to `Accepted` only once the project intentionally freezes it.
+### Accepted
+
+- ADR-0001
+- ADR-0002
+- ADR-0003
+- ADR-0006
+
+### Proposed / frame
+
+- ADR-0004
+- ADR-0005
+
+## Conventions
+
+- ADR numbers are never reused.
+- If an ADR is replaced, the old ADR stays in the repository.
+- Implementation must follow accepted ADRs unless a later ADR supersedes them.

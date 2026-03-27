@@ -1,35 +1,92 @@
-# ADR-0002: Data Platform and Storage Decision Frame
+# ADR-0002: Data Platform and Storage Decision
 
-Status: Proposed  
-Date: 2026-03-27
+Status: Accepted  
+Date: 2026-03-27  
+Decision Phase: A0.2
 
 ## Context
 
-NEW NFL requires durable historical storage, repeatable ingestion, multi-layer processing, UI-friendly read access, and later analytics/simulation support. The project also needs strong local operability and a realistic VPS deployment path.
+NEW NFL is a private, single-operator NFL data and analysis platform intended to run primarily on a DEV-LAPTOP for development and a Windows VPS for production-style execution.
 
-## Decision Frame
+The system must support:
 
-This ADR is not final yet. It establishes the decision frame for A0.2.
+- historical backfills,
+- repeated reads and analytical queries,
+- canonical consolidation,
+- read-optimized UI models,
+- provenance and freshness tracking,
+- later analytical and simulation-oriented layers.
 
-The storage decision must explicitly answer:
+At this phase, the project needs a default storage posture that is simple, inspectable, portable, and strong enough for phase 1.
 
-1. What engine stores raw retrieval evidence?
-2. What engine stores source-normalized and canonical data?
-3. What engine serves read models for the web UI?
-4. Will one engine serve all layers initially, or will layers split by concern?
-5. How will metadata, runs, freshness, and DQ results be stored?
-6. How will rebuildability be preserved?
+## Decision
 
-## Current Recommendation
+The phase-1 data platform shall use:
 
-Start by evaluating a single-engine posture for early phases unless it creates unacceptable friction. Layer separation is mandatory even if physical separation is deferred.
+- **DuckDB** as the central analytical warehouse engine,
+- **Parquet** as the preferred durable tabular exchange and persisted evidence format,
+- a **repo-external filesystem data root** for raw, staging, warehouse, exports, logs, and related operational assets.
 
-## Open Options to assess in A0.2
+## Rationale
 
-- one-engine initial platform,
-- hybrid platform with separate raw artifact storage and analytical core storage,
-- separate UI-serving store if needed later.
+This decision is based on the current project conditions:
 
-## Required Outcome in A0.2
+1. The platform is private and effectively single-user.
+2. The workload is analytical and append/rebuild oriented, not transaction-heavy.
+3. The system must remain operable on Windows with low operational burden.
+4. Historical rebuildability and inspectability matter more than multi-user concurrency.
+5. DuckDB aligns well with denormalized marts, reconciliation queries, and local/VPS portability.
+6. Parquet provides durable, portable tabular persistence outside the warehouse file itself.
 
-A0.2 must produce an accepted ADR with a clear recommendation and explicit tradeoffs.
+## Consequences
+
+### Positive
+
+- low operational overhead,
+- good local/VPS portability,
+- strong fit for analytical queries,
+- easy export/rebuild patterns,
+- good support for deterministic read models.
+
+### Negative / trade-offs
+
+- not designed as a high-concurrency transactional system,
+- service boundaries must remain disciplined because there is no external DB server layer doing that discipline for us,
+- some operational patterns differ from classic server-database assumptions,
+- future scale changes may require revisiting the decision.
+
+## Explicit non-decisions
+
+This ADR does not yet define:
+
+- exact database file naming,
+- exact filesystem paths,
+- table schemas,
+- index/materialization policy,
+- API/web framework implementation,
+- scheduler tool implementation.
+
+Those decisions remain for later ADRs and implementation phases.
+
+## Alternatives considered
+
+### PostgreSQL-centric primary store
+
+Rejected for phase 1 as the default center because it adds operational overhead without solving the main early-phase needs better than DuckDB for this project profile.
+
+### SQLite-centric primary store
+
+Rejected as the main platform because the expected analytical posture and warehouse-style querying model are a weaker fit.
+
+### Multi-service lakehouse stack
+
+Rejected as premature complexity for a private single-operator system at this stage.
+
+## Review trigger
+
+Revisit this ADR if:
+
+- concurrency requirements materially change,
+- the VPS runtime model changes substantially,
+- dataset volume or workload profile exceeds the practical posture for the chosen stack,
+- phase-2 product goals require stronger transactional guarantees.
