@@ -5,6 +5,7 @@
 - `WORKING_AGREEMENT.md`
 - `HANDOFF_MANIFEST.md`
 - `HANDOFF_GUIDE.md`
+- `DELIVERY_PROTOCOL.md`
 - `RELEASE_PROCESS.md`
 - `TEST_STRATEGY.md`
 - `OBSERVABILITY.md`
@@ -21,6 +22,7 @@
 - `concepts/NEW_NFL_PHYSICAL_PLATFORM_BLUEPRINT_v0_1.md`
 - `concepts/NEW_NFL_METADATA_SCHEMA_OUTLINE_v0_1.md`
 - `concepts/NEW_NFL_TECHNICAL_BOOTSTRAP_v0_1.md`
+- `concepts/NEW_NFL_METADATA_REGISTRY_IMPLEMENTATION_v0_1.md`
 
 ## Architecture Decisions
 - `adr/ADR-0001-repo-and-operating-model.md`
@@ -38,6 +40,7 @@
 - `adr/ADR-0013-python-runtime-and-toolchain.md`
 - `adr/ADR-0014-project-layout-and-entrypoints.md`
 - `adr/ADR-0015-quality-gates-and-bootstrap-scope.md`
+- `adr/ADR-0016-metadata-registry-service-surface.md`
 
 ## Handoffs
 - `docs/_handoff/HANDOFF_A0_1_architecture_concept.md`
@@ -45,3 +48,8 @@
 - `docs/_handoff/HANDOFF_A0_3_source_governance_and_metadata.md`
 - `docs/_handoff/HANDOFF_A0_4_physical_platform_blueprint.md`
 - `docs/_handoff/HANDOFF_T1_0_technical_bootstrap.md`
+- `docs/_handoff/HANDOFF_T1_0A_quality_gate_fix.md`
+- `docs/_handoff/HANDOFF_T1_0B_settings_fix.md`
+- `docs/_handoff/HANDOFF_T1_0C_repo_cleanup.md`
+- `docs/_handoff/HANDOFF_T1_0D_delivery_protocol.md`
+- `docs/_handoff/HANDOFF_T1_1_metadata_registry_implementation.md`

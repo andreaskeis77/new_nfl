@@ -7,9 +7,9 @@ Windows-first execution guidance.
 ## Current implementation status
 
 - Architecture phase A0 is complete.
-- T1.0 introduces the first technical bootstrap.
+- T1.0 established the local Python package and bootstrap surface.
+- T1.1 adds the first metadata-management utilities and source-registry operations.
 - No ingestion adapters or web application runtime are included yet.
-- The current code establishes the local Python package, storage/bootstrap logic, and baseline tests.
 
 ## Local bootstrap entry points
 
@@ -17,7 +17,11 @@ Windows-first execution guidance.
 
 ```powershell
 .\.venv\Scripts\python.exe -m new_nfl.cli bootstrap
-.\tools\run_quality_gates.ps1
+.\.venv\Scripts\python.exe -m new_nfl.cli seed-sources
+.\.venv\Scripts\python.exe -m new_nfl.cli list-sources
+.\.venv\Scripts\python.exe -m new_nfl.cli set-pipeline-state --pipeline-name bootstrap_local --run-status success --state-json '{"phase":"T1.1"}'
+.\.venv\Scripts\python.exe -m new_nfl.cli show-pipeline-state --pipeline-name bootstrap_local
+.	oolsun_quality_gates.ps1
 ```
 
 The bootstrap command creates the expected local directory tree, initializes the DuckDB database,

@@ -14,6 +14,7 @@
 - ADR-0013 python runtime and toolchain
 - ADR-0014 project layout and entrypoints
 - ADR-0015 quality gates and bootstrap scope
+- ADR-0016 metadata registry service surface
 
 ## Decision frames
 - ADR-0004 web application strategy frame
