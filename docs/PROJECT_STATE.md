@@ -1,61 +1,34 @@
-# NEW NFL Project State
+# Project State
 
-Status: Active  
-Current phase: **A0.4 — Physical Platform Blueprint and Metadata Schema Outline**  
-Current repo posture: **architecture only, no runtime code yet**  
-Current branch target: `main`
+## Current phase
+- Phase: T1.0 Technical Bootstrap
+- Status: ready for implementation import and local execution
+- Latest intended scope: establish the first executable local package, bootstrap commands, baseline DuckDB metadata surface, and green local quality gates
 
-## Completed so far
+## Completed phases
+- T0.x method foundation
+- A0.1 system concept and ADR baseline
+- A0.2 data platform and phase-1 scope
+- A0.3 source governance and metadata model
+- A0.4 physical platform blueprint and metadata schema outline
 
-### T0
-- engineering foundation established
-- workflow hardened
-- handoff and ops placeholders created
-- repo hygiene controls added
+## T1.0 target output
+- `pyproject.toml`
+- `src/new_nfl/` package root
+- `tests/` baseline tests
+- `tools/` baseline PowerShell command surface
+- `data/` local working directories created by bootstrap
+- `data/db/new_nfl.duckdb` created by bootstrap
+- baseline `meta` control tables created by bootstrap
 
-### A0.1
-- system concept baseline defined
-- ADR baseline established
+## Immediate next validation
+**DEV-LAPTOP**
 
-### A0.2
-- data platform posture and phase-1 scope defined
+```powershell
+.\tools\bootstrap_local.ps1
+.\.venv\Scripts\python.exe -m new_nfl.cli health
+.\tools\run_quality_gates.ps1
+```
 
-### A0.3
-- source governance and metadata model defined
-- source tiering, provenance, and canonical key ADRs added
-
-### A0.4
-- physical storage and directory layout defined
-- metadata schema outline defined
-- schema-family boundary ADRs accepted
-
-## Current architecture posture
-
-The project currently assumes:
-
-- single-node phase-1 platform posture
-- Git + DuckDB + Parquet + filesystem zones
-- metadata-first operation
-- explicit schema families: `meta`, `raw`, `stg`, `core`, `mart`, `feat`, `sim`, `scratch`
-- later VPS deployment on Windows Server
-- browse-first web experience before heavier simulation features
-
-## Immediate next step
-
-Recommended next tranche: **T1.0 Technical Bootstrap**
-
-T1.0 should create the initial implementation scaffolding for:
-
-- repository runtime directories
-- initial config surface
-- bootstrap scripts
-- initial DuckDB bootstrap
-- metadata schema skeleton
-- health and smoke checks
-
-## Constraints
-
-- no runtime code has been introduced yet
-- no source adapters have been implemented yet
-- no web application code has been introduced yet
-- no scheduler/runtime services have been created yet
+## Expected next tranche after green
+- T1.1 metadata-management utilities and initial source-registry seeding

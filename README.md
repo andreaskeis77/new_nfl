@@ -1,43 +1,24 @@
 # NEW NFL
 
-NEW NFL ist der methodisch neu aufgesetzte Nachfolger des bisherigen NFL-Projekts.
-Das Ziel ist ein privat betriebenes, robustes NFL-Daten- und Analysezentrum mit
-historischer Tiefe, regelmäßiger Aktualisierung, konsolidierten Datenmodellen,
-komfortabler Weboberfläche und späteren Analyse-/Simulationsfähigkeiten.
+NEW NFL is a private NFL data platform and analysis center. This repository follows a documentation-first,
+systems-engineering approach with explicit handoffs, architecture records, phased implementation, and
+Windows-first execution guidance.
 
-Diese Tranche liefert bewusst weiterhin **keine Runtime-Komponenten**.
-Sie härtet die Arbeitsmethode, Repo-Hygiene, Handoff-Regeln und
-betriebsnahen Dokumentations-Einstiegspunkte, bevor Architektur und Code starten.
+## Current implementation status
 
-## Ziel dieser Tranche
+- Architecture phase A0 is complete.
+- T1.0 introduces the first technical bootstrap.
+- No ingestion adapters or web application runtime are included yet.
+- The current code establishes the local Python package, storage/bootstrap logic, and baseline tests.
 
-- Engineering-Methode weiter in Richtung Endfassung schärfen
-- Repo-Hygiene und plattformübergreifende Dateiregeln festlegen
-- Handoffs operativ verankern
-- Quickstart, Runbook und Observability-Struktur vorbereiten
-- den Weg für die Architekturphase freimachen
+## Local bootstrap entry points
 
-## Aktueller Status
+**DEV-LAPTOP**
 
-- Methodik: in Härtung, belastbare Basis vorhanden
-- Architektur: noch offen
-- Runtime-Code: noch nicht gestartet
-- Deployment: noch nicht gestartet
+```powershell
+.\.venv\Scripts\python.exe -m new_nfl.cli bootstrap
+.\tools\run_quality_gates.ps1
+```
 
-## Nächster logischer Schritt
-
-1. Diese Tranche ins Repo übernehmen.
-2. Die Methode gegen den echten Arbeitsmodus prüfen.
-3. Danach Architektur in klaren ADR- und Konzept-Tranchen definieren:
-   - Layer-Modell
-   - Datenbanken / Speicher
-   - Source-Tiering
-   - Schemata / Keys / Provenance
-   - VPS-Betriebsmodell
-
-## Dokumentationsstart
-
-- `docs/INDEX.md`
-- `docs/PROJECT_STATE.md`
-- `docs/ENGINEERING_MANIFEST.md`
-- `docs/WORKING_AGREEMENT.md`
+The bootstrap command creates the expected local directory tree, initializes the DuckDB database,
+and creates the baseline metadata and schema surface required for later tranches.
