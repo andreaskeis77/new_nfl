@@ -52,3 +52,9 @@ docs/_ops/quality_gates/generated/
 
 # Handoff helper markers
 docs/_handoff/current.generated.md
+
+# Local runtime database state
+data/db/*.duckdb
+data/db/*.duckdb.wal
+data/db/*.duckdb.tmp
+!data/db/.gitkeep
