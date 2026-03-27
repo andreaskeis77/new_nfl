@@ -187,6 +187,217 @@ def _create_table_statement(table_name: str, primary_key: str, columns: dict[str
     """
 
 
+def _add_missing_columns(
+    con: duckdb.DuckDBPyConnection,
+    table_name: str,
+    columns: dict[str, str],
+) -> set[str]:
+    existing = _column_names(con, table_name)
+    for column_name, column_sql in columns.items():
+        if column_name not in existing:
+            alter_type = column_sql.split()[0]
+            con.execute(f"ALTER TABLE meta.{table_name} ADD COLUMN {column_name} {alter_type}")
+    return _column_names(con, table_name)
+
+
+def _coalesce_identifier(column_names: set[str], modern: str, legacy: str) -> str:
+    if modern in column_names and legacy in column_names:
+        return f"COALESCE({modern}, {legacy})"
+    if modern in column_names:
+        return modern
+    return legacy
+
+
+def _backfill_source_registry(con: duckdb.DuckDBPyConnection, column_names: set[str]) -> None:
+    if "source_id" in column_names and "source_key" in column_names:
+        con.execute(
+            """
+            UPDATE meta.source_registry
+            SET source_id = source_key
+            WHERE source_id IS NULL AND source_key IS NOT NULL
+            """
+        )
+    if "source_status" in column_names:
+        if "is_active" in column_names:
+            con.execute(
+                """
+                UPDATE meta.source_registry
+                SET source_status = CASE WHEN is_active THEN 'candidate' ELSE 'inactive' END
+                WHERE source_status IS NULL
+                """
+            )
+        else:
+            con.execute(
+                """
+                UPDATE meta.source_registry
+                SET source_status = 'candidate'
+                WHERE source_status IS NULL
+                """
+            )
+    if "default_frequency" in column_names and "update_frequency" in column_names:
+        con.execute(
+            """
+            UPDATE meta.source_registry
+            SET default_frequency = update_frequency
+            WHERE default_frequency IS NULL AND update_frequency IS NOT NULL
+            """
+        )
+    if "owner_note" in column_names and "notes" in column_names:
+        con.execute(
+            """
+            UPDATE meta.source_registry
+            SET owner_note = notes
+            WHERE owner_note IS NULL AND notes IS NOT NULL
+            """
+        )
+    if "updated_at" in column_names and "created_at" in column_names:
+        con.execute(
+            """
+            UPDATE meta.source_registry
+            SET updated_at = COALESCE(updated_at, created_at, current_timestamp)
+            WHERE updated_at IS NULL
+            """
+        )
+
+
+def _backfill_ingest_runs(con: duckdb.DuckDBPyConnection, column_names: set[str]) -> None:
+    if "detail_json" in column_names and "details_json" in column_names:
+        con.execute(
+            """
+            UPDATE meta.ingest_runs
+            SET detail_json = details_json
+            WHERE detail_json IS NULL AND details_json IS NOT NULL
+            """
+        )
+
+
+def _backfill_load_events(con: duckdb.DuckDBPyConnection, column_names: set[str]) -> None:
+    if "source_id" in column_names and "source_key" in column_names:
+        con.execute(
+            """
+            UPDATE meta.load_events
+            SET source_id = source_key
+            WHERE source_id IS NULL AND source_key IS NOT NULL
+            """
+        )
+    if "detail_json" in column_names and "details_json" in column_names:
+        con.execute(
+            """
+            UPDATE meta.load_events
+            SET detail_json = details_json
+            WHERE detail_json IS NULL AND details_json IS NOT NULL
+            """
+        )
+    if "recorded_at" in column_names and "event_timestamp" in column_names:
+        con.execute(
+            """
+            UPDATE meta.load_events
+            SET recorded_at = event_timestamp
+            WHERE recorded_at IS NULL AND event_timestamp IS NOT NULL
+            """
+        )
+
+
+def _backfill_dq_events(con: duckdb.DuckDBPyConnection, column_names: set[str]) -> None:
+    if "dq_rule_code" in column_names and "dq_rule_key" in column_names:
+        con.execute(
+            """
+            UPDATE meta.dq_events
+            SET dq_rule_code = dq_rule_key
+            WHERE dq_rule_code IS NULL AND dq_rule_key IS NOT NULL
+            """
+        )
+    if "affected_row_count" in column_names and "record_count" in column_names:
+        con.execute(
+            """
+            UPDATE meta.dq_events
+            SET affected_row_count = record_count
+            WHERE affected_row_count IS NULL AND record_count IS NOT NULL
+            """
+        )
+    if "detail_json" in column_names and "details_json" in column_names:
+        con.execute(
+            """
+            UPDATE meta.dq_events
+            SET detail_json = details_json
+            WHERE detail_json IS NULL AND details_json IS NOT NULL
+            """
+        )
+    if "recorded_at" in column_names and "event_timestamp" in column_names:
+        con.execute(
+            """
+            UPDATE meta.dq_events
+            SET recorded_at = event_timestamp
+            WHERE recorded_at IS NULL AND event_timestamp IS NOT NULL
+            """
+        )
+
+
+def _backfill_pipeline_state(con: duckdb.DuckDBPyConnection, column_names: set[str]) -> None:
+    if "pipeline_name" in column_names and "pipeline_key" in column_names:
+        con.execute(
+            """
+            UPDATE meta.pipeline_state
+            SET pipeline_name = pipeline_key
+            WHERE pipeline_name IS NULL AND pipeline_key IS NOT NULL
+            """
+        )
+    if "state_json" in column_names and "details_json" in column_names:
+        con.execute(
+            """
+            UPDATE meta.pipeline_state
+            SET state_json = details_json
+            WHERE state_json IS NULL AND details_json IS NOT NULL
+            """
+        )
+    if "last_success_at" in column_names and "last_successful_run_at" in column_names:
+        con.execute(
+            """
+            UPDATE meta.pipeline_state
+            SET last_success_at = last_successful_run_at
+            WHERE last_success_at IS NULL AND last_successful_run_at IS NOT NULL
+            """
+        )
+    if "last_attempt_at" in column_names and "last_attempted_run_at" in column_names:
+        con.execute(
+            """
+            UPDATE meta.pipeline_state
+            SET last_attempt_at = last_attempted_run_at
+            WHERE last_attempt_at IS NULL AND last_attempted_run_at IS NOT NULL
+            """
+        )
+    if "updated_at" in column_names:
+        con.execute(
+            """
+            UPDATE meta.pipeline_state
+            SET updated_at = COALESCE(
+                updated_at,
+                last_attempt_at,
+                last_success_at,
+                current_timestamp
+            )
+            WHERE updated_at IS NULL
+            """
+        )
+
+
+def _backfill_legacy_values(
+    con: duckdb.DuckDBPyConnection,
+    table_name: str,
+    column_names: set[str],
+) -> None:
+    if table_name == "source_registry":
+        _backfill_source_registry(con, column_names)
+    elif table_name == "ingest_runs":
+        _backfill_ingest_runs(con, column_names)
+    elif table_name == "load_events":
+        _backfill_load_events(con, column_names)
+    elif table_name == "dq_events":
+        _backfill_dq_events(con, column_names)
+    elif table_name == "pipeline_state":
+        _backfill_pipeline_state(con, column_names)
+
+
 def ensure_metadata_surface(settings: Settings) -> None:
     con = _connect(settings)
     try:
@@ -201,13 +412,8 @@ def ensure_metadata_surface(settings: Settings) -> None:
                     columns=spec["columns"],
                 )
             )
-            existing = _column_names(con, table_name)
-            for column_name, column_sql in spec["columns"].items():
-                if column_name not in existing:
-                    alter_type = column_sql.split()[0]
-                    con.execute(
-                        f"ALTER TABLE meta.{table_name} ADD COLUMN {column_name} {alter_type}"
-                    )
+            existing = _add_missing_columns(con, table_name, spec["columns"])
+            _backfill_legacy_values(con, table_name, existing)
     finally:
         con.close()
 
@@ -217,72 +423,78 @@ def seed_default_sources(settings: Settings) -> int:
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "source_registry")
+        identity_expr = _coalesce_identifier(columns, "source_id", "source_key")
         for source in DEFAULT_SOURCES:
             existing = con.execute(
-                "SELECT 1 FROM meta.source_registry WHERE source_id = ?",
+                f"SELECT 1 FROM meta.source_registry WHERE {identity_expr} = ?",
                 [source.source_id],
             ).fetchone()
             if existing:
-                con.execute(
-                    """
-                    UPDATE meta.source_registry
-                    SET source_name = ?,
-                        source_tier = ?,
-                        source_status = ?,
-                        source_priority = ?,
-                        source_kind = ?,
-                        source_family = ?,
-                        access_mode = ?,
-                        default_frequency = ?,
-                        landing_zone = ?,
-                        owner_note = ?,
-                        updated_at = current_timestamp
-                    WHERE source_id = ?
-                    """,
-                    [
-                        source.source_name,
-                        source.source_tier,
-                        source.source_status,
-                        source.source_priority,
-                        source.source_kind,
-                        source.source_family,
-                        source.access_mode,
-                        source.default_frequency,
-                        source.landing_zone,
-                        source.owner_note,
-                        source.source_id,
-                    ],
+                updates: list[str] = []
+                params: list[Any] = []
+                field_values = {
+                    "source_id": source.source_id,
+                    "source_key": source.source_id,
+                    "source_name": source.source_name,
+                    "source_tier": source.source_tier,
+                    "source_status": source.source_status,
+                    "source_priority": source.source_priority,
+                    "source_kind": source.source_kind,
+                    "source_family": source.source_family,
+                    "access_mode": source.access_mode,
+                    "default_frequency": source.default_frequency,
+                    "update_frequency": source.default_frequency,
+                    "landing_zone": source.landing_zone,
+                    "owner_note": source.owner_note,
+                    "notes": source.owner_note,
+                }
+                for column_name, value in field_values.items():
+                    if column_name in columns:
+                        updates.append(f"{column_name} = ?")
+                        params.append(value)
+                if "is_active" in columns:
+                    updates.append("is_active = ?")
+                    params.append(True)
+                if "updated_at" in columns:
+                    updates.append("updated_at = current_timestamp")
+                params.append(source.source_id)
+                update_sql = (
+                    f"UPDATE meta.source_registry SET {', '.join(updates)} "
+                    f"WHERE {identity_expr} = ?"
                 )
+                con.execute(update_sql, params)
             else:
+                insert_columns: list[str] = []
+                params: list[Any] = []
+                field_values = [
+                    ("source_id", source.source_id),
+                    ("source_key", source.source_id),
+                    ("source_name", source.source_name),
+                    ("source_tier", source.source_tier),
+                    ("source_status", source.source_status),
+                    ("source_priority", source.source_priority),
+                    ("source_kind", source.source_kind),
+                    ("source_family", source.source_family),
+                    ("access_mode", source.access_mode),
+                    ("default_frequency", source.default_frequency),
+                    ("update_frequency", source.default_frequency),
+                    ("landing_zone", source.landing_zone),
+                    ("owner_note", source.owner_note),
+                    ("notes", source.owner_note),
+                ]
+                for column_name, value in field_values:
+                    if column_name in columns:
+                        insert_columns.append(column_name)
+                        params.append(value)
+                if "is_active" in columns:
+                    insert_columns.append("is_active")
+                    params.append(True)
+                placeholders = ", ".join(["?"] * len(insert_columns))
+                joined_columns = ", ".join(insert_columns)
                 con.execute(
-                    """
-                    INSERT INTO meta.source_registry (
-                        source_id,
-                        source_name,
-                        source_tier,
-                        source_status,
-                        source_priority,
-                        source_kind,
-                        source_family,
-                        access_mode,
-                        default_frequency,
-                        landing_zone,
-                        owner_note
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    [
-                        source.source_id,
-                        source.source_name,
-                        source.source_tier,
-                        source.source_status,
-                        source.source_priority,
-                        source.source_kind,
-                        source.source_family,
-                        source.access_mode,
-                        source.default_frequency,
-                        source.landing_zone,
-                        source.owner_note,
-                    ],
+                    f"INSERT INTO meta.source_registry ({joined_columns}) VALUES ({placeholders})",
+                    params,
                 )
     finally:
         con.close()
@@ -295,20 +507,35 @@ def list_sources(settings: Settings) -> list[dict[str, Any]]:
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "source_registry")
         rows = con.execute(
-            """
+            f"""
             SELECT
-                source_id,
+                {_coalesce_identifier(columns, 'source_id', 'source_key')} AS source_id,
                 source_name,
                 source_tier,
-                source_status,
+                COALESCE(
+                    source_status,
+                    CASE
+                        WHEN {'is_active' if 'is_active' in columns else 'NULL'}
+                        THEN 'candidate'
+                        ELSE 'inactive'
+                    END,
+                    'candidate'
+                ) AS source_status,
                 source_priority,
                 source_kind,
-                source_family,
-                access_mode,
-                default_frequency,
-                landing_zone,
-                owner_note
+                {'source_family' if 'source_family' in columns else 'NULL'} AS source_family,
+                {'access_mode' if 'access_mode' in columns else 'NULL'} AS access_mode,
+                COALESCE(
+                    {'default_frequency' if 'default_frequency' in columns else 'NULL'},
+                    {'update_frequency' if 'update_frequency' in columns else 'NULL'}
+                ) AS default_frequency,
+                {'landing_zone' if 'landing_zone' in columns else 'NULL'} AS landing_zone,
+                COALESCE(
+                    {'owner_note' if 'owner_note' in columns else 'NULL'},
+                    {'notes' if 'notes' in columns else 'NULL'}
+                ) AS owner_note
             FROM meta.source_registry
             ORDER BY source_priority, source_id
             """
@@ -344,62 +571,82 @@ def upsert_pipeline_state(
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "pipeline_state")
+        identity_expr = _coalesce_identifier(columns, "pipeline_name", "pipeline_key")
         existing = con.execute(
-            "SELECT 1 FROM meta.pipeline_state WHERE pipeline_name = ?",
+            f"SELECT 1 FROM meta.pipeline_state WHERE {identity_expr} = ?",
             [pipeline_name],
         ).fetchone()
         if existing:
+            updates: list[str] = []
+            params: list[Any] = []
+            field_values = {
+                "pipeline_name": pipeline_name,
+                "pipeline_key": pipeline_name,
+                "last_run_status": last_run_status,
+                "state_json": state_payload,
+                "details_json": state_payload,
+            }
+            for column_name, value in field_values.items():
+                if column_name in columns:
+                    updates.append(f"{column_name} = ?")
+                    params.append(value)
+            if "last_attempt_at" in columns:
+                updates.append("last_attempt_at = current_timestamp")
+            if "last_attempted_run_at" in columns:
+                updates.append("last_attempted_run_at = current_timestamp")
             if mark_success:
-                con.execute(
-                    """
-                    UPDATE meta.pipeline_state
-                    SET last_run_status = ?,
-                        last_attempt_at = current_timestamp,
-                        last_success_at = current_timestamp,
-                        state_json = ?,
-                        updated_at = current_timestamp
-                    WHERE pipeline_name = ?
-                    """,
-                    [last_run_status, state_payload, pipeline_name],
-                )
-            else:
-                con.execute(
-                    """
-                    UPDATE meta.pipeline_state
-                    SET last_run_status = ?,
-                        last_attempt_at = current_timestamp,
-                        state_json = ?,
-                        updated_at = current_timestamp
-                    WHERE pipeline_name = ?
-                    """,
-                    [last_run_status, state_payload, pipeline_name],
-                )
+                if "last_success_at" in columns:
+                    updates.append("last_success_at = current_timestamp")
+                if "last_successful_run_at" in columns:
+                    updates.append("last_successful_run_at = current_timestamp")
+            if "updated_at" in columns:
+                updates.append("updated_at = current_timestamp")
+            params.append(pipeline_name)
+            con.execute(
+                f"UPDATE meta.pipeline_state SET {', '.join(updates)} WHERE {identity_expr} = ?",
+                params,
+            )
         else:
-            if mark_success:
-                con.execute(
-                    """
-                    INSERT INTO meta.pipeline_state (
-                        pipeline_name,
-                        last_run_status,
-                        last_attempt_at,
-                        last_success_at,
-                        state_json
-                    ) VALUES (?, ?, current_timestamp, current_timestamp, ?)
-                    """,
-                    [pipeline_name, last_run_status, state_payload],
-                )
-            else:
-                con.execute(
-                    """
-                    INSERT INTO meta.pipeline_state (
-                        pipeline_name,
-                        last_run_status,
-                        last_attempt_at,
-                        state_json
-                    ) VALUES (?, ?, current_timestamp, ?)
-                    """,
-                    [pipeline_name, last_run_status, state_payload],
-                )
+            insert_columns: list[str] = []
+            params: list[Any] = []
+            field_values = [
+                ("pipeline_name", pipeline_name),
+                ("pipeline_key", pipeline_name),
+                ("last_run_status", last_run_status),
+                ("state_json", state_payload),
+                ("details_json", state_payload),
+            ]
+            for column_name, value in field_values:
+                if column_name in columns:
+                    insert_columns.append(column_name)
+                    params.append(value)
+            if "last_attempt_at" in columns:
+                insert_columns.append("last_attempt_at")
+            if "last_attempted_run_at" in columns:
+                insert_columns.append("last_attempted_run_at")
+            if mark_success and "last_success_at" in columns:
+                insert_columns.append("last_success_at")
+            if mark_success and "last_successful_run_at" in columns:
+                insert_columns.append("last_successful_run_at")
+            timestamp_columns = {
+                "last_attempt_at",
+                "last_attempted_run_at",
+                "last_success_at",
+                "last_successful_run_at",
+            }
+            value_sql = []
+            for col in insert_columns:
+                if col in timestamp_columns:
+                    value_sql.append("current_timestamp")
+                else:
+                    value_sql.append("?")
+            joined_columns = ", ".join(insert_columns)
+            joined_values = ", ".join(value_sql)
+            con.execute(
+                f"INSERT INTO meta.pipeline_state ({joined_columns}) VALUES ({joined_values})",
+                params,
+            )
     finally:
         con.close()
 
@@ -409,11 +656,19 @@ def get_pipeline_state(settings: Settings, pipeline_name: str) -> dict[str, Any]
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "pipeline_state")
+        identity_expr = _coalesce_identifier(columns, "pipeline_name", "pipeline_key")
         row = con.execute(
-            """
-            SELECT pipeline_name, last_run_status, state_json
+            f"""
+            SELECT
+                {identity_expr} AS pipeline_name,
+                last_run_status,
+                COALESCE(
+                    {'state_json' if 'state_json' in columns else 'NULL'},
+                    {'details_json' if 'details_json' in columns else 'NULL'}
+                ) AS state_json
             FROM meta.pipeline_state
-            WHERE pipeline_name = ?
+            WHERE {identity_expr} = ?
             """,
             [pipeline_name],
         ).fetchone()
@@ -442,25 +697,27 @@ def start_ingest_run(
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "ingest_runs")
+        insert_columns: list[str] = []
+        params: list[Any] = []
+        field_values = [
+            ("ingest_run_id", ingest_run_id),
+            ("pipeline_name", pipeline_name),
+            ("run_status", "started"),
+            ("triggered_by", triggered_by),
+            ("run_mode", run_mode),
+            ("detail_json", detail_json),
+            ("details_json", detail_json),
+        ]
+        for column_name, value in field_values:
+            if column_name in columns:
+                insert_columns.append(column_name)
+                params.append(value)
+        joined_columns = ", ".join(insert_columns)
+        placeholders = ", ".join(["?"] * len(insert_columns))
         con.execute(
-            """
-            INSERT INTO meta.ingest_runs (
-                ingest_run_id,
-                pipeline_name,
-                run_status,
-                triggered_by,
-                run_mode,
-                detail_json
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            [
-                ingest_run_id,
-                pipeline_name,
-                "started",
-                triggered_by,
-                run_mode,
-                detail_json,
-            ],
+            f"INSERT INTO meta.ingest_runs ({joined_columns}) VALUES ({placeholders})",
+            params,
         )
     finally:
         con.close()
@@ -478,15 +735,19 @@ def finish_ingest_run(
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "ingest_runs")
+        updates = ["run_status = ?", "finished_at = current_timestamp"]
+        params: list[Any] = [run_status]
+        if "detail_json" in columns:
+            updates.append("detail_json = ?")
+            params.append(detail_json)
+        if "details_json" in columns:
+            updates.append("details_json = ?")
+            params.append(detail_json)
+        params.append(ingest_run_id)
         con.execute(
-            """
-            UPDATE meta.ingest_runs
-            SET run_status = ?,
-                finished_at = current_timestamp,
-                detail_json = ?
-            WHERE ingest_run_id = ?
-            """,
-            [run_status, detail_json, ingest_run_id],
+            f"UPDATE meta.ingest_runs SET {', '.join(updates)} WHERE ingest_run_id = ?",
+            params,
         )
     finally:
         con.close()
@@ -507,29 +768,30 @@ def record_load_event(
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "load_events")
+        insert_columns: list[str] = []
+        params: list[Any] = []
+        field_values = [
+            ("load_event_id", load_event_id),
+            ("ingest_run_id", ingest_run_id),
+            ("source_id", source_id),
+            ("source_key", source_id),
+            ("target_schema", target_schema),
+            ("target_object", target_object),
+            ("row_count", row_count),
+            ("event_status", event_status),
+            ("detail_json", detail_json),
+            ("details_json", detail_json),
+        ]
+        for column_name, value in field_values:
+            if column_name in columns:
+                insert_columns.append(column_name)
+                params.append(value)
+        joined_columns = ", ".join(insert_columns)
+        placeholders = ", ".join(["?"] * len(insert_columns))
         con.execute(
-            """
-            INSERT INTO meta.load_events (
-                load_event_id,
-                ingest_run_id,
-                source_id,
-                target_schema,
-                target_object,
-                row_count,
-                event_status,
-                detail_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                load_event_id,
-                ingest_run_id,
-                source_id,
-                target_schema,
-                target_object,
-                row_count,
-                event_status,
-                detail_json,
-            ],
+            f"INSERT INTO meta.load_events ({joined_columns}) VALUES ({placeholders})",
+            params,
         )
     finally:
         con.close()
@@ -553,31 +815,32 @@ def record_dq_event(
 
     con = _connect(settings)
     try:
+        columns = _column_names(con, "dq_events")
+        insert_columns: list[str] = []
+        params: list[Any] = []
+        field_values = [
+            ("dq_event_id", dq_event_id),
+            ("ingest_run_id", ingest_run_id),
+            ("source_id", source_id),
+            ("severity", severity),
+            ("dq_rule_code", dq_rule_code),
+            ("dq_rule_key", dq_rule_code),
+            ("target_schema", target_schema),
+            ("target_object", target_object),
+            ("affected_row_count", affected_row_count),
+            ("record_count", affected_row_count),
+            ("detail_json", detail_json),
+            ("details_json", detail_json),
+        ]
+        for column_name, value in field_values:
+            if column_name in columns:
+                insert_columns.append(column_name)
+                params.append(value)
+        joined_columns = ", ".join(insert_columns)
+        placeholders = ", ".join(["?"] * len(insert_columns))
         con.execute(
-            """
-            INSERT INTO meta.dq_events (
-                dq_event_id,
-                ingest_run_id,
-                source_id,
-                severity,
-                dq_rule_code,
-                target_schema,
-                target_object,
-                affected_row_count,
-                detail_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                dq_event_id,
-                ingest_run_id,
-                source_id,
-                severity,
-                dq_rule_code,
-                target_schema,
-                target_object,
-                affected_row_count,
-                detail_json,
-            ],
+            f"INSERT INTO meta.dq_events ({joined_columns}) VALUES ({placeholders})",
+            params,
         )
     finally:
         con.close()
