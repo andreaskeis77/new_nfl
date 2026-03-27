@@ -1,11 +1,11 @@
-# NEW NFL – Engineering Manifest v1.0
+# NEW NFL – Engineering Manifest v1.1
 
 ## 1. Zweck
 
 Dieses Manifest definiert die obersten Engineering-Regeln für NEW NFL.
 NEW NFL ist kein Experimentier-Notizbuch, sondern ein langfristig wartbares
-privates Daten- und Analysesystem mit hohem Anspruch an Robustheit, Nachvollziehbarkeit,
-Redundanz und Wiederanlaufbarkeit.
+privates Daten- und Analysesystem mit hohem Anspruch an Robustheit,
+Nachvollziehbarkeit, Redundanz und Wiederanlaufbarkeit.
 
 Dieses Manifest gilt für:
 - Architektur
@@ -52,7 +52,7 @@ wird nicht stillschweigend weitergemacht. Solche Fehler müssen sichtbar werden.
 
 ### 3.6 Designed Degradation
 Wenn Teilquellen ausfallen, soll das System so weit wie sinnvoll degradiert weiterlaufen.
-Degradation muss bewusst entworfen, protokolliert und in der UI oder in Reports nachvollziehbar sein.
+Degradation muss bewusst entworfen, protokolliert und in Reports oder UI nachvollziehbar sein.
 
 ### 3.7 Clear Ownership
 Jede Tranche hat klar benannte Ziele, Dateien, Tests, Gates und einen definierten nächsten Schritt.
@@ -60,8 +60,8 @@ Jede Tranche hat klar benannte Ziele, Dateien, Tests, Gates und einen definierte
 ## 4. Regeln für Architektur und Implementierung
 
 ### 4.1 Keine vorschnelle Breite
-Neue Quellen, Tabellen, Jobs oder UI-Module werden erst eingeführt, wenn der Zielzweck,
-die Verantwortlichkeiten und die Teststrategie klar sind.
+Neue Quellen, Tabellen, Jobs oder UI-Module werden erst eingeführt, wenn Zielzweck,
+Verantwortlichkeiten und Teststrategie klar sind.
 
 ### 4.2 Kanonische Layer
 Das System wird schichtweise gedacht. Rohdaten, source-nahe Normalisierung,
@@ -84,7 +84,7 @@ Stillschweigende Richtungswechsel sind unzulässig.
 
 ### 5.1 Kein ungetesteter Kern
 Änderungen an Kernlogik, Datenmodellen, Ingestion, Konsolidierung, APIs,
-Scheduler-Jobs oder Deployment-Skripten benötigen Tests oder belastbare Begründung.
+Scheduler-Jobs oder Deployment-Skripten benötigen Tests oder eine belastbare Begründung.
 
 ### 5.2 Green Gate vor Fortschritt
 Ein Schritt gilt erst als abgeschlossen, wenn die zugehörigen Gates grün sind.
@@ -96,6 +96,10 @@ Tests und Qualitätsprüfungen müssen mit dokumentierten, wiederholbaren Befehl
 ### 5.4 Defekte ehrlich behandeln
 Unklare Zustände, Workarounds, intermittierende Fehler und nicht verstandene Effekte
 werden als Risiko markiert und nicht schönformuliert.
+
+### 5.5 Repo-Hygiene ist Teil der Qualität
+Zeilenenden, Ignore-Regeln, Dateistruktur und generierte Artefakte werden bewusst geführt.
+Drift in diesen Bereichen gilt nicht als Kosmetik, sondern als Wartbarkeitsrisiko.
 
 ## 6. Regeln für Betrieb und Deployment
 
@@ -145,7 +149,7 @@ Eine Tranche ist erst dann done, wenn mindestens Folgendes erfüllt ist:
 
 - Ziel und Scope sind klar
 - Dateien sind konsistent
-- Tests/Gates sind ausgeführt
+- relevante Tests/Gates sind ausgeführt oder die Abweichung ist dokumentiert
 - Ergebnis ist fachlich verständlich
 - Doku ist aktualisiert
 - Handoff ist aktualisiert

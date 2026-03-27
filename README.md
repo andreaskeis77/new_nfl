@@ -1,31 +1,43 @@
 # NEW NFL
 
 NEW NFL ist der methodisch neu aufgesetzte Nachfolger des bisherigen NFL-Projekts.
-In dieser ersten Tranche werden bewusst noch keine Laufzeit-Komponenten geliefert.
-Der Inhalt dieses Pakets definiert die Arbeitsmethode, Governance und Übergaberegeln,
-auf deren Basis Architektur, Datenmodell, Ingestion, Weboberfläche und Betrieb aufgebaut werden.
+Das Ziel ist ein privat betriebenes, robustes NFL-Daten- und Analysezentrum mit
+historischer Tiefe, regelmäßiger Aktualisierung, konsolidierten Datenmodellen,
+komfortabler Weboberfläche und späteren Analyse-/Simulationsfähigkeiten.
+
+Diese Tranche liefert bewusst weiterhin **keine Runtime-Komponenten**.
+Sie härtet die Arbeitsmethode, Repo-Hygiene, Handoff-Regeln und
+betriebsnahen Dokumentations-Einstiegspunkte, bevor Architektur und Code starten.
 
 ## Ziel dieser Tranche
 
-- gemeinsame Engineering-Methode verbindlich festlegen
-- Handoff- und Release-Regeln standardisieren
-- Test- und Qualitätsgates vor der ersten Implementierung definieren
-- eine stabile Dokumentbasis für spätere Architekturentscheidungen schaffen
+- Engineering-Methode weiter in Richtung Endfassung schärfen
+- Repo-Hygiene und plattformübergreifende Dateiregeln festlegen
+- Handoffs operativ verankern
+- Quickstart, Runbook und Observability-Struktur vorbereiten
+- den Weg für die Architekturphase freimachen
 
 ## Aktueller Status
 
-- Methodik: definiert
+- Methodik: in Härtung, belastbare Basis vorhanden
 - Architektur: noch offen
 - Runtime-Code: noch nicht gestartet
 - Deployment: noch nicht gestartet
 
 ## Nächster logischer Schritt
 
-1. Diese Dokumente ins lokale Repo übernehmen.
-2. Die Regeln gemeinsam final schärfen.
-3. Danach die Zielarchitektur von NEW NFL definieren:
+1. Diese Tranche ins Repo übernehmen.
+2. Die Methode gegen den echten Arbeitsmodus prüfen.
+3. Danach Architektur in klaren ADR- und Konzept-Tranchen definieren:
    - Layer-Modell
    - Datenbanken / Speicher
    - Source-Tiering
    - Schemata / Keys / Provenance
    - VPS-Betriebsmodell
+
+## Dokumentationsstart
+
+- `docs/INDEX.md`
+- `docs/PROJECT_STATE.md`
+- `docs/ENGINEERING_MANIFEST.md`
+- `docs/WORKING_AGREEMENT.md`

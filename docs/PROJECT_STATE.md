@@ -8,17 +8,24 @@ komfortabler Weboberfläche und späterer Analyse-/Simulationsfähigkeit.
 
 ## 2. Aktuelle Phase
 
-**Phase:** Methodikdefinition vor Architektur und vor Runtime-Implementierung
+**Phase:** Methodikdefinition und Methodik-Härtung vor Architektur und vor Runtime-Implementierung
 
 ## 3. Aktuell gültige Leitdokumente
 
 - `docs/ENGINEERING_MANIFEST.md`
 - `docs/WORKING_AGREEMENT.md`
 - `docs/HANDOFF_MANIFEST.md`
+- `docs/HANDOFF_GUIDE.md`
 - `docs/TEST_STRATEGY.md`
 - `docs/RELEASE_PROCESS.md`
 
-## 4. Was bereits feststeht
+## 4. Operative Struktur für Wiederaufnahme
+
+- Handoffs liegen unter `docs/_handoff/`
+- Release-Evidence liegt unter `docs/_ops/releases/`
+- Quality-Gate-Evidence liegt unter `docs/_ops/quality_gates/`
+
+## 5. Was bereits feststeht
 
 - Das Projekt wird als neues Repo / neuer Neuaufbau gedacht.
 - Das bisherige NFL-Repo dient als fachliche Referenz, nicht als operative Basis.
@@ -28,7 +35,7 @@ komfortabler Weboberfläche und späterer Analyse-/Simulationsfähigkeit.
 - Andreas arbeitet primär in VS Code und PowerShell.
 - Operative Schritte müssen den Ausführungsort klar benennen.
 
-## 5. Was noch offen ist
+## 6. Was noch offen ist
 
 - endgültige Repo-Grundstruktur
 - Datenbank- / Speicherstrategie
@@ -37,14 +44,22 @@ komfortabler Weboberfläche und späterer Analyse-/Simulationsfähigkeit.
 - Canonical Schema
 - Web-Architektur
 - Scheduler-/Dienstemodell
-- Observability-Konzept
-- Release-/Versionierungstakt
+- Observability-Konzept im technischen Detail
+- Release-/Versionierungstakt im späteren Runtime-Betrieb
 
-## 6. Aktueller nächster Schritt
+## 7. Aktuell bevorzugter nächster Schritt
 
-Gemeinsame Finalisierung der methodischen Dokumente und danach Ableitung
-der Zielarchitektur von NEW NFL.
+Nach Abschluss der Methodik-Härtung folgt die Architekturphase von NEW NFL:
+- Ziel-Repo-Struktur
+- Systemlayer
+- Datenspeicher und Rollen
+- Source-Tiering und Provenance-Modell
+- Betriebsmodell auf dem Windows-VPS
 
-## 7. Pflegehinweis
+## 8. Aktueller Handoff-Status
+
+Noch kein operativer Handoff nötig, da bisher nur methodische Grundstruktur ohne offenen Zwischenzustand vorliegt.
+
+## 9. Pflegehinweis
 
 Dieses Dokument ist nach jeder relevanten Tranche zu prüfen und bei Bedarf zu aktualisieren.

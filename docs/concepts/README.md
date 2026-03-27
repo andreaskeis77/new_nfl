@@ -1,16 +1,14 @@
-# Konzeptverzeichnis
+# Konzepte
 
-Dieses Verzeichnis enthält fachliche und technische Konzepte, die unterhalb
-der bindenden Leitdokumente liegen.
+Dieses Verzeichnis enthält fachliche und systemische Konzeptdokumente.
 
-Beispiele:
-- Systemkonzept
-- Datenquellenstrategie
-- Layer-Modell
-- Schema- und Ontologieentwürfe
-- Web-UX-Konzept
-- Simulations- und Evaluationskonzept
+Hier werden vor ADRs oder ergänzend zu ADRs größere Zielbilder, Domänenmodelle,
+Schema-Entwürfe, Layer-Konzepte, UI-Konzepte und Betriebsmodelle beschrieben.
 
-Regel:
-Konzepte dürfen Entwurfscharakter haben, müssen aber klar zwischen
-Annahmen, Empfehlungen und beschlossenen Festlegungen unterscheiden.
+## Erwartete frühe Inhalte
+
+- NEW_NFL_CONCEPT_v0_1.md
+- Datenlayer-Konzept
+- Source-Tiering-Konzept
+- Canonical-Schema-Konzept
+- Web-/Analysecenter-Konzept

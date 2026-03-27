@@ -1,22 +1,22 @@
-# NEW NFL – Handoff Manifest v1.0
+# NEW NFL – Handoff Manifest v1.1
 
 ## 1. Zweck
 
-Handoffs sind Pflichtartefakte.
-Sie dienen nicht der schönen Zusammenfassung, sondern der belastbaren Übergabe
-eines realen Projektzustands über Chat-, Zeit- oder Kontextgrenzen hinweg.
+Handoffs sind Pflichtartefakte für die Wiederaufnahme des Projekts.
+Sie ersetzen keine Logs, keine Doku und keine Tests, sondern verbinden diese
+in einen belastbaren Übergabepunkt.
 
 ## 2. Wann ein Handoff Pflicht ist
 
-Ein Handoff ist zu aktualisieren oder neu zu erzeugen, wenn mindestens eines davon zutrifft:
+Ein Handoff ist Pflicht bei:
 
 - Abschluss einer Tranche
 - Unterbrechung eines mehrstufigen Vorhabens
 - Übergang von Konzept zu Implementierung
-- signifikanter Debugging-Fortschritt
+- signifikantem Debugging-Fortschritt
 - Änderung an Architektur, Schema, Betriebsmodus oder Deployment
-- Release-Kandidat
-- unsauberer Zwischenzustand, der später wieder aufgenommen werden muss
+- Release Candidate
+- unsauberem Zwischenzustand, der später wieder aufgenommen werden muss
 
 ## 3. Mindestinhalt eines Handoffs
 
@@ -65,13 +65,15 @@ Unzulässig sind Handoffs, die:
 - keinen eindeutigen nächsten Schritt enthalten,
 - wesentliche Pfade oder Dateien verschweigen.
 
-## 6. Empfohlene Ablage
+## 6. Verbindliche Ablage
 
-Handoffs werden versionsnah und systematisch abgelegt.
-Empfohlen:
+Handoffs liegen unter:
 - `docs/_handoff/`
-- eindeutige Dateinamen mit Datum/Zeit oder Tranche
-- Verweis auf den aktuell gültigen Stand in `PROJECT_STATE.md`
+
+Dateinamen sollen eindeutig sein, z. B.:
+- `handoff_YYYYMMDD-HHMM_<kurztitel>.md`
+
+`PROJECT_STATE.md` verweist auf den aktuell gültigen Handoff-Stand.
 
 ## 7. Handoff-Template
 

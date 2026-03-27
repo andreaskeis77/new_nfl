@@ -1,4 +1,4 @@
-# NEW NFL – Release Process v1.0
+# NEW NFL – Release Process v1.1
 
 ## 1. Zweck
 
@@ -60,12 +60,11 @@ Jeder Release oder RC soll nachvollziehbar hinterlassen:
 Ein Stand gilt nicht als Release, nur weil Dateien geändert wurden.
 Ohne dokumentierte Einordnung ist es nur ein Zwischenzustand.
 
-## 7. Empfehlenswerte Ablage von Release-Evidence
+## 7. Verbindliche Ablage für Evidence
 
-Empfohlen:
+- `docs/_handoff/`
 - `docs/_ops/releases/`
 - `docs/_ops/quality_gates/`
-- `docs/_handoff/`
 
 ## 8. Minimaler Release-Ablauf
 

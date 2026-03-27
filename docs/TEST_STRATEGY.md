@@ -1,4 +1,4 @@
-# NEW NFL – Test Strategy v1.0
+# NEW NFL – Test Strategy v1.1
 
 ## 1. Ziel
 
@@ -117,7 +117,7 @@ Beispielhafte Gates:
 
 - Rot ist rot. Kein Schönreden.
 - Bekannte, bewusst akzeptierte Ausnahmen müssen dokumentiert werden.
-- Wenn ein Gate aus Zeitgründen ausgelassen wird, muss das explizit als Risiko notiert werden.
+- Wenn ein Gate ausgelassen wird, muss das explizit als Risiko notiert werden.
 - Für produktionsnahe Änderungen sind Smoke- und Ops-Gates nicht optional.
 
 ## 6. Testdaten
@@ -168,5 +168,5 @@ Ein Gate ist grün, wenn:
 ## 9. Zielbild für spätere Automation
 
 Mittel- bis langfristig sollen die wichtigsten Gates per Skript oder CI-artigem
-lokalen/Server-seitigen Ablauf reproduzierbar sein.
+lokalen oder serverseitigen Ablauf reproduzierbar sein.
 Auch ohne formale Cloud-CI gilt: Qualität darf nicht von Erinnerung abhängen.

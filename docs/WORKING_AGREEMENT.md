@@ -1,4 +1,4 @@
-# NEW NFL – Working Agreement v1.0
+# NEW NFL – Working Agreement v1.1
 
 ## 1. Zweck
 
@@ -11,6 +11,7 @@ bei Planung, Implementierung, Test, Debugging, Deployment und Betrieb von NEW NF
 - ChatGPT entwirft Methode, Architektur, Dateien, Tests, Prüfschritte und Auswertungen.
 - Andreas liefert echte Terminal-Ausgaben und Beobachtungen zurück.
 - ChatGPT analysiert diese Outputs und gibt den nächsten eindeutigen Schritt vor.
+- Der operative Standard ist **ein empfohlener Weg**, nicht ein Menü aus Varianten.
 
 ## 3. Phasenmodell
 
@@ -81,8 +82,17 @@ Keine halbfertigen Dateifragmente als Endzustand.
 - Hypothesen sind als Hypothesen zu markieren.
 - Ein Fix ist erst dann akzeptiert, wenn der relevante Test oder Check grün ist.
 - Bei unklaren Systemzuständen wird die Lage zuerst stabilisiert, bevor neue Änderungen erfolgen.
+- Rote Gates stoppen den betroffenen Arbeitsstrang, bis Risiko oder Fix klar sind.
 
-## 7. Umgang mit Unsicherheit
+## 7. Git- und Repo-Regeln
+
+- `main` ist der kanonische Stand.
+- Kein Commit, der bewusst Secrets oder lokale Laufzeitartefakte eincheckt.
+- Kein Release ohne Abgleich von Doku, `PROJECT_STATE` und Handoff.
+- Commit-Messages sollen den Zweck der Tranche klar erkennen lassen.
+- Repo-Hygiene-Dateien (`.gitignore`, `.gitattributes`, optional `.editorconfig`) sind verbindlich zu respektieren.
+
+## 8. Umgang mit Unsicherheit
 
 ChatGPT soll:
 - Unsicherheit offen benennen,
@@ -91,53 +101,18 @@ ChatGPT soll:
 - fehlende Informationen gezielt in Arbeitsbefehle übersetzen.
 
 Andreas soll:
-- Outputs möglichst vollständig zurückgeben,
-- Abweichungen von den Befehlen klar markieren,
-- reale Randbedingungen offen nennen.
+- echte Outputs und Beobachtungen zurückspielen,
+- Unklarheiten im Systemzustand nicht glätten,
+- bei abweichender Realität den tatsächlichen Zustand mitteilen.
 
-## 8. Dokumentationspflicht
+## 9. Handoff- und Release-Disziplin
 
-Nach jeder relevanten Tranche ist zu prüfen, ob mindestens eines der folgenden Dokumente angepasst werden muss:
+- Jede relevante Tranche aktualisiert das Handoff oder bestätigt bewusst, warum kein neues Handoff nötig ist.
+- Jeder wiederaufnahmebedürftige Zustand bekommt ein Handoff.
+- Ein Release ohne nachvollziehbare Evidence gilt nicht als belastbarer Stand.
 
-- PROJECT_STATE.md
-- HANDOFF
-- RUNBOOK
-- TEST_STRATEGY
-- RELEASE_PROCESS
-- ADR
-- Konzeptdokumente
+## 10. Zielbild der Zusammenarbeit
 
-## 9. Eskalationsregel
-
-Wenn eine Änderung unerwartet:
-- Datenintegrität gefährdet,
-- das Deployment destabilisiert,
-- Scheduler/Jobs unklar macht,
-- oder das Verständnis des Systemzustands verschlechtert,
-
-dann wird nicht einfach weitergebaut. Stattdessen erfolgt:
-1. Stop
-2. Lagebild
-3. Ursachenanalyse
-4. gezielte Korrektur
-5. erneute Verifikation
-
-## 10. Definition eines guten nächsten Schritts
-
-Ein guter nächster Schritt ist:
-- klein genug für eine kontrollierte Ausführung,
-- groß genug für echten Fortschritt,
-- klar testbar,
-- dokumentierbar,
-- und fachlich begründet.
-
-## 11. Anti-Pattern
-
-Nicht Teil der NEW-NFL-Arbeitsweise sind:
-
-- große ungetestete Umbauten
-- "wir machen erstmal weiter und sehen später"
-- nicht dokumentierte Hotfixes
-- Deployment ohne klare Rückfallstrategie
-- operatives Rätselraten
-- zu frühe Quellenexplosion ohne Konsolidierungsplan
+Das Projekt soll auch über lange Zeiträume, Chat-Wechsel und Unterbrechungen hinweg
+wiederaufnahmefähig bleiben. Das Working Agreement dient genau diesem Ziel:
+weniger Rätselraten, weniger Drift, mehr reproduzierbare Fortschritte.

@@ -1,20 +1,21 @@
-# ADR-Verzeichnis
+# ADRs – Architecture Decision Records
 
 In diesem Verzeichnis werden wichtige Architekturentscheidungen dokumentiert.
 
 ## Regel
 
-Eine ADR ist nötig, wenn eine Entscheidung:
-- den Systemzuschnitt verändert,
-- langfristige Folgen hat,
-- Alternativen ernsthaft abgewogen wurden,
-- oder später nicht mehr trivial rückgängig zu machen ist.
+Ein ADR ist erforderlich bei Entscheidungen mit längerfristiger Tragweite, z. B.:
+- Datenbank- oder Speicherstrategie
+- Schichtenmodell
+- Source-Tiering
+- Konsolidierungslogik
+- Web-Architektur
+- Deployment-/Betriebsmodell
 
-## Empfohlenes Format
+## Empfohlenes Schema
 
-- ADR-0001-<kurzer-titel>.md
+- `ADR-0001-<kurztitel>.md`
 - Status: proposed / accepted / superseded
 - Kontext
 - Entscheidung
 - Konsequenzen
-- verworfene Alternativen
