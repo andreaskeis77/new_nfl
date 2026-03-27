@@ -1,14 +1,13 @@
-# Konzepte
+# Concepts Directory
 
-Dieses Verzeichnis enthält fachliche und systemische Konzeptdokumente.
+This directory contains broader design and product concept documents that are larger than a single ADR.
 
-Hier werden vor ADRs oder ergänzend zu ADRs größere Zielbilder, Domänenmodelle,
-Schema-Entwürfe, Layer-Konzepte, UI-Konzepte und Betriebsmodelle beschrieben.
+## Current concept documents
 
-## Erwartete frühe Inhalte
+- NEW_NFL_SYSTEM_CONCEPT_v0_1.md
 
-- NEW_NFL_CONCEPT_v0_1.md
-- Datenlayer-Konzept
-- Source-Tiering-Konzept
-- Canonical-Schema-Konzept
-- Web-/Analysecenter-Konzept
+## Usage
+
+- Concept documents define the target picture and open design space.
+- ADRs freeze individual architecture or operating decisions.
+- Implementation should not start for major areas until the relevant concept and ADR baseline are in place.

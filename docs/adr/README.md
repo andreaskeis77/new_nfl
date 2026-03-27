@@ -1,21 +1,18 @@
-# ADRs – Architecture Decision Records
+# ADR Directory
 
-In diesem Verzeichnis werden wichtige Architekturentscheidungen dokumentiert.
+This directory contains Architecture Decision Records for NEW NFL.
 
-## Regel
+## Current ADR set
 
-Ein ADR ist erforderlich bei Entscheidungen mit längerfristiger Tragweite, z. B.:
-- Datenbank- oder Speicherstrategie
-- Schichtenmodell
-- Source-Tiering
-- Konsolidierungslogik
-- Web-Architektur
-- Deployment-/Betriebsmodell
+- ADR-0001 Repository and Operating Model — accepted
+- ADR-0002 Data Platform and Storage Decision Frame — proposed
+- ADR-0003 Ingestion Layering — accepted
+- ADR-0004 Web Application Strategy Frame — proposed
+- ADR-0005 Scheduler and VPS Runtime Model Frame — proposed
 
-## Empfohlenes Schema
+## Rules
 
-- `ADR-0001-<kurztitel>.md`
-- Status: proposed / accepted / superseded
-- Kontext
-- Entscheidung
-- Konsequenzen
+- Use ADRs for durable architectural or operational decisions.
+- Mark decision status clearly.
+- Prefer one decision per ADR.
+- When a decision is still under evaluation, use `Proposed` and move it to `Accepted` only once the project intentionally freezes it.

@@ -1,44 +1,46 @@
-# NEW NFL – Dokumentationsindex
+# NEW NFL Documentation Index
 
-Dieses Verzeichnis enthält die verbindlichen methodischen Grundlagen und
-die vorbereitete Dokumentstruktur für NEW NFL. Solange nichts anderes per ADR
-beschlossen ist, gelten diese Dokumente als Standard.
+This index is the entry point into the repository’s documentation. It reflects the current governance-first phase of the project.
 
-## Kernregeln
+## Core project governance
 
-- [ENGINEERING_MANIFEST.md](ENGINEERING_MANIFEST.md)
-- [WORKING_AGREEMENT.md](WORKING_AGREEMENT.md)
-- [HANDOFF_MANIFEST.md](HANDOFF_MANIFEST.md)
-- [HANDOFF_GUIDE.md](HANDOFF_GUIDE.md)
-- [TEST_STRATEGY.md](TEST_STRATEGY.md)
-- [RELEASE_PROCESS.md](RELEASE_PROCESS.md)
+- [Engineering Manifest](./ENGINEERING_MANIFEST.md)
+- [Working Agreement](./WORKING_AGREEMENT.md)
+- [Handoff Manifest](./HANDOFF_MANIFEST.md)
+- [Handoff Guide](./HANDOFF_GUIDE.md)
+- [Test Strategy](./TEST_STRATEGY.md)
+- [Release Process](./RELEASE_PROCESS.md)
+- [Project State](./PROJECT_STATE.md)
+- [Quickstart](./QUICKSTART.md)
+- [Runbook](./RUNBOOK.md)
+- [Observability](./OBSERVABILITY.md)
 
-## Laufender Projektstatus
+## Concepts
 
-- [PROJECT_STATE.md](PROJECT_STATE.md)
+- [Concepts README](./concepts/README.md)
+- [NEW NFL System Concept v0.1](./concepts/NEW_NFL_SYSTEM_CONCEPT_v0_1.md)
 
-## Einstiegs- und Betriebsdokumente
+## Architecture Decision Records
 
-- [QUICKSTART.md](QUICKSTART.md)
-- [RUNBOOK.md](RUNBOOK.md)
-- [OBSERVABILITY.md](OBSERVABILITY.md)
+- [ADR README](./adr/README.md)
+- [ADR-0001 Repository and Operating Model](./adr/ADR-0001-repo-and-operating-model.md)
+- [ADR-0002 Data Platform and Storage Decision Frame](./adr/ADR-0002-data-platform-and-storage-decision-frame.md)
+- [ADR-0003 Ingestion Layering](./adr/ADR-0003-ingestion-layering.md)
+- [ADR-0004 Web Application Strategy Frame](./adr/ADR-0004-web-application-strategy-frame.md)
+- [ADR-0005 Scheduler and VPS Runtime Model Frame](./adr/ADR-0005-scheduler-and-vps-runtime-model-frame.md)
 
-## Strukturierte Übergaben und Ops-Evidence
+## Handoffs and operational evidence
 
-- [_handoff/README.md](_handoff/README.md)
-- [_ops/releases/README.md](_ops/releases/README.md)
-- [_ops/quality_gates/README.md](_ops/quality_gates/README.md)
+- [Handoff directory](./_handoff/README.md)
+- [Release evidence directory](./_ops/releases/README.md)
+- [Quality gate evidence directory](./_ops/quality_gates/README.md)
 
-## Architekturentscheidungen
+## Current recommendation
 
-- [adr/README.md](adr/README.md)
+Read in this order:
 
-## Fach- und Systemkonzepte
-
-- [concepts/README.md](concepts/README.md)
-
-## Regel für die Pflege
-
-- Jede Tranche prüft, ob dieses Verzeichnis aktualisiert werden muss.
-- Kein Release ohne Abgleich von Code, Tests und Dokumentation.
-- Wenn ein Dokument vom tatsächlichen Systemzustand abweicht, ist das als Defekt zu behandeln.
+1. Engineering Manifest
+2. Working Agreement
+3. Project State
+4. NEW NFL System Concept v0.1
+5. ADR-0001 through ADR-0005

@@ -1,65 +1,70 @@
-# NEW NFL – Project State
+# NEW NFL Project State
 
-## 1. Projektmission
+Last Updated: 2026-03-27  
+Current Phase: A0.1 – System concept definition  
+Overall Status: Green  
+Repository Status: Governance foundation established on `main`
 
-Aufbau eines privaten, robusten NFL-Daten- und Analysezentrums mit
-historischer Tiefe, regelmäßiger Aktualisierung, mehrstufiger Datenhaltung,
-komfortabler Weboberfläche und späterer Analyse-/Simulationsfähigkeit.
+## 1. What exists
 
-## 2. Aktuelle Phase
+The repository currently contains:
 
-**Phase:** Methodikdefinition und Methodik-Härtung vor Architektur und vor Runtime-Implementierung
+- foundational project documentation,
+- engineering method and working rules,
+- handoff conventions,
+- release and test process baselines,
+- repo hygiene files,
+- architecture concept draft v0.1,
+- initial ADR set defining the operating model and architecture decision frames.
 
-## 3. Aktuell gültige Leitdokumente
+No runtime code is intentionally present yet.
 
-- `docs/ENGINEERING_MANIFEST.md`
-- `docs/WORKING_AGREEMENT.md`
-- `docs/HANDOFF_MANIFEST.md`
-- `docs/HANDOFF_GUIDE.md`
-- `docs/TEST_STRATEGY.md`
-- `docs/RELEASE_PROCESS.md`
+## 2. Current objective
 
-## 4. Operative Struktur für Wiederaufnahme
+The current objective is to define the architecture baseline clearly enough that the first implementation tranche can later start without revisiting basic operating assumptions.
 
-- Handoffs liegen unter `docs/_handoff/`
-- Release-Evidence liegt unter `docs/_ops/releases/`
-- Quality-Gate-Evidence liegt unter `docs/_ops/quality_gates/`
+## 3. Current decisions already frozen
 
-## 5. Was bereits feststeht
+The following are already effectively frozen for the project unless explicitly changed by ADR:
 
-- Das Projekt wird als neues Repo / neuer Neuaufbau gedacht.
-- Das bisherige NFL-Repo dient als fachliche Referenz, nicht als operative Basis.
-- Die methodische Grundlage wird aus dem reiferen Capsule-Engineering-Ansatz abgeleitet.
-- Vorrang haben Methodik, Handoffs, Architektur und Governance vor frühem Coding.
-- Deployment-Ziel ist ein Windows-VPS.
-- Andreas arbeitet primär in VS Code und PowerShell.
-- Operative Schritte müssen den Ausführungsort klar benennen.
+- repository-first operating model,
+- tranche-based work progression,
+- green-gate progression,
+- explicit execution-location tagging,
+- handoff artifacts as repository evidence,
+- logical multi-layer data architecture,
+- separation of factual history from prediction/simulation artifacts.
 
-## 6. Was noch offen ist
+## 4. Current open decisions
 
-- endgültige Repo-Grundstruktur
-- Datenbank- / Speicherstrategie
-- Layer-Modell im Detail
-- Source-Tiering
-- Canonical Schema
-- Web-Architektur
-- Scheduler-/Dienstemodell
-- Observability-Konzept im technischen Detail
-- Release-/Versionierungstakt im späteren Runtime-Betrieb
+Open architecture decisions:
 
-## 7. Aktuell bevorzugter nächster Schritt
+- data platform and storage posture,
+- exact web stack,
+- scheduler/runtime topology on the VPS,
+- first canonical scope slice,
+- initial source portfolio,
+- metadata and data-quality baseline details.
 
-Nach Abschluss der Methodik-Härtung folgt die Architekturphase von NEW NFL:
-- Ziel-Repo-Struktur
-- Systemlayer
-- Datenspeicher und Rollen
-- Source-Tiering und Provenance-Modell
-- Betriebsmodell auf dem Windows-VPS
+## 5. Current risks
 
-## 8. Aktueller Handoff-Status
+- architecture could be over-broadened before first scope slice is chosen,
+- source ambition could outrun governance,
+- implementation could start before storage/runtime posture is frozen.
 
-Noch kein operativer Handoff nötig, da bisher nur methodische Grundstruktur ohne offenen Zwischenzustand vorliegt.
+## 6. Recommended next step
 
-## 9. Pflegehinweis
+Proceed to **A0.2** and settle:
 
-Dieses Dokument ist nach jeder relevanten Tranche zu prüfen und bei Bedarf zu aktualisieren.
+1. storage/data platform posture,
+2. first canonical subject area scope,
+3. source-governance model,
+4. operating/runtime posture at a first concrete level.
+
+## 7. Gate status
+
+- Method / governance: Green
+- Repo hygiene: Green
+- Handoff structure: Green
+- Runtime implementation: Not started by design
+- Architecture concept: Draft in progress, acceptable for A0 transition
