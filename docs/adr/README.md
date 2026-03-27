@@ -1,32 +1,27 @@
-# ADR Index
+# ADR Directory
 
 This directory contains architecture decision records for NEW NFL.
 
 ## Current ADRs
 
-- ADR-0001 – Repo and operating model
-- ADR-0002 – Data platform and storage decision
-- ADR-0003 – Ingestion layering
-- ADR-0004 – Web application strategy frame
-- ADR-0005 – Scheduler and VPS runtime model frame
-- ADR-0006 – Phase-1 scope boundary
+- ADR-0001 — repo and operating model
+- ADR-0002 — data platform and storage decision frame
+- ADR-0003 — ingestion layering
+- ADR-0004 — web application strategy frame
+- ADR-0005 — scheduler and VPS runtime model frame
+- ADR-0006 — Phase 1 scope boundary
+- ADR-0007 — source tiering and fallback policy
+- ADR-0008 — provenance and audit model
+- ADR-0009 — entity identity and canonical keys
 
-## State summary
+## Usage Rule
 
-### Accepted
+ADRs capture decisions or bounded decision frames. They are not meeting notes. If a meaningful architectural commitment exists, it should be reflected here.
 
-- ADR-0001
-- ADR-0002
-- ADR-0003
-- ADR-0006
+## Expected Next ADR Area
 
-### Proposed / frame
-
-- ADR-0004
-- ADR-0005
-
-## Conventions
-
-- ADR numbers are never reused.
-- If an ADR is replaced, the old ADR stays in the repository.
-- Implementation must follow accepted ADRs unless a later ADR supersedes them.
+Likely next decision areas:
+- physical metadata schema posture
+- storage layout by layer
+- runtime service boundary
+- read model strategy

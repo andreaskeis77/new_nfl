@@ -1,15 +1,15 @@
-# Concepts Index
+# Concepts Directory
 
-This directory contains architecture and product-concept documents that are broader than ADRs.
+This directory contains higher-level concept documents for NEW NFL.
 
-## Current concept documents
+## Current Concept Documents
 
-- NEW_NFL_SYSTEM_CONCEPT_v0_1.md
-- NEW_NFL_SYSTEM_CONCEPT_v0_2.md
-- NEW_NFL_PHASE1_SCOPE_v0_1.md
+- `NEW_NFL_SYSTEM_CONCEPT_v0_1.md`
+- `NEW_NFL_SYSTEM_CONCEPT_v0_2.md`
+- `NEW_NFL_PHASE1_SCOPE_v0_1.md`
+- `NEW_NFL_SOURCE_GOVERNANCE_v0_1.md`
+- `NEW_NFL_METADATA_MODEL_v0_1.md`
 
-## Usage rule
+## Usage Rule
 
-- Concept documents may evolve by version.
-- ADRs capture narrower decisions derived from concepts.
-- Implementation should not begin against unstable concept areas that still lack either scope clarity or ADR support.
+Concept documents are used to shape architecture and operating assumptions before or alongside implementation. They may evolve through numbered versions until the underlying posture is sufficiently stable to translate into ADRs, schemas, and code.

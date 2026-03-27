@@ -1,49 +1,66 @@
 # NEW NFL Project State
 
-Status: Active architecture definition  
-Current Phase: A0.2  
-Last Updated: 2026-03-27
+## Current Phase
 
-## Current Position
+- Current tranche: **A0.3**
+- Status: **Green**
+- Repository posture: **documentation-first, architecture-active, runtime not started**
+- Current branch expectation: `main` remains stable and reviewable
 
-The project is still intentionally **pre-implementation**.  
-Method foundation is established, A0.1 system concept has been created, and A0.2 now tightens the architecture with an accepted data platform posture and a formal phase-1 scope boundary.
+## Current Achievements
 
-## Green State Summary
+Completed and committed:
+- engineering foundation
+- workflow hardening and repo hygiene
+- A0.1 system concept and ADR baseline
+- A0.2 data platform posture and Phase 1 scope boundary
+- A0.3 source governance and metadata model baseline
 
-- method baseline established,
-- repo hygiene and handoff structure established,
-- architecture concept advanced from v0.1 to v0.2,
-- ADR-0002 now accepted for DuckDB + Parquet phase-1 posture,
-- phase-1 scope formally bounded,
-- ingestion layering tightened.
+## Current Architecture Posture
 
-## Current Accepted Decisions
+The current target posture is:
 
-- Repo and operating model: accepted
-- Data platform and storage posture: accepted
-- Ingestion layering: accepted
-- Phase-1 scope boundary: accepted
+- documentation-driven systems engineering
+- conservative Phase 1 scope
+- metadata-first multi-source platform
+- layered acquisition and consolidation model
+- read-only web surface before advanced analytics/simulation runtime
+- VPS deployment planned but not yet designed to implementation level
 
-## Still Open
+## What Is Decided
 
-- exact physical data root convention,
-- first canonical entity field contracts,
-- operational metadata schema,
-- initial source registry design,
-- web query surface details,
-- scheduler/runtime implementation choice.
+Decided at current architecture level:
+- repo and operating model
+- phase-1 boundary as a limited first operating scope
+- data platform posture direction
+- ingestion layering principle
+- source tiering and fallback policy
+- provenance and audit requirement
+- canonical key requirement for core entities
 
-## Next Recommended Step
+## What Is Still Open
 
-Proceed to **A0.3** to define:
+Open architecture topics:
+- physical storage layout and concrete schema draft
+- metadata schema structure
+- actual dataset-class-to-source matrix
+- scheduler/runtime topology
+- read model strategy detail
+- web app runtime design detail
+- retention, pruning, and snapshot policy
+- DQ rule catalog first cut
 
-- source governance,
-- source registry structure,
-- reconciliation classes,
-- dataset freshness classes,
-- initial metadata schema expectations.
+## Immediate Next Recommendation
 
-## Guardrail
+Proceed with **A0.4**:
+- physical data platform blueprint
+- metadata schema outline
+- storage/layer mapping
+- runtime boundary between jobs and read-only web application
 
-No runtime implementation should start until A0.3 resolves the first source-governance and metadata-model decisions.
+## Operational Notes
+
+- No runtime code exists yet by design.
+- No VPS service setup exists yet by design.
+- No ingestion source is approved for implementation yet beyond architecture-level governance.
+- All next steps should continue to preserve small-batch, green-gate discipline.
