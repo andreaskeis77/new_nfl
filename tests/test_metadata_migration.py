@@ -9,7 +9,6 @@ from new_nfl.metadata import (
 )
 from new_nfl.settings import load_settings
 
-
 LEGACY_SOURCE_REGISTRY_DDL = """
 CREATE TABLE IF NOT EXISTS meta.source_registry (
     source_key VARCHAR PRIMARY KEY,
@@ -24,6 +23,7 @@ CREATE TABLE IF NOT EXISTS meta.source_registry (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 """
+
 
 LEGACY_PIPELINE_STATE_DDL = """
 CREATE TABLE IF NOT EXISTS meta.pipeline_state (
@@ -50,9 +50,10 @@ def _prepare_legacy_db(settings):
 def test_seed_default_sources_migrates_legacy_source_registry(tmp_path, monkeypatch):
     monkeypatch.setenv("NEW_NFL_REPO_ROOT", str(tmp_path))
     settings = load_settings()
-    _prepare_legacy_db(settings)
 
+    _prepare_legacy_db(settings)
     bootstrap_local_environment(settings)
+
     seeded = seed_default_sources(settings)
     rows = list_sources(settings)
 
@@ -63,11 +64,9 @@ def test_seed_default_sources_migrates_legacy_source_registry(tmp_path, monkeypa
     con = duckdb.connect(str(settings.db_path))
     try:
         row = con.execute(
-            (
-                "SELECT source_key, source_id "
-                "FROM meta.source_registry "
-                "WHERE source_key = 'nflverse_bulk'"
-            )
+            "SELECT source_key, source_id "
+            "FROM meta.source_registry "
+            "WHERE source_key = 'nflverse_bulk'"
         ).fetchone()
     finally:
         con.close()
@@ -78,9 +77,10 @@ def test_seed_default_sources_migrates_legacy_source_registry(tmp_path, monkeypa
 def test_pipeline_state_upsert_supports_legacy_table(tmp_path, monkeypatch):
     monkeypatch.setenv("NEW_NFL_REPO_ROOT", str(tmp_path))
     settings = load_settings()
-    _prepare_legacy_db(settings)
 
+    _prepare_legacy_db(settings)
     bootstrap_local_environment(settings)
+
     upsert_pipeline_state(
         settings,
         pipeline_name="bootstrap_local",
@@ -88,6 +88,7 @@ def test_pipeline_state_upsert_supports_legacy_table(tmp_path, monkeypatch):
         state_json='{"phase":"T1.1A"}',
         mark_success=True,
     )
+
     state = get_pipeline_state(settings, "bootstrap_local")
 
     assert state is not None
@@ -98,11 +99,9 @@ def test_pipeline_state_upsert_supports_legacy_table(tmp_path, monkeypatch):
     con = duckdb.connect(str(settings.db_path))
     try:
         row = con.execute(
-            (
-                "SELECT pipeline_key, pipeline_name "
-                "FROM meta.pipeline_state "
-                "WHERE pipeline_key = 'bootstrap_local'"
-            )
+            "SELECT pipeline_key, pipeline_name "
+            "FROM meta.pipeline_state "
+            "WHERE pipeline_key = 'bootstrap_local'"
         ).fetchone()
     finally:
         con.close()
