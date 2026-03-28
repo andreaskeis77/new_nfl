@@ -2,49 +2,131 @@
 
 ## Purpose
 
-This document defines the preferred preflight validation pattern before ChatGPT
-hands over a NEW NFL tranche.
+This document defines the required validation order for NEW NFL tranches.
 
-## Minimum preflight sequence
+The goal is not only to detect defects, but to detect the **right class of
+defects early**: import/collection failures, API contract drift, upgrade-state
+breakage, and operational path regressions.
 
-1. Replay assumptions from the latest green tranche.
-2. Check fresh-state behavior.
-3. Check upgrade behavior against an already-evolved local database.
-4. Clear import and collection failures before deeper tests.
-5. Preserve public exports used by existing CLI commands and tests, or update all
-   dependent files in the same tranche.
-6. Clear lint and formatting failures before handoff.
-7. Only then hand the tranche to Andreas.
+## Core rule
 
-## Required replay classes
+Validation is not a bag of checks. It is an ordered ladder.
 
-Every tranche should be checked against these classes before handoff:
+Do not jump directly to `pytest` or `ruff` and assume the tranche is green.
 
-- module import / test collection
-- existing green CLI commands from the previous tranche
-- new CLI commands introduced by the current tranche
-- lint / format gates
-- pytest gates
+## Validation ladder
 
-## Why this exists
+For implementation and fix tranches, the preferred order is:
 
-The project already experienced repeated failures caused by:
+1. **Extraction/path validation**
+   - ZIP landed flat-root
+   - `git status` shows expected paths only
 
-- schema drift against an existing local DuckDB file
-- regressions against already-existing tests and CLI surfaces
-- packaging that looked correct in isolation but not against the real repo state
-- lint issues that were introduced after a functional fix
-- collection failures caused by missing exports during adapter refactors
+2. **Import/collection gate**
+   - direct import of the relevant package entrypoint
+   - no module collection errors
+   - no broken public exports
 
-This protocol exists to reduce those failure classes.
+3. **Last green path replay**
+   - replay the most relevant previously green CLI/runtime path
+   - ensure the new tranche did not silently break older behavior
 
-## Collection-first rule
+4. **New path validation**
+   - execute the new CLI/runtime path introduced by the tranche
+   - verify both dry-run and execute variants where applicable
 
-If imports or pytest collection fail, deeper validation is not considered valid.
-The first repair target must then be import compatibility and public surface
-stability.
+5. **State coverage**
+   - fresh state validation
+   - upgrade/evolved state validation against an existing local DB if relevant
 
-## Delivery consequence
+6. **Quality gates**
+   - `ruff`
+   - `pytest`
+   - project quality-gate wrapper if present
 
-If a tranche fails collection or a previous green CLI path, the tranche is still
-red and must be repaired before it is treated as complete.
+Only after this ladder is green may the tranche be considered green.
+
+## Mandatory replay classes
+
+The following replay classes matter especially for NEW NFL:
+
+- package import / CLI import
+- source registry seed
+- adapter discovery and description
+- existing execute paths after new adapter/fetch changes
+- metadata tables under both fresh and evolved local DB states
+
+## Contract surfaces that require replay
+
+Replay is mandatory when a tranche touches any of these:
+
+- `src/new_nfl/cli.py`
+- package `__init__` exports
+- adapter descriptors or plans
+- `meta.*` table schemas or inserts
+- metadata helper functions used by multiple CLI paths
+
+## Fresh vs evolved state
+
+Two states must be thought about separately:
+
+### Fresh state
+
+A newly bootstrapped local repo state with a fresh local DuckDB file.
+
+### Evolved state
+
+A realistic local working state that already contains:
+
+- prior metadata tables
+- prior ingest runs
+- prior load events
+- prior local raw landing directories
+
+A tranche is not sufficiently validated if it only works on fresh state while
+failing on evolved state.
+
+## Green definition
+
+A tranche is green only if:
+
+- required import/collection passes
+- required replay of last green path passes
+- new path passes
+- required state coverage passes
+- `ruff` passes
+- `pytest` passes
+
+## Red classification examples
+
+A tranche stays red if any of the following is true:
+
+- import error during CLI startup
+- tests pass but required CLI execute path fails
+- new path works only on fresh state but not on evolved state
+- one module expects a public field or export that another no longer provides
+- DB insert/update fails because compatibility columns were not considered
+
+## Assistant preflight expectation
+
+Before delivering a tranche, ChatGPT should explicitly think through:
+
+- which path was last green
+- which public contract might be broken
+- which upgraded local state might be affected
+- whether the new path introduces new required columns or metadata fields
+
+If this could not be checked with confidence, that uncertainty must be stated as
+delivery risk.
+
+## Practical T1.x lessons
+
+The T1.x cycle revealed recurring failure modes:
+
+- compatibility drift against existing local metadata surfaces
+- broken public exports between modules
+- descriptor/plan API drift
+- tests green while required CLI execute path remained red
+- late discovery of import/collection errors
+
+These lessons are now part of the default validation discipline.

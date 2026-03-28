@@ -1,4 +1,4 @@
-# NEW NFL – Working Agreement v1.1
+# NEW NFL – Working Agreement v1.2
 
 ## 1. Zweck
 
@@ -8,31 +8,38 @@ bei Planung, Implementierung, Test, Debugging, Deployment und Betrieb von NEW NF
 ## 2. Gemeinsames Arbeitsmodell
 
 - Andreas führt Befehle lokal oder auf dem VPS aus.
-- ChatGPT entwirft Methode, Architektur, Dateien, Tests, Prüfschritte und Auswertungen.
+- ChatGPT entwirft Methode, Architektur, Dateien, Tests, Prüfschritte und
+  Auswertungen.
 - Andreas liefert echte Terminal-Ausgaben und Beobachtungen zurück.
 - ChatGPT analysiert diese Outputs und gibt den nächsten eindeutigen Schritt vor.
 
 ## 3. Phasenmodell
 
 ### 3.1 Konzept- und Methodikphase
+
 Erlaubt:
+
 - Diskussion von Alternativen
 - Vor- und Nachteile
 - klare Empfehlung
 - saubere Entscheidungsgrundlagen
 
 Nicht erlaubt:
+
 - voreilige Implementierung
 - technische Festlegungen ohne begründete Einordnung
 
 ### 3.2 Implementierungsphase
+
 Erlaubt:
+
 - eindeutige Lösung
 - klare Reihenfolge
 - exakte Dateiänderungen
 - exakte Testbefehle
 
 Nicht erwünscht:
+
 - mehrere operative Varianten ohne Not
 - vage Hinweise statt klarer Instruktionen
 
@@ -44,18 +51,14 @@ Jeder operative Schritt muss enthalten:
    - DEV-LAPTOP
    - VPS-USER
    - VPS-ADMIN
-
 2. **Ziel**
    - Was wird geprüft, geändert oder gestartet?
-
 3. **Befehle**
    - vollständig kopierbar
    - in sinnvoller Reihenfolge
    - ohne unnötige Alternativen
-
 4. **Erwartetes Ergebnis**
    - welche Ausgabe oder Wirkung wird erwartet?
-
 5. **Was Andreas zurückmeldet**
    - z. B. PowerShell-Output, Fehlertext, Screenshot, Status
 
@@ -78,8 +81,8 @@ Keine halbfertigen Dateifragmente als Endzustand.
 
 Für NEW NFL gilt ab jetzt ausdrücklich:
 
-- In der Implementierungsphase liefert ChatGPT standardmäßig vollständige betroffene
-  Dateien.
+- In der Implementierungsphase liefert ChatGPT standardmäßig vollständige
+  betroffene Dateien.
 - In der Fix- und Debugging-Phase liefert ChatGPT standardmäßig vollständige
   betroffene Dateien.
 - In der Qualitäts-Gate-Reparatur liefert ChatGPT standardmäßig vollständige
@@ -88,14 +91,16 @@ Für NEW NFL gilt ab jetzt ausdrücklich:
   etwas anderes verlangt.
 
 Nicht der Standard sind:
+
 - Such-/Ersetz-Anweisungen
 - Zeilen- oder Snippet-Patches
 - Aufforderungen an Andreas, einzelne Zeilen selbst zusammenzusuchen
 - fragmentierte Mini-Änderungen ohne vollständige Datei
 
 Eine Abweichung davon ist nur zulässig, wenn:
+
 1. Andreas ausdrücklich um eine manuelle Änderung bittet, oder
-2. ein echter Hotfix eine minimale Sofortmaßnahme erfordert
+2. ein echter Hotfix eine minimale Sofortmaßnahme erfordert.
 
 Auch dann ist die Abweichung explizit zu benennen.
 
@@ -111,12 +116,14 @@ Auch dann ist die Abweichung explizit zu benennen.
 ## 8. Umgang mit Unsicherheit
 
 ChatGPT soll:
+
 - Unsicherheit offen benennen,
 - keine Betriebszustände erfinden,
 - keine ungetesteten Annahmen als Fakten ausgeben,
 - fehlende Informationen gezielt in Arbeitsbefehle übersetzen.
 
 Andreas soll:
+
 - Outputs möglichst vollständig zurückgeben,
 - Abweichungen von den Befehlen klar markieren,
 - reale Randbedingungen offen nennen.
@@ -134,16 +141,21 @@ Dokumente angepasst werden muss:
 - ADR
 - Konzeptdokumente
 - DELIVERY_PROTOCOL.md
+- VALIDATION_PROTOCOL.md
+- RETROSPECTIVE_T1_X.md
 
 ## 10. Eskalationsregel
 
 Wenn eine Änderung unerwartet:
+
 - Datenintegrität gefährdet,
 - das Deployment destabilisiert,
 - Scheduler/Jobs unklar macht,
+- die Upgrade-Fähigkeit beschädigt,
 - oder das Verständnis des Systemzustands verschlechtert,
 
 dann wird nicht einfach weitergebaut. Stattdessen erfolgt:
+
 1. Stop
 2. Lagebild
 3. Ursachenanalyse
@@ -153,6 +165,7 @@ dann wird nicht einfach weitergebaut. Stattdessen erfolgt:
 ## 11. Definition eines guten nächsten Schritts
 
 Ein guter nächster Schritt ist:
+
 - klein genug für eine kontrollierte Ausführung,
 - groß genug für echten Fortschritt,
 - klar testbar,
@@ -171,21 +184,23 @@ Nicht Teil der NEW-NFL-Arbeitsweise sind:
 - zu frühe Quellenexplosion ohne Konsolidierungsplan
 - manuelle Such-/Ersetz-Arbeit für Andreas, obwohl vollständige Dateien geliefert
   werden könnten
-
+- Commits auf `main`, obwohl ein verpflichtender Laufzeitpfad noch rot ist
 
 ## 13. Interne Vorab-Validierung durch ChatGPT
 
 Vor jeder neuen Implementierungs- oder Fix-Tranche soll ChatGPT nach Möglichkeit
-mehr tun als nur die betroffenen Dateien logisch zu prüfen. Der bevorzugte
-Ablauf ist:
+mehr tun als nur die betroffenen Dateien logisch zu prüfen.
 
-- Replay des letzten grünen Tranche-Zustands
-- Prüfung gegen frische Projektzustände
-- Prüfung gegen bestehende lokale Upgrade-Zustände
-- Import-/Collection-Gate vor funktionalen Tests
-- Lint-/Format-Gate vor Auslieferung
-- Auslieferung nur, wenn die bekannten Pflichtpfade intern mindestens einmal
-  gedanklich oder praktisch durchgespielt wurden
+Der bevorzugte Ablauf ist:
+
+1. Replay des letzten grünen Tranche-Zustands
+2. Prüfung gegen frische Projektzustände
+3. Prüfung gegen bestehende lokale Upgrade-Zustände
+4. Import-/Collection-Gate vor funktionalen Tests
+5. bestehende Pflichtpfade vor neuen Pflichtpfaden
+6. Lint-/Format-Gate vor Auslieferung
+7. Auslieferung nur, wenn die bekannten Pflichtpfade intern mindestens einmal
+   gedanklich oder praktisch durchgespielt wurden
 
 Wenn eine dieser Prüfungen nicht möglich war, ist das vor der Auslieferung
 explizit als Risiko zu benennen.

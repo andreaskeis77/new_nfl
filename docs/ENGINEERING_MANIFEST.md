@@ -1,13 +1,15 @@
-# NEW NFL – Engineering Manifest v1.1
+# NEW NFL – Engineering Manifest v1.2
 
 ## 1. Zweck
 
 Dieses Manifest definiert die obersten Engineering-Regeln für NEW NFL.
-NEW NFL ist kein Experimentier-Notizbuch, sondern ein langfristig wartbares
-privates Daten- und Analysesystem mit hohem Anspruch an Robustheit,
-Nachvollziehbarkeit, Redundanz und Wiederanlaufbarkeit.
+
+NEW NFL ist kein Experimentier-Notizbuch, sondern ein langfristig wartbares privates
+Daten- und Analysesystem mit hohem Anspruch an Robustheit, Nachvollziehbarkeit,
+Redundanz und Wiederanlaufbarkeit.
 
 Dieses Manifest gilt für:
+
 - Architektur
 - Implementierung
 - Tests
@@ -33,126 +35,200 @@ Bei Zielkonflikten gilt diese Reihenfolge:
 ## 3. Grundprinzipien
 
 ### 3.1 Small Batches
-Es werden kleine, klar abgrenzbare Tranches gebaut.
-Jede Tranche muss einen fachlich verständlichen Zweck haben und separat testbar sein.
+
+Es werden kleine, klar abgrenzbare Tranches gebaut. Jede Tranche muss einen
+fachlich verständlichen Zweck haben und separat testbar sein.
 
 ### 3.2 Vertical Evidence
+
 Eine Änderung gilt erst dann als belastbar, wenn es dafür belastbare Evidenz gibt:
 Code, Tests, Logs, Doku und bei Bedarf Screenshots oder Export-Artefakte.
 
 ### 3.3 No Blind Trust in AI Output
-KI-generierter Code ist grundsätzlich untrusted, bis er geprüft, getestet und dokumentiert wurde.
+
+KI-generierter Code ist grundsätzlich untrusted, bis er geprüft, getestet und
+dokumentiert wurde.
 
 ### 3.4 Docs are Part of the System
+
 Dokumentation ist kein Beiwerk. Wenn Doku veraltet ist, ist das ein Systemmangel.
 
 ### 3.5 Fail Loud on Data Integrity
+
 Bei Risiken für Datenintegrität, Schema-Konsistenz, Deduplizierung oder Provenance
 wird nicht stillschweigend weitergemacht. Solche Fehler müssen sichtbar werden.
 
 ### 3.6 Designed Degradation
-Wenn Teilquellen ausfallen, soll das System so weit wie sinnvoll degradiert weiterlaufen.
-Degradation muss bewusst entworfen, protokolliert und in der UI oder in Reports
-nachvollziehbar sein.
+
+Wenn Teilquellen ausfallen, soll das System so weit wie sinnvoll degradiert
+weiterlaufen. Degradation muss bewusst entworfen, protokolliert und in der UI oder
+in Reports nachvollziehbar sein.
 
 ### 3.7 Clear Ownership
+
 Jede Tranche hat klar benannte Ziele, Dateien, Tests, Gates und einen definierten
 nächsten Schritt.
 
 ## 4. Regeln für Architektur und Implementierung
 
 ### 4.1 Keine vorschnelle Breite
-Neue Quellen, Tabellen, Jobs oder UI-Module werden erst eingeführt, wenn der Zielzweck,
-die Verantwortlichkeiten und die Teststrategie klar sind.
+
+Neue Quellen, Tabellen, Jobs oder UI-Module werden erst eingeführt, wenn der
+Zielzweck, die Verantwortlichkeiten und die Teststrategie klar sind.
 
 ### 4.2 Kanonische Layer
-Das System wird schichtweise gedacht. Rohdaten, source-nahe Normalisierung,
-konsolidierter Faktenkern, UI-Read-Modelle und Simulations-/Prediction-Daten dürfen
-nicht unkontrolliert vermischt werden.
+
+Das System wird schichtweise gedacht.
+
+Rohdaten, source-nahe Normalisierung, konsolidierter Faktenkern, UI-Read-Modelle
+und Simulations-/Prediction-Daten dürfen nicht unkontrolliert vermischt werden.
 
 ### 4.3 Provenance Pflicht
+
 Jeder relevante persistierte Datensatz braucht eine nachvollziehbare Herkunft.
-Wo sinnvoll, sind Quelle, Abrufzeitpunkt, Run-ID, Hash oder Konfliktstatus zu speichern.
+Wo sinnvoll, sind Quelle, Abrufzeitpunkt, Run-ID, Hash oder Konfliktstatus zu
+speichern.
 
 ### 4.4 Idempotenz vor Bequemlichkeit
-Ingestion und Konsolidierung sollen so gebaut werden, dass Wiederholungsläufe keinen
-unkontrollierten Datenmüll produzieren.
+
+Ingestion und Konsolidierung sollen so gebaut werden, dass Wiederholungsläufe
+keinen unkontrollierten Datenmüll produzieren.
 
 ### 4.5 Explizite Entscheidungen
-Wichtige Architekturentscheidungen werden per ADR dokumentiert.
-Stillschweigende Richtungswechsel sind unzulässig.
+
+Wichtige Architekturentscheidungen werden per ADR dokumentiert. Stillschweigende
+Richtungswechsel sind unzulässig.
+
+### 4.6 Vertragsflächen sind echte Systemgrenzen
+
+Öffentliche interne Verträge gelten als stabil, bis sie bewusst geändert werden.
+Dazu gehören insbesondere:
+
+- exportierte Funktionen aus Paket-`__init__`-Dateien
+- Felder und Methoden zentraler Datamodelle
+- CLI-Kommandos und deren Kernargumente
+- Mindestspalten zentraler `meta.*`-Tabellen
+- Rückgabeformate von Registry- und Adapteroberflächen
+
+Vertragsbrüche dürfen nicht still als „kleiner Refactor“ behandelt werden.
+
+### 4.7 Upgrade-Zustände sind First-Class-Fälle
+
+NEW NFL wird nicht nur gegen frische Testzustände gebaut. Bestehende lokale
+Datenbanken, ältere Metadatenflächen und weiterentwickelte Arbeitsstände sind
+explizite Zielzustände.
 
 ## 5. Regeln für Tests und Qualität
 
 ### 5.1 Kein ungetesteter Kern
+
 Änderungen an Kernlogik, Datenmodellen, Ingestion, Konsolidierung, APIs,
 Scheduler-Jobs oder Deployment-Skripten benötigen Tests oder belastbare Begründung.
 
 ### 5.2 Green Gate vor Fortschritt
+
 Ein Schritt gilt erst als abgeschlossen, wenn die zugehörigen Gates grün sind.
 Auf roten Gates wird nicht einfach weitergebaut.
 
 ### 5.3 Reproduzierbare Befehle
+
 Tests und Qualitätsprüfungen müssen mit dokumentierten, wiederholbaren Befehlen
 ausführbar sein.
 
 ### 5.4 Defekte ehrlich behandeln
-Unklare Zustände, Workarounds, intermittierende Fehler und nicht verstandene Effekte
-werden als Risiko markiert und nicht schönformuliert.
+
+Unklare Zustände, Workarounds, intermittierende Fehler und nicht verstandene
+Effekte werden als Risiko markiert und nicht schönformuliert.
+
+### 5.5 Kein „teilgrün“ bei roten operativen Pfaden
+
+Eine Tranche ist nicht grün, wenn Lint und Pytest zwar grün sind, aber ein
+verpflichtender CLI- oder Laufzeitpfad noch rot ist.
+
+### 5.6 Replay vor Neuheit
+
+Vor der Freigabe eines neuen Pfads muss mindestens der letzte grüne relevante Pfad
+erneut geprüft werden.
 
 ## 6. Regeln für Betrieb und Deployment
 
 ### 6.1 Betriebsrealität ist dokumentiert
+
 Dienste, Scheduler, Ports, Secrets-Handling, Logs, Recovery-Schritte und
 Gesundheitsprüfungen müssen dokumentiert sein.
 
 ### 6.2 Observability ist Pflicht
-Ein produktionsnahes System ohne verwertbare Logs, Health-Checks und Run-Evidence gilt
-als unfertig.
+
+Ein produktionsnahes System ohne verwertbare Logs, Health-Checks und Run-Evidence
+gilt als unfertig.
 
 ### 6.3 Security und Secrets
+
 Keine Secrets im Repo. Keine stillschweigende Vermischung von Test- und
 Produktivwerten.
 
 ## 7. Regeln für Zusammenarbeit Andreas ↔ ChatGPT
 
 ### 7.1 In der Konzeptphase
+
 Alternativen sind erlaubt, aber nur mit klarer Empfehlung.
 
 ### 7.2 In der Umsetzungsphase
-Keine unverbindlichen Mehrfachoptionen für operative Schritte.
-Es werden eindeutige Befehle und klare Reihenfolgen geliefert.
+
+Keine unverbindlichen Mehrfachoptionen für operative Schritte. Es werden
+eindeutige Befehle und klare Reihenfolgen geliefert.
 
 ### 7.3 Ausführungsort immer benennen
+
 Jeder Befehl ist mit einem dieser Orte zu kennzeichnen:
+
 - DEV-LAPTOP
 - VPS-USER
 - VPS-ADMIN
 
 ### 7.4 Dateilieferung in Paketen
-Code und Dokumente werden als vollständige Dateipakete geliefert,
-bevorzugt als ZIP mit passender Ordnerstruktur.
+
+Code und Dokumente werden als vollständige Dateipakete geliefert, bevorzugt als
+ZIP mit passender Ordnerstruktur.
 
 ### 7.5 Vollständige Dateien statt Patch-Anweisungen
+
 In Implementierung, Fix, Debugging und Qualitäts-Gate-Reparatur liefert ChatGPT
 standardmäßig vollständige betroffene Dateien als ZIP-Paket.
 
 Nicht der Standard für NEW NFL sind:
+
 - Such-/Ersetz-Anweisungen auf Zeilenebene
 - manuelle Patch-Anweisungen mit einzelnen Snippets
 - Anweisungen wie „suche diese Zeile und ersetze sie“
 - Teilfragmente, aus denen Andreas die endgültige Datei selbst zusammensetzen muss
 
-Ausnahmen sind nur zulässig, wenn Andreas ausdrücklich eine manuelle Änderung verlangt
-oder wenn eine operative Notsituation eine sofortige Ein-Zeilen-Korrektur erfordert.
-Diese Ausnahme ist dann explizit zu benennen.
+Ausnahmen sind nur zulässig, wenn Andreas ausdrücklich eine manuelle Änderung
+verlangt oder wenn eine operative Notsituation eine sofortige Ein-Zeilen-Korrektur
+erfordert. Diese Ausnahme ist dann explizit zu benennen.
 
 ### 7.6 Kein Fortschritt ohne Ist-Bild
+
 Debugging und nächste Schritte basieren auf realen Outputs, nicht auf Annahmen.
+
+### 7.7 Vorab-Validierung ist Pflichtdisziplin
+
+Vor Auslieferung einer Implementierungs- oder Fix-Tranche soll ChatGPT nach
+Möglichkeit mindestens gedanklich oder praktisch prüfen:
+
+1. Import/Collection
+2. letzten grünen Pflichtpfad
+3. neuen Pflichtpfad
+4. Fresh State
+5. Upgrade State
+6. Lint und Pytest
+
+Wenn das nicht vollständig möglich war, ist das explizit als Risiko zu benennen.
 
 ## 8. Ausnahmen
 
 Ausnahmen von diesem Manifest sind nur zulässig, wenn:
+
 - die Abweichung explizit benannt wird,
 - der Grund dokumentiert ist,
 - das Risiko beschrieben wird,
@@ -169,3 +245,4 @@ Eine Tranche ist erst dann done, wenn mindestens Folgendes erfüllt ist:
 - Doku ist aktualisiert
 - Handoff ist aktualisiert
 - nächster Schritt ist eindeutig benannt
+- kein verpflichtender operativer Pfad ist noch rot
