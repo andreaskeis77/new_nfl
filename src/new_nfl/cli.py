@@ -6,7 +6,6 @@ from new_nfl.adapters import (
     build_adapter_plan,
     execute_fetch_contract,
     execute_remote_fetch,
-    execute_stage_load,
     get_adapter_descriptor,
     list_adapter_descriptors,
 )
@@ -19,6 +18,7 @@ from new_nfl.metadata import (
     upsert_pipeline_state,
 )
 from new_nfl.settings import load_settings
+from new_nfl.stage_load import execute_stage_load
 
 
 def _cmd_bootstrap() -> int:
@@ -287,12 +287,14 @@ def build_parser() -> argparse.ArgumentParser:
         help='Show one pipeline state record',
     )
     show_state.add_argument('--pipeline-name', required=True)
+
     return parser
 
 
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+
     if args.command == 'bootstrap':
         return _cmd_bootstrap()
     if args.command == 'health':
@@ -321,6 +323,7 @@ def main() -> int:
         )
     if args.command == 'show-pipeline-state':
         return _cmd_show_pipeline_state(args.pipeline_name)
+
     parser.error('Unknown command')
     return 2
 
