@@ -1263,5 +1263,73 @@ def record_source_file(
     return source_file_id
 
 
+
+
+def latest_source_file(settings: Settings, adapter_id: str) -> dict[str, Any] | None:
+    ensure_metadata_surface(settings)
+    con = _connect(settings)
+    try:
+        rows = _dict_rows(
+            con,
+            """
+            SELECT
+                source_file_id,
+                ingest_run_id,
+                adapter_id,
+                source_url,
+                local_path,
+                file_size_bytes,
+                sha256_hex,
+                created_at
+            FROM meta.source_files
+            WHERE adapter_id = ?
+            ORDER BY created_at DESC, source_file_id DESC
+            LIMIT 1
+            """,
+            [adapter_id],
+        )
+        return rows[0] if rows else None
+    finally:
+        con.close()
+
+
+def stage_table_row_count(settings: Settings, qualified_table: str) -> int:
+    con = _connect(settings)
+    try:
+        row = con.execute(f"SELECT COUNT(*) FROM {qualified_table}").fetchone()
+        return int(row[0] if row else 0)
+    finally:
+        con.close()
+
+
+def load_csv_into_stage_table(
+    settings: Settings,
+    *,
+    csv_path: str,
+    qualified_table: str,
+    source_file_id: str,
+    adapter_id: str,
+) -> int:
+    con = _connect(settings)
+    try:
+        con.execute(
+            f"""
+            CREATE OR REPLACE TABLE {qualified_table} AS
+            SELECT
+                src.*,
+                ? AS _source_file_id,
+                ? AS _source_file_path,
+                ? AS _adapter_id,
+                current_timestamp AS _loaded_at
+            FROM read_csv_auto(?, HEADER=TRUE, ALL_VARCHAR=TRUE) AS src
+            """,
+            [source_file_id, csv_path, adapter_id, csv_path],
+        )
+        row = con.execute(f"SELECT COUNT(*) FROM {qualified_table}").fetchone()
+        return int(row[0] if row else 0)
+    finally:
+        con.close()
+
+
 def compute_sha256(path: Path) -> str:
     return sha256(path.read_bytes()).hexdigest()

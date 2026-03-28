@@ -170,9 +170,7 @@ def execute_remote_fetch(
         event_kind="remote_raw_landing",
         source_id=adapter_id,
         target_schema="raw",
-        target_object=f"{adapter_id}_remote_fetch_receipt",
-        row_count=1,
-        event_status="remote_fetched",
+        target_object=filename,
         object_path=str(fetch_receipt_path),
         payload=receipt_payload,
     )

@@ -9,6 +9,7 @@ NEW NFL is a private NFL data platform project focused on robust ingestion, meta
 - T1.2 source adapter skeleton and adapter catalog
 - T1.3 first adapter execution contract with raw landing receipts
 - T1.4 first true remote fetch implementation for `nflverse_bulk`
+- T1.5 first normalized staging load for `nflverse_bulk`
 
 ## Current command surface
 
@@ -22,7 +23,10 @@ python -m new_nfl.cli run-adapter --adapter-id nflverse_bulk
 python -m new_nfl.cli run-adapter --adapter-id nflverse_bulk --execute
 python -m new_nfl.cli fetch-remote --adapter-id nflverse_bulk
 python -m new_nfl.cli fetch-remote --adapter-id nflverse_bulk --execute
+python -m new_nfl.cli stage-load --adapter-id nflverse_bulk
+python -m new_nfl.cli stage-load --adapter-id nflverse_bulk --execute
 python -m new_nfl.cli list-ingest-runs --pipeline-name adapter.nflverse_bulk.remote_fetch
+python -m new_nfl.cli list-ingest-runs --pipeline-name adapter.nflverse_bulk.stage_load
 ```
 
 ## Delivery rule
