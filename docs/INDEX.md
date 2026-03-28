@@ -26,6 +26,7 @@
 - `concepts/NEW_NFL_TECHNICAL_BOOTSTRAP_v0_1.md`
 - `concepts/NEW_NFL_METADATA_REGISTRY_IMPLEMENTATION_v0_1.md`
 - `concepts/NEW_NFL_SOURCE_ADAPTER_SKELETON_v0_1.md`
+- `concepts/NEW_NFL_FIRST_FETCH_CONTRACT_v0_1.md`
 
 ## Architecture Decisions
 
@@ -47,6 +48,8 @@
 - `adr/ADR-0016-metadata-registry-service-surface.md`
 - `adr/ADR-0017-source-adapter-abstraction.md`
 - `adr/ADR-0018-adapter-registry-binding-and-dry-run-contract.md`
+- `adr/ADR-0019-first-fetch-contract-and-raw-landing-receipt.md`
+- `adr/ADR-0020-dry-run-vs-execute-adapter-contract.md`
 
 ## Handoffs
 
@@ -64,3 +67,5 @@
 - `docs/_handoff/HANDOFF_T1_1B_quality_gate_fix.md`
 - `docs/_handoff/HANDOFF_T1_1C_final_gate_and_delivery_doc.md`
 - `docs/_handoff/HANDOFF_T1_2_source_adapter_skeleton.md`
+- `docs/_handoff/HANDOFF_T1_2A_full_file_delivery_rule.md`
+- `docs/_handoff/HANDOFF_T1_3_first_fetch_contract.md`

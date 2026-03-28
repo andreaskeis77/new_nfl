@@ -846,3 +846,106 @@ def record_dq_event(
         con.close()
 
     return dq_event_id
+
+
+def list_ingest_runs(
+    settings: Settings,
+    pipeline_name: str | None = None,
+) -> list[dict[str, Any]]:
+    ensure_metadata_surface(settings)
+
+    con = _connect(settings)
+    try:
+        columns = _column_names(con, 'ingest_runs')
+        where_sql = ''
+        params: list[Any] = []
+        if pipeline_name is not None:
+            where_sql = 'WHERE pipeline_name = ?'
+            params.append(pipeline_name)
+        rows = con.execute(
+            f"""
+            SELECT
+                ingest_run_id,
+                pipeline_name,
+                run_status,
+                triggered_by,
+                run_mode,
+                COALESCE(
+                    {'detail_json' if 'detail_json' in columns else 'NULL'},
+                    {'details_json' if 'details_json' in columns else 'NULL'}
+                ) AS detail_json,
+                started_at,
+                finished_at
+            FROM meta.ingest_runs
+            {where_sql}
+            ORDER BY started_at DESC, ingest_run_id DESC
+            """,
+            params,
+        ).fetchall()
+    finally:
+        con.close()
+
+    keys = [
+        'ingest_run_id',
+        'pipeline_name',
+        'run_status',
+        'triggered_by',
+        'run_mode',
+        'detail_json',
+        'started_at',
+        'finished_at',
+    ]
+    return [dict(zip(keys, row, strict=False)) for row in rows]
+
+
+def list_load_events(
+    settings: Settings,
+    ingest_run_id: str | None = None,
+) -> list[dict[str, Any]]:
+    ensure_metadata_surface(settings)
+
+    con = _connect(settings)
+    try:
+        columns = _column_names(con, 'load_events')
+        where_sql = ''
+        params: list[Any] = []
+        if ingest_run_id is not None:
+            where_sql = 'WHERE ingest_run_id = ?'
+            params.append(ingest_run_id)
+        source_identity = _coalesce_identifier(columns, 'source_id', 'source_key')
+        rows = con.execute(
+            f"""
+            SELECT
+                load_event_id,
+                ingest_run_id,
+                {source_identity} AS source_id,
+                target_schema,
+                target_object,
+                row_count,
+                event_status,
+                COALESCE(
+                    {'detail_json' if 'detail_json' in columns else 'NULL'},
+                    {'details_json' if 'details_json' in columns else 'NULL'}
+                ) AS detail_json,
+                recorded_at
+            FROM meta.load_events
+            {where_sql}
+            ORDER BY recorded_at DESC, load_event_id DESC
+            """,
+            params,
+        ).fetchall()
+    finally:
+        con.close()
+
+    keys = [
+        'load_event_id',
+        'ingest_run_id',
+        'source_id',
+        'target_schema',
+        'target_object',
+        'row_count',
+        'event_status',
+        'detail_json',
+        'recorded_at',
+    ]
+    return [dict(zip(keys, row, strict=False)) for row in rows]

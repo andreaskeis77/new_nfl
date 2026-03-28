@@ -2,10 +2,11 @@
 
 ## Current phase
 
-- Phase: T1.2 Source Adapter Skeleton
+- Phase: T1.3 First Fetch Contract
 - Status: ready for local import, execution, and validation
-- Latest intended scope: add adapter abstraction, registry-bound dry-run planning, and CLI
-  visibility for source adapter skeletons without yet fetching real data
+- Latest intended scope: add the first real adapter execution contract for `nflverse_bulk`,
+  including dry-run and execute mode, landed raw receipt artifacts, ingest-run metadata,
+  and load-event capture without yet downloading remote source payloads
 
 ## Completed phases
 
@@ -23,15 +24,18 @@
 - T1.1A legacy schema migration repair
 - T1.1B quality gate repair
 - T1.1C final gate and delivery documentation
+- T1.2 source adapter skeleton
+- T1.2A full-file delivery rule codification
 
-## T1.2 target output
+## T1.3 target output
 
-- `src/new_nfl/adapters/` adapter skeleton package
-- registry-aligned adapter descriptors for the four seeded default sources
-- dry-run adapter planning contract
-- additional CLI entry points for adapter listing and description
-- adapter-focused tests
-- concept and ADR coverage for adapter posture
+- one real adapter execution contract for `nflverse_bulk`
+- dry-run mode with no side effects
+- execute mode with landed raw receipt artifacts
+- ingest-run metadata capture for adapter execution
+- load-event metadata capture for raw landed contract artifacts
+- CLI visibility for adapter execution and ingest-run listing
+- concept and ADR coverage for the first fetch contract posture
 
 ## Immediate next validation
 
@@ -41,11 +45,14 @@
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\python.exe -m new_nfl.cli bootstrap
 .\.venv\Scripts\python.exe -m new_nfl.cli seed-sources
-.\.venv\Scripts\python.exe -m new_nfl.cli list-adapters
-.\.venv\Scripts\python.exe -m new_nfl.cli describe-adapter --adapter-id nflverse_bulk
+.\.venv\Scripts\python.exe -m new_nfl.cli run-adapter --adapter-id nflverse_bulk
+.\.venv\Scripts\python.exe -m new_nfl.cli run-adapter --adapter-id nflverse_bulk --execute
+.\.venv\Scripts\python.exe -m new_nfl.cli list-ingest-runs --pipeline-name adapter.nflverse_bulk.fetch
+Get-ChildItem .\dataaw\landed
+flverse_bulk -Recurse
 .	oolsun_quality_gates.ps1
 ```
 
 ## Expected next tranche after green
 
-- T1.3 first real adapter fetch contract and raw landing artifact capture
+- T1.4 first true remote fetch implementation for one adapter

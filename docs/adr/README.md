@@ -18,6 +18,8 @@
 - ADR-0016 metadata registry service surface
 - ADR-0017 source adapter abstraction
 - ADR-0018 adapter registry binding and dry-run contract
+- ADR-0019 first fetch contract and raw landing receipt
+- ADR-0020 dry run vs execute adapter contract
 
 ## Decision frames
 
