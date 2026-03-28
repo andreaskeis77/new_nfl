@@ -119,3 +119,17 @@ The project already encountered these concrete delivery and packaging issues:
   full-file ZIP delivery
 
 These are now part of the standard delivery discipline for future tranches.
+
+
+## Internal preflight expectation
+
+Before a tranche is handed to Andreas, ChatGPT should prefer this validation
+order:
+- replay the last green tranche assumptions
+- check fresh-state behavior
+- check upgrade behavior against an already-evolved local database
+- run import/collection reasoning before full test reasoning
+- clear lint issues before package delivery
+
+A tranche that is only reasoned about in the happy path but not checked against
+legacy local state is high-risk and should be labeled as such.

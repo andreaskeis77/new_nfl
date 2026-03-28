@@ -9,16 +9,16 @@ from new_nfl.settings import Settings
 def _ensure_dirs(settings: Settings) -> None:
     required_dirs = [
         settings.data_root,
-        settings.data_root / 'db',
+        settings.data_root / "db",
         settings.raw_root,
-        settings.raw_root / 'planned',
-        settings.raw_root / 'landed',
+        settings.raw_root / "planned",
+        settings.raw_root / "landed",
         settings.stage_root,
         settings.exports_root,
         settings.temp_root,
         settings.ops_root,
-        settings.ops_root / 'quality_gates',
-        settings.ops_root / 'releases',
+        settings.ops_root / "quality_gates",
+        settings.ops_root / "releases",
     ]
     for path in required_dirs:
         path.mkdir(parents=True, exist_ok=True)

@@ -171,3 +171,21 @@ Nicht Teil der NEW-NFL-Arbeitsweise sind:
 - zu frühe Quellenexplosion ohne Konsolidierungsplan
 - manuelle Such-/Ersetz-Arbeit für Andreas, obwohl vollständige Dateien geliefert
   werden könnten
+
+
+## 13. Interne Vorab-Validierung durch ChatGPT
+
+Vor jeder neuen Implementierungs- oder Fix-Tranche soll ChatGPT nach Möglichkeit
+mehr tun als nur die betroffenen Dateien logisch zu prüfen. Der bevorzugte
+Ablauf ist:
+
+- Replay des letzten grünen Tranche-Zustands
+- Prüfung gegen frische Projektzustände
+- Prüfung gegen bestehende lokale Upgrade-Zustände
+- Import-/Collection-Gate vor funktionalen Tests
+- Lint-/Format-Gate vor Auslieferung
+- Auslieferung nur, wenn die bekannten Pflichtpfade intern mindestens einmal
+  gedanklich oder praktisch durchgespielt wurden
+
+Wenn eine dieser Prüfungen nicht möglich war, ist das vor der Auslieferung
+explizit als Risiko zu benennen.
