@@ -1,15 +1,16 @@
 # NEW NFL
 
-NEW NFL is a private NFL data platform and analysis center. This repository follows a documentation-first,
-systems-engineering approach with explicit handoffs, architecture records, phased implementation, and
-Windows-first execution guidance.
+NEW NFL is a private NFL data platform and analysis center.
+This repository follows a documentation-first, systems-engineering approach with explicit
+handoffs, architecture records, phased implementation, and Windows-first execution guidance.
 
 ## Current implementation status
 
 - Architecture phase A0 is complete.
 - T1.0 established the local Python package and bootstrap surface.
-- T1.1 adds the first metadata-management utilities and source-registry operations.
-- No ingestion adapters or web application runtime are included yet.
+- T1.1 added the first metadata-management utilities and source-registry operations.
+- T1.2 adds a source-adapter skeleton layer and dry-run adapter planning commands.
+- No real ingestion adapter or web application runtime is included yet.
 
 ## Local bootstrap entry points
 
@@ -19,10 +20,12 @@ Windows-first execution guidance.
 .\.venv\Scripts\python.exe -m new_nfl.cli bootstrap
 .\.venv\Scripts\python.exe -m new_nfl.cli seed-sources
 .\.venv\Scripts\python.exe -m new_nfl.cli list-sources
-.\.venv\Scripts\python.exe -m new_nfl.cli set-pipeline-state --pipeline-name bootstrap_local --run-status success --state-json '{"phase":"T1.1"}'
+.\.venv\Scripts\python.exe -m new_nfl.cli list-adapters
+.\.venv\Scripts\python.exe -m new_nfl.cli describe-adapter --adapter-id nflverse_bulk
+.\.venv\Scripts\python.exe -m new_nfl.cli set-pipeline-state --pipeline-name bootstrap_local --run-status success --state-json '{"phase":"T1.2"}'
 .\.venv\Scripts\python.exe -m new_nfl.cli show-pipeline-state --pipeline-name bootstrap_local
 .	oolsun_quality_gates.ps1
 ```
 
-The bootstrap command creates the expected local directory tree, initializes the DuckDB database,
-and creates the baseline metadata and schema surface required for later tranches.
+The bootstrap command creates the expected local directory tree, initializes the DuckDB
+database, and creates the baseline metadata and schema surface required for later tranches.

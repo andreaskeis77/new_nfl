@@ -11,7 +11,6 @@ bei Planung, Implementierung, Test, Debugging, Deployment und Betrieb von NEW NF
 - ChatGPT entwirft Methode, Architektur, Dateien, Tests, Prüfschritte und Auswertungen.
 - Andreas liefert echte Terminal-Ausgaben und Beobachtungen zurück.
 - ChatGPT analysiert diese Outputs und gibt den nächsten eindeutigen Schritt vor.
-- Der operative Standard ist **ein empfohlener Weg**, nicht ein Menü aus Varianten.
 
 ## 3. Phasenmodell
 
@@ -75,22 +74,39 @@ Wenn ChatGPT Dateien liefert, dann bevorzugt als vollständige Tranche mit:
 
 Keine halbfertigen Dateifragmente als Endzustand.
 
-## 6. Regeln für Test und Debugging
+## 6. Vollständige-Dateien-Regel
+
+Für NEW NFL gilt ab jetzt ausdrücklich:
+
+- In der Implementierungsphase liefert ChatGPT standardmäßig vollständige betroffene
+  Dateien.
+- In der Fix- und Debugging-Phase liefert ChatGPT standardmäßig vollständige
+  betroffene Dateien.
+- In der Qualitäts-Gate-Reparatur liefert ChatGPT standardmäßig vollständige
+  betroffene Dateien.
+- Diese Dateien werden als ZIP-Paket geliefert, sofern Andreas nicht ausdrücklich
+  etwas anderes verlangt.
+
+Nicht der Standard sind:
+- Such-/Ersetz-Anweisungen
+- Zeilen- oder Snippet-Patches
+- Aufforderungen an Andreas, einzelne Zeilen selbst zusammenzusuchen
+- fragmentierte Mini-Änderungen ohne vollständige Datei
+
+Eine Abweichung davon ist nur zulässig, wenn:
+1. Andreas ausdrücklich um eine manuelle Änderung bittet, oder
+2. ein echter Hotfix eine minimale Sofortmaßnahme erfordert
+
+Auch dann ist die Abweichung explizit zu benennen.
+
+## 7. Regeln für Test und Debugging
 
 - Es wird immer zuerst der Ist-Zustand erhoben.
 - Fehler werden auf Basis realer Outputs analysiert.
 - Hypothesen sind als Hypothesen zu markieren.
 - Ein Fix ist erst dann akzeptiert, wenn der relevante Test oder Check grün ist.
-- Bei unklaren Systemzuständen wird die Lage zuerst stabilisiert, bevor neue Änderungen erfolgen.
-- Rote Gates stoppen den betroffenen Arbeitsstrang, bis Risiko oder Fix klar sind.
-
-## 7. Git- und Repo-Regeln
-
-- `main` ist der kanonische Stand.
-- Kein Commit, der bewusst Secrets oder lokale Laufzeitartefakte eincheckt.
-- Kein Release ohne Abgleich von Doku, `PROJECT_STATE` und Handoff.
-- Commit-Messages sollen den Zweck der Tranche klar erkennen lassen.
-- Repo-Hygiene-Dateien (`.gitignore`, `.gitattributes`, optional `.editorconfig`) sind verbindlich zu respektieren.
+- Bei unklaren Systemzuständen wird die Lage zuerst stabilisiert, bevor neue
+  Änderungen erfolgen.
 
 ## 8. Umgang mit Unsicherheit
 
@@ -101,18 +117,57 @@ ChatGPT soll:
 - fehlende Informationen gezielt in Arbeitsbefehle übersetzen.
 
 Andreas soll:
-- echte Outputs und Beobachtungen zurückspielen,
-- Unklarheiten im Systemzustand nicht glätten,
-- bei abweichender Realität den tatsächlichen Zustand mitteilen.
+- Outputs möglichst vollständig zurückgeben,
+- Abweichungen von den Befehlen klar markieren,
+- reale Randbedingungen offen nennen.
 
-## 9. Handoff- und Release-Disziplin
+## 9. Dokumentationspflicht
 
-- Jede relevante Tranche aktualisiert das Handoff oder bestätigt bewusst, warum kein neues Handoff nötig ist.
-- Jeder wiederaufnahmebedürftige Zustand bekommt ein Handoff.
-- Ein Release ohne nachvollziehbare Evidence gilt nicht als belastbarer Stand.
+Nach jeder relevanten Tranche ist zu prüfen, ob mindestens eines der folgenden
+Dokumente angepasst werden muss:
 
-## 10. Zielbild der Zusammenarbeit
+- PROJECT_STATE.md
+- HANDOFF
+- RUNBOOK
+- TEST_STRATEGY
+- RELEASE_PROCESS
+- ADR
+- Konzeptdokumente
+- DELIVERY_PROTOCOL.md
 
-Das Projekt soll auch über lange Zeiträume, Chat-Wechsel und Unterbrechungen hinweg
-wiederaufnahmefähig bleiben. Das Working Agreement dient genau diesem Ziel:
-weniger Rätselraten, weniger Drift, mehr reproduzierbare Fortschritte.
+## 10. Eskalationsregel
+
+Wenn eine Änderung unerwartet:
+- Datenintegrität gefährdet,
+- das Deployment destabilisiert,
+- Scheduler/Jobs unklar macht,
+- oder das Verständnis des Systemzustands verschlechtert,
+
+dann wird nicht einfach weitergebaut. Stattdessen erfolgt:
+1. Stop
+2. Lagebild
+3. Ursachenanalyse
+4. gezielte Korrektur
+5. erneute Verifikation
+
+## 11. Definition eines guten nächsten Schritts
+
+Ein guter nächster Schritt ist:
+- klein genug für eine kontrollierte Ausführung,
+- groß genug für echten Fortschritt,
+- klar testbar,
+- dokumentierbar,
+- und fachlich begründet.
+
+## 12. Anti-Pattern
+
+Nicht Teil der NEW-NFL-Arbeitsweise sind:
+
+- große ungetestete Umbauten
+- „wir machen erstmal weiter und sehen später“
+- nicht dokumentierte Hotfixes
+- Deployment ohne klare Rückfallstrategie
+- operatives Rätselraten
+- zu frühe Quellenexplosion ohne Konsolidierungsplan
+- manuelle Such-/Ersetz-Arbeit für Andreas, obwohl vollständige Dateien geliefert
+  werden könnten

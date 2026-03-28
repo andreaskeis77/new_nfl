@@ -1,6 +1,7 @@
 # ADR Index
 
 ## Accepted
+
 - ADR-0001 repo and operating model
 - ADR-0002 data platform and storage decision frame
 - ADR-0003 ingestion layering
@@ -15,7 +16,10 @@
 - ADR-0014 project layout and entrypoints
 - ADR-0015 quality gates and bootstrap scope
 - ADR-0016 metadata registry service surface
+- ADR-0017 source adapter abstraction
+- ADR-0018 adapter registry binding and dry-run contract
 
 ## Decision frames
+
 - ADR-0004 web application strategy frame
 - ADR-0005 scheduler and VPS runtime model frame

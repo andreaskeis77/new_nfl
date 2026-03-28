@@ -1,6 +1,7 @@
 # Documentation Index
 
 ## Governance and Working Method
+
 - `ENGINEERING_MANIFEST.md`
 - `WORKING_AGREEMENT.md`
 - `HANDOFF_MANIFEST.md`
@@ -14,6 +15,7 @@
 - `PROJECT_STATE.md`
 
 ## Concepts
+
 - `concepts/NEW_NFL_SYSTEM_CONCEPT_v0_1.md`
 - `concepts/NEW_NFL_SYSTEM_CONCEPT_v0_2.md`
 - `concepts/NEW_NFL_PHASE1_SCOPE_v0_1.md`
@@ -23,8 +25,10 @@
 - `concepts/NEW_NFL_METADATA_SCHEMA_OUTLINE_v0_1.md`
 - `concepts/NEW_NFL_TECHNICAL_BOOTSTRAP_v0_1.md`
 - `concepts/NEW_NFL_METADATA_REGISTRY_IMPLEMENTATION_v0_1.md`
+- `concepts/NEW_NFL_SOURCE_ADAPTER_SKELETON_v0_1.md`
 
 ## Architecture Decisions
+
 - `adr/ADR-0001-repo-and-operating-model.md`
 - `adr/ADR-0002-data-platform-and-storage-decision-frame.md`
 - `adr/ADR-0003-ingestion-layering.md`
@@ -41,8 +45,11 @@
 - `adr/ADR-0014-project-layout-and-entrypoints.md`
 - `adr/ADR-0015-quality-gates-and-bootstrap-scope.md`
 - `adr/ADR-0016-metadata-registry-service-surface.md`
+- `adr/ADR-0017-source-adapter-abstraction.md`
+- `adr/ADR-0018-adapter-registry-binding-and-dry-run-contract.md`
 
 ## Handoffs
+
 - `docs/_handoff/HANDOFF_A0_1_architecture_concept.md`
 - `docs/_handoff/HANDOFF_A0_2_data_platform_and_scope.md`
 - `docs/_handoff/HANDOFF_A0_3_source_governance_and_metadata.md`
@@ -53,3 +60,7 @@
 - `docs/_handoff/HANDOFF_T1_0C_repo_cleanup.md`
 - `docs/_handoff/HANDOFF_T1_0D_delivery_protocol.md`
 - `docs/_handoff/HANDOFF_T1_1_metadata_registry_implementation.md`
+- `docs/_handoff/HANDOFF_T1_1A_legacy_schema_migration_fix.md`
+- `docs/_handoff/HANDOFF_T1_1B_quality_gate_fix.md`
+- `docs/_handoff/HANDOFF_T1_1C_final_gate_and_delivery_doc.md`
+- `docs/_handoff/HANDOFF_T1_2_source_adapter_skeleton.md`

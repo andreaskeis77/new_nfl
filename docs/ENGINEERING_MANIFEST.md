@@ -52,29 +52,31 @@ wird nicht stillschweigend weitergemacht. Solche Fehler müssen sichtbar werden.
 
 ### 3.6 Designed Degradation
 Wenn Teilquellen ausfallen, soll das System so weit wie sinnvoll degradiert weiterlaufen.
-Degradation muss bewusst entworfen, protokolliert und in Reports oder UI nachvollziehbar sein.
+Degradation muss bewusst entworfen, protokolliert und in der UI oder in Reports
+nachvollziehbar sein.
 
 ### 3.7 Clear Ownership
-Jede Tranche hat klar benannte Ziele, Dateien, Tests, Gates und einen definierten nächsten Schritt.
+Jede Tranche hat klar benannte Ziele, Dateien, Tests, Gates und einen definierten
+nächsten Schritt.
 
 ## 4. Regeln für Architektur und Implementierung
 
 ### 4.1 Keine vorschnelle Breite
-Neue Quellen, Tabellen, Jobs oder UI-Module werden erst eingeführt, wenn Zielzweck,
-Verantwortlichkeiten und Teststrategie klar sind.
+Neue Quellen, Tabellen, Jobs oder UI-Module werden erst eingeführt, wenn der Zielzweck,
+die Verantwortlichkeiten und die Teststrategie klar sind.
 
 ### 4.2 Kanonische Layer
 Das System wird schichtweise gedacht. Rohdaten, source-nahe Normalisierung,
-konsolidierter Faktenkern, UI-Read-Modelle und Simulations-/Prediction-Daten
-dürfen nicht unkontrolliert vermischt werden.
+konsolidierter Faktenkern, UI-Read-Modelle und Simulations-/Prediction-Daten dürfen
+nicht unkontrolliert vermischt werden.
 
 ### 4.3 Provenance Pflicht
 Jeder relevante persistierte Datensatz braucht eine nachvollziehbare Herkunft.
 Wo sinnvoll, sind Quelle, Abrufzeitpunkt, Run-ID, Hash oder Konfliktstatus zu speichern.
 
 ### 4.4 Idempotenz vor Bequemlichkeit
-Ingestion und Konsolidierung sollen so gebaut werden, dass Wiederholungsläufe
-keinen unkontrollierten Datenmüll produzieren.
+Ingestion und Konsolidierung sollen so gebaut werden, dass Wiederholungsläufe keinen
+unkontrollierten Datenmüll produzieren.
 
 ### 4.5 Explizite Entscheidungen
 Wichtige Architekturentscheidungen werden per ADR dokumentiert.
@@ -84,34 +86,33 @@ Stillschweigende Richtungswechsel sind unzulässig.
 
 ### 5.1 Kein ungetesteter Kern
 Änderungen an Kernlogik, Datenmodellen, Ingestion, Konsolidierung, APIs,
-Scheduler-Jobs oder Deployment-Skripten benötigen Tests oder eine belastbare Begründung.
+Scheduler-Jobs oder Deployment-Skripten benötigen Tests oder belastbare Begründung.
 
 ### 5.2 Green Gate vor Fortschritt
 Ein Schritt gilt erst als abgeschlossen, wenn die zugehörigen Gates grün sind.
 Auf roten Gates wird nicht einfach weitergebaut.
 
 ### 5.3 Reproduzierbare Befehle
-Tests und Qualitätsprüfungen müssen mit dokumentierten, wiederholbaren Befehlen ausführbar sein.
+Tests und Qualitätsprüfungen müssen mit dokumentierten, wiederholbaren Befehlen
+ausführbar sein.
 
 ### 5.4 Defekte ehrlich behandeln
 Unklare Zustände, Workarounds, intermittierende Fehler und nicht verstandene Effekte
 werden als Risiko markiert und nicht schönformuliert.
 
-### 5.5 Repo-Hygiene ist Teil der Qualität
-Zeilenenden, Ignore-Regeln, Dateistruktur und generierte Artefakte werden bewusst geführt.
-Drift in diesen Bereichen gilt nicht als Kosmetik, sondern als Wartbarkeitsrisiko.
-
 ## 6. Regeln für Betrieb und Deployment
 
 ### 6.1 Betriebsrealität ist dokumentiert
-Dienste, Scheduler, Ports, Secrets-Handling, Logs, Recovery-Schritte und Gesundheitsprüfungen
-müssen dokumentiert sein.
+Dienste, Scheduler, Ports, Secrets-Handling, Logs, Recovery-Schritte und
+Gesundheitsprüfungen müssen dokumentiert sein.
 
 ### 6.2 Observability ist Pflicht
-Ein produktionsnahes System ohne verwertbare Logs, Health-Checks und Run-Evidence gilt als unfertig.
+Ein produktionsnahes System ohne verwertbare Logs, Health-Checks und Run-Evidence gilt
+als unfertig.
 
 ### 6.3 Security und Secrets
-Keine Secrets im Repo. Keine stillschweigende Vermischung von Test- und Produktivwerten.
+Keine Secrets im Repo. Keine stillschweigende Vermischung von Test- und
+Produktivwerten.
 
 ## 7. Regeln für Zusammenarbeit Andreas ↔ ChatGPT
 
@@ -132,7 +133,21 @@ Jeder Befehl ist mit einem dieser Orte zu kennzeichnen:
 Code und Dokumente werden als vollständige Dateipakete geliefert,
 bevorzugt als ZIP mit passender Ordnerstruktur.
 
-### 7.5 Kein Fortschritt ohne Ist-Bild
+### 7.5 Vollständige Dateien statt Patch-Anweisungen
+In Implementierung, Fix, Debugging und Qualitäts-Gate-Reparatur liefert ChatGPT
+standardmäßig vollständige betroffene Dateien als ZIP-Paket.
+
+Nicht der Standard für NEW NFL sind:
+- Such-/Ersetz-Anweisungen auf Zeilenebene
+- manuelle Patch-Anweisungen mit einzelnen Snippets
+- Anweisungen wie „suche diese Zeile und ersetze sie“
+- Teilfragmente, aus denen Andreas die endgültige Datei selbst zusammensetzen muss
+
+Ausnahmen sind nur zulässig, wenn Andreas ausdrücklich eine manuelle Änderung verlangt
+oder wenn eine operative Notsituation eine sofortige Ein-Zeilen-Korrektur erfordert.
+Diese Ausnahme ist dann explizit zu benennen.
+
+### 7.6 Kein Fortschritt ohne Ist-Bild
 Debugging und nächste Schritte basieren auf realen Outputs, nicht auf Annahmen.
 
 ## 8. Ausnahmen
@@ -149,7 +164,7 @@ Eine Tranche ist erst dann done, wenn mindestens Folgendes erfüllt ist:
 
 - Ziel und Scope sind klar
 - Dateien sind konsistent
-- relevante Tests/Gates sind ausgeführt oder die Abweichung ist dokumentiert
+- Tests/Gates sind ausgeführt
 - Ergebnis ist fachlich verständlich
 - Doku ist aktualisiert
 - Handoff ist aktualisiert

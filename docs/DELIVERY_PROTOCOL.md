@@ -2,7 +2,8 @@
 
 ## Purpose
 
-This document defines how ChatGPT-delivered ZIP packages are structured, applied, validated, and corrected in the NEW NFL repo.
+This document defines how ChatGPT-delivered ZIP packages are structured, applied,
+validated, and corrected in the NEW NFL repo.
 
 ## Default ZIP rule
 
@@ -10,7 +11,8 @@ All ZIP deliveries for this project must use **flat-root packaging**.
 
 That means:
 - files in the ZIP map directly to repository-relative paths
-- the ZIP must not introduce an additional wrapper directory unless that wrapper directory is explicitly requested
+- the ZIP must not introduce an additional wrapper directory unless that wrapper
+  directory is explicitly requested
 - extraction target is the repository root unless explicitly stated otherwise
 
 Example:
@@ -41,6 +43,32 @@ Every ZIP delivery must state:
 - acceptance criteria
 - the exact DEV-LAPTOP or VPS command sequence
 
+## Full-file delivery rule
+
+For NEW NFL, the delivery default is:
+
+- ChatGPT provides complete affected files
+- complete files are delivered in a ZIP package
+- Andreas should not need to reconstruct files from fragments
+- Andreas should not need to search for single lines to replace
+
+This applies especially to:
+- implementation tranches
+- bug-fix tranches
+- debug tranches
+- quality-gate repair tranches
+
+Not the default:
+- line-by-line patch instructions
+- “search this line and replace it” workflows
+- partial snippets that Andreas must merge manually
+
+Allowed only as explicit exception:
+- Andreas asks for a manual edit
+- an urgent hotfix requires a temporary one-line operational correction
+
+If an exception is used, it must be stated explicitly in the delivery instructions.
+
 ## Required user validation after extraction
 
 Immediately after extraction, validate with:
@@ -50,11 +78,13 @@ Set-Location C:\projekte\newnfl
 git status
 ```
 
-`git status` is the source of truth for whether the package landed in the expected paths.
+`git status` is the source of truth for whether the package landed in the expected
+paths.
 
 ## Packaging failure rule
 
-If a ZIP introduces an unintended wrapper directory or writes files into wrong paths:
+If a ZIP introduces an unintended wrapper directory or writes files into wrong
+paths:
 - stop feature progress
 - fix the repository state first
 - document the error in a handoff
@@ -83,6 +113,9 @@ The project already encountered these concrete delivery and packaging issues:
 - accidental ZIP wrapper directory committed into the repo
 - local DuckDB file accidentally committed
 - CLI/runtime behavior green while lint gate was still red
-- migration logic working in tests but failing against an existing local database until compatibility fixes were added
+- migration logic working in tests but failing against an existing local database
+  until compatibility fixes were added
+- a manual line-edit instruction was given even though the project standard is
+  full-file ZIP delivery
 
 These are now part of the standard delivery discipline for future tranches.
