@@ -10,6 +10,7 @@ from new_nfl.adapters import (
     list_adapter_descriptors,
 )
 from new_nfl.bootstrap import bootstrap_local_environment
+from new_nfl.core_load import execute_core_load
 from new_nfl.metadata import (
     get_pipeline_state,
     list_ingest_runs,
@@ -211,6 +212,30 @@ def _cmd_stage_load(adapter_id: str, execute: bool) -> int:
     return 0
 
 
+def _cmd_core_load(adapter_id: str, execute: bool) -> int:
+    settings = load_settings()
+    result = execute_core_load(settings, adapter_id=adapter_id, execute=execute)
+    print(f'ADAPTER_ID={result.adapter_id}')
+    print(f'PIPELINE_NAME={result.pipeline_name}')
+    print(f'RUN_MODE={result.run_mode}')
+    print(f'RUN_STATUS={result.run_status}')
+    print(f'INGEST_RUN_ID={result.ingest_run_id}')
+    print(f'SOURCE_SCHEMA={result.source_schema}')
+    print(f'SOURCE_OBJECT={result.source_object}')
+    print(f'SOURCE_TABLE={result.source_table}')
+    print(f'TARGET_SCHEMA={result.target_schema}')
+    print(f'TARGET_OBJECT={result.target_object}')
+    print(f'QUALIFIED_TABLE={result.qualified_table}')
+    print(f'SOURCE_ROW_COUNT={result.source_row_count}')
+    print(f'ROW_COUNT={result.row_count}')
+    print(f'DISTINCT_KEY_COUNT={result.distinct_key_count}')
+    print(f'INVALID_ROW_COUNT={result.invalid_row_count}')
+    print(f'LOAD_EVENT_ID={result.load_event_id}')
+    print(f'STAGE_DATASET={result.stage_dataset}')
+    print(f'SOURCE_STATUS={result.source_status}')
+    return 0
+
+
 def _cmd_list_ingest_runs(pipeline_name: str | None) -> int:
     settings = load_settings()
     rows = list_ingest_runs(settings, pipeline_name)
@@ -271,6 +296,13 @@ def build_parser() -> argparse.ArgumentParser:
     stage_load.add_argument('--adapter-id', required=True)
     stage_load.add_argument('--execute', action='store_true')
 
+    core_load = sub.add_parser(
+        'core-load',
+        help='Load the first canonical dictionary slice into core',
+    )
+    core_load.add_argument('--adapter-id', required=True)
+    core_load.add_argument('--execute', action='store_true')
+
     list_runs = sub.add_parser('list-ingest-runs', help='List ingest runs')
     list_runs.add_argument('--pipeline-name', default=None)
 
@@ -313,6 +345,8 @@ def main() -> int:
         return _cmd_fetch_remote(args.adapter_id, args.execute, args.remote_url)
     if args.command == 'stage-load':
         return _cmd_stage_load(args.adapter_id, args.execute)
+    if args.command == 'core-load':
+        return _cmd_core_load(args.adapter_id, args.execute)
     if args.command == 'list-ingest-runs':
         return _cmd_list_ingest_runs(args.pipeline_name)
     if args.command == 'set-pipeline-state':
