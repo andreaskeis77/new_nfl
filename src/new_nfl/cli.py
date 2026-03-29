@@ -12,6 +12,7 @@ from new_nfl.adapters import (
 from new_nfl.bootstrap import bootstrap_local_environment
 from new_nfl.core_browse import browse_core_dictionary
 from new_nfl.core_load import execute_core_load
+from new_nfl.core_lookup import lookup_core_dictionary_field
 from new_nfl.metadata import (
     get_pipeline_state,
     list_ingest_runs,
@@ -237,13 +238,13 @@ def _cmd_core_load(adapter_id: str, execute: bool) -> int:
     return 0
 
 
-def _cmd_browse_core(adapter_id: str, limit: int, field_prefix: str) -> int:
+def _cmd_browse_core(adapter_id: str, field_prefix: str, limit: int) -> int:
     settings = load_settings()
     result = browse_core_dictionary(
         settings,
         adapter_id=adapter_id,
-        limit=limit,
         field_prefix=field_prefix,
+        limit=limit,
     )
     print(f'ADAPTER_ID={result.adapter_id}')
     print(f'SOURCE_SCHEMA={result.source_schema}')
@@ -258,6 +259,26 @@ def _cmd_browse_core(adapter_id: str, limit: int, field_prefix: str) -> int:
     print(f'SOURCE_STATUS={result.source_status}')
     for row in result.rows:
         print(f'ROW={row[0]}|{row[1]}|{row[2]}')
+    return 0
+
+
+def _cmd_describe_core_field(adapter_id: str, field: str) -> int:
+    settings = load_settings()
+    result = lookup_core_dictionary_field(settings, adapter_id=adapter_id, field=field)
+    print(f'ADAPTER_ID={result.adapter_id}')
+    print(f'SOURCE_SCHEMA={result.source_schema}')
+    print(f'SOURCE_OBJECT={result.source_object}')
+    print(f'QUALIFIED_TABLE={result.qualified_table}')
+    print(f'REQUESTED_FIELD={result.requested_field}')
+    print(f'NORMALIZED_FIELD={result.normalized_field}')
+    print(f'FOUND={"yes" if result.found else "no"}')
+    print(f'STAGE_DATASET={result.stage_dataset}')
+    print(f'SOURCE_STATUS={result.source_status}')
+    if not result.found:
+        return 1
+    print(f'FIELD={result.field}')
+    print(f'DATA_TYPE={result.data_type}')
+    print(f'DESCRIPTION={result.description}')
     return 0
 
 
@@ -323,18 +344,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     core_load = sub.add_parser(
         'core-load',
-        help='Load the first canonical dictionary slice into core',
+        help='Load the first canonical core object from staging',
     )
     core_load.add_argument('--adapter-id', required=True)
     core_load.add_argument('--execute', action='store_true')
 
     browse_core = sub.add_parser(
         'browse-core',
-        help='Browse the first canonical dictionary slice from core',
+        help='Browse the first canonical core dictionary object',
     )
     browse_core.add_argument('--adapter-id', required=True)
-    browse_core.add_argument('--limit', type=int, default=20)
     browse_core.add_argument('--field-prefix', default='')
+    browse_core.add_argument('--limit', type=int, default=20)
+
+    describe_core_field = sub.add_parser(
+        'describe-core-field',
+        help='Describe one exact field from the canonical core dictionary object',
+    )
+    describe_core_field.add_argument('--adapter-id', required=True)
+    describe_core_field.add_argument('--field', required=True)
 
     list_runs = sub.add_parser('list-ingest-runs', help='List ingest runs')
     list_runs.add_argument('--pipeline-name', default=None)
@@ -381,7 +409,9 @@ def main() -> int:
     if args.command == 'core-load':
         return _cmd_core_load(args.adapter_id, args.execute)
     if args.command == 'browse-core':
-        return _cmd_browse_core(args.adapter_id, args.limit, args.field_prefix)
+        return _cmd_browse_core(args.adapter_id, args.field_prefix, args.limit)
+    if args.command == 'describe-core-field':
+        return _cmd_describe_core_field(args.adapter_id, args.field)
     if args.command == 'list-ingest-runs':
         return _cmd_list_ingest_runs(args.pipeline_name)
     if args.command == 'set-pipeline-state':
