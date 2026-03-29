@@ -13,6 +13,7 @@ from new_nfl.bootstrap import bootstrap_local_environment
 from new_nfl.core_browse import browse_core_dictionary
 from new_nfl.core_load import execute_core_load
 from new_nfl.core_lookup import lookup_core_dictionary_field
+from new_nfl.core_summary import summarize_core_dictionary
 from new_nfl.metadata import (
     get_pipeline_state,
     list_ingest_runs,
@@ -238,7 +239,12 @@ def _cmd_core_load(adapter_id: str, execute: bool) -> int:
     return 0
 
 
-def _cmd_browse_core(adapter_id: str, field_prefix: str, data_type: str, limit: int) -> int:
+def _cmd_browse_core(
+    adapter_id: str,
+    field_prefix: str,
+    data_type: str,
+    limit: int,
+) -> int:
     settings = load_settings()
     result = browse_core_dictionary(
         settings,
@@ -259,32 +265,52 @@ def _cmd_browse_core(adapter_id: str, field_prefix: str, data_type: str, limit: 
     print(f'DATA_TYPE_FILTER={result.data_type_filter}')
     print(f'STAGE_DATASET={result.stage_dataset}')
     print(f'SOURCE_STATUS={result.source_status}')
-    for row in result.rows:
-        print(f'ROW={row[0]}|{row[1]}|{row[2]}')
+    for field, data_type_value, description in result.rows:
+        print(f'ROW={field}|{data_type_value}|{description}')
     return 0
 
 
 def _cmd_describe_core_field(adapter_id: str, field: str) -> int:
     settings = load_settings()
-    result = lookup_core_dictionary_field(settings, adapter_id=adapter_id, field=field)
+    result = lookup_core_dictionary_field(
+        settings,
+        adapter_id=adapter_id,
+        field=field,
+    )
     print(f'ADAPTER_ID={result.adapter_id}')
     print(f'SOURCE_SCHEMA={result.source_schema}')
     print(f'SOURCE_OBJECT={result.source_object}')
     print(f'QUALIFIED_TABLE={result.qualified_table}')
     print(f'REQUESTED_FIELD={result.requested_field}')
     print(f'NORMALIZED_FIELD={result.normalized_field}')
-    print(f'FOUND={"yes" if result.found else "no"}')
+    print(f"FOUND={'yes' if result.found else 'no'}")
     print(f'STAGE_DATASET={result.stage_dataset}')
     print(f'SOURCE_STATUS={result.source_status}')
-    if not result.found:
-        print(f'MISS_REASON={result.miss_reason}')
-        print(f'SUGGESTION_COUNT={len(result.suggestions)}')
-        for suggestion in result.suggestions:
-            print(f'SUGGESTION={suggestion}')
-        return 1
-    print(f'FIELD={result.field}')
-    print(f'DATA_TYPE={result.data_type}')
-    print(f'DESCRIPTION={result.description}')
+    if result.found:
+        print(f'FIELD={result.field}')
+        print(f'DATA_TYPE={result.data_type}')
+        print(f'DESCRIPTION={result.description}')
+        return 0
+    print(f'MISS_REASON={result.miss_reason}')
+    print(f'SUGGESTION_COUNT={len(result.suggestions)}')
+    for suggestion in result.suggestions:
+        print(f'SUGGESTION={suggestion}')
+    return 1
+
+
+def _cmd_summarize_core(adapter_id: str) -> int:
+    settings = load_settings()
+    result = summarize_core_dictionary(settings, adapter_id=adapter_id)
+    print(f'ADAPTER_ID={result.adapter_id}')
+    print(f'SOURCE_SCHEMA={result.source_schema}')
+    print(f'SOURCE_OBJECT={result.source_object}')
+    print(f'QUALIFIED_TABLE={result.qualified_table}')
+    print(f'TOTAL_ROW_COUNT={result.total_row_count}')
+    print(f'DISTINCT_DATA_TYPE_COUNT={result.distinct_data_type_count}')
+    print(f'STAGE_DATASET={result.stage_dataset}')
+    print(f'SOURCE_STATUS={result.source_status}')
+    for data_type_value, row_count in result.data_type_rows:
+        print(f'DATA_TYPE_ROW={data_type_value}|{row_count}')
     return 0
 
 
@@ -350,14 +376,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     core_load = sub.add_parser(
         'core-load',
-        help='Load the first canonical core object from staging',
+        help='Load the first canonical core dictionary slice',
     )
     core_load.add_argument('--adapter-id', required=True)
     core_load.add_argument('--execute', action='store_true')
 
     browse_core = sub.add_parser(
         'browse-core',
-        help='Browse the first canonical core dictionary object',
+        help='Browse the first core dictionary slice',
     )
     browse_core.add_argument('--adapter-id', required=True)
     browse_core.add_argument('--field-prefix', default='')
@@ -366,10 +392,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     describe_core_field = sub.add_parser(
         'describe-core-field',
-        help='Describe one exact field from the canonical core dictionary object',
+        help='Lookup one exact field in the core dictionary slice',
     )
     describe_core_field.add_argument('--adapter-id', required=True)
     describe_core_field.add_argument('--field', required=True)
+
+    summarize_core = sub.add_parser(
+        'summarize-core',
+        help='Summarize the core dictionary slice by data type',
+    )
+    summarize_core.add_argument('--adapter-id', required=True)
 
     list_runs = sub.add_parser('list-ingest-runs', help='List ingest runs')
     list_runs.add_argument('--pipeline-name', default=None)
@@ -416,9 +448,16 @@ def main() -> int:
     if args.command == 'core-load':
         return _cmd_core_load(args.adapter_id, args.execute)
     if args.command == 'browse-core':
-        return _cmd_browse_core(args.adapter_id, args.field_prefix, args.data_type, args.limit)
+        return _cmd_browse_core(
+            args.adapter_id,
+            args.field_prefix,
+            args.data_type,
+            args.limit,
+        )
     if args.command == 'describe-core-field':
         return _cmd_describe_core_field(args.adapter_id, args.field)
+    if args.command == 'summarize-core':
+        return _cmd_summarize_core(args.adapter_id)
     if args.command == 'list-ingest-runs':
         return _cmd_list_ingest_runs(args.pipeline_name)
     if args.command == 'set-pipeline-state':
