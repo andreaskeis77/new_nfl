@@ -46,7 +46,9 @@ def _prepare_core_table(settings: Settings) -> None:
             INSERT INTO core.schedule_field_dictionary (field, data_type, description)
             VALUES
                 ('game_id', 'numeric', 'Primary game identifier'),
+                ('game_type', 'character', 'Game type'),
                 ('gameday', 'character', 'Game date'),
+                ('gametime', 'character', 'Kickoff time'),
                 ('home_team', 'character', 'Home team code')
             '''
         )
@@ -68,6 +70,8 @@ def test_lookup_core_dictionary_field_returns_exact_match(settings: Settings) ->
     assert result.data_type == 'numeric'
     assert result.description == 'Primary game identifier'
     assert result.qualified_table == 'core.schedule_field_dictionary'
+    assert result.miss_reason == ''
+    assert result.suggestions == ()
 
 
 def test_lookup_core_dictionary_field_normalizes_whitespace_and_case(settings: Settings) -> None:
@@ -84,7 +88,7 @@ def test_lookup_core_dictionary_field_normalizes_whitespace_and_case(settings: S
     assert result.data_type == 'character'
 
 
-def test_lookup_core_dictionary_field_returns_not_found(settings: Settings) -> None:
+def test_lookup_core_dictionary_field_returns_not_found_with_no_suggestions(settings: Settings) -> None:
     _prepare_core_table(settings)
 
     result = lookup_core_dictionary_field(
@@ -97,6 +101,27 @@ def test_lookup_core_dictionary_field_returns_not_found(settings: Settings) -> N
     assert result.field == ''
     assert result.data_type == ''
     assert result.description == ''
+    assert result.miss_reason == 'field_not_found'
+    assert result.suggestions == ()
+
+
+def test_lookup_core_dictionary_field_returns_suggestions_for_prefix_miss(settings: Settings) -> None:
+    _prepare_core_table(settings)
+
+    result = lookup_core_dictionary_field(
+        settings,
+        adapter_id='nflverse_bulk',
+        field='game',
+    )
+
+    assert result.found is False
+    assert result.miss_reason == 'field_not_found'
+    assert result.suggestions == (
+        'game_id',
+        'game_type',
+        'gameday',
+        'gametime',
+    )
 
 
 def test_lookup_core_dictionary_field_rejects_unsupported_adapter(settings: Settings) -> None:

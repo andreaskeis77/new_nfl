@@ -275,6 +275,10 @@ def _cmd_describe_core_field(adapter_id: str, field: str) -> int:
     print(f'STAGE_DATASET={result.stage_dataset}')
     print(f'SOURCE_STATUS={result.source_status}')
     if not result.found:
+        print(f'MISS_REASON={result.miss_reason}')
+        print(f'SUGGESTION_COUNT={len(result.suggestions)}')
+        for suggestion in result.suggestions:
+            print(f'SUGGESTION={suggestion}')
         return 1
     print(f'FIELD={result.field}')
     print(f'DATA_TYPE={result.data_type}')
