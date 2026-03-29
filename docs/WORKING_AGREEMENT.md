@@ -3,7 +3,8 @@
 ## 1. Zweck
 
 Dieses Dokument regelt die konkrete Zusammenarbeit zwischen Andreas und ChatGPT
-bei Planung, Implementierung, Test, Debugging, Deployment und Betrieb von NEW NFL.
+bei Planung, Implementierung, Test, Debugging, Deployment und Betrieb von NEW
+NFL.
 
 ## 2. Gemeinsames Arbeitsmodell
 
@@ -11,35 +12,32 @@ bei Planung, Implementierung, Test, Debugging, Deployment und Betrieb von NEW NF
 - ChatGPT entwirft Methode, Architektur, Dateien, Tests, Prüfschritte und
   Auswertungen.
 - Andreas liefert echte Terminal-Ausgaben und Beobachtungen zurück.
-- ChatGPT analysiert diese Outputs und gibt den nächsten eindeutigen Schritt vor.
+- ChatGPT analysiert diese Outputs und gibt den nächsten eindeutigen Schritt
+  vor.
 
 ## 3. Phasenmodell
 
 ### 3.1 Konzept- und Methodikphase
 
 Erlaubt:
-
 - Diskussion von Alternativen
 - Vor- und Nachteile
 - klare Empfehlung
 - saubere Entscheidungsgrundlagen
 
 Nicht erlaubt:
-
 - voreilige Implementierung
 - technische Festlegungen ohne begründete Einordnung
 
 ### 3.2 Implementierungsphase
 
 Erlaubt:
-
 - eindeutige Lösung
 - klare Reihenfolge
 - exakte Dateiänderungen
 - exakte Testbefehle
 
 Nicht erwünscht:
-
 - mehrere operative Varianten ohne Not
 - vage Hinweise statt klarer Instruktionen
 
@@ -62,10 +60,31 @@ Jeder operative Schritt muss enthalten:
 5. **Was Andreas zurückmeldet**
    - z. B. PowerShell-Output, Fehlertext, Screenshot, Status
 
+## 4a. Trennung von Einordnung und Aktion
+
+Wenn ChatGPT den nächsten Schritt liefert, muss klar zwischen zwei Arten von
+Inhalt getrennt werden:
+
+1. **Einordnung**
+   - kurze fachliche oder methodische Einordnung
+   - warum dieser Schritt jetzt sinnvoll ist
+   - Risiken oder Vorbehalte nur, wenn sie für die Entscheidung relevant sind
+
+2. **Aktion**
+   - konkrete Arbeitsanweisung
+   - Ort, Ziel, Befehle, erwartetes Ergebnis, Rückmeldung
+   - keine Vermischung mit erläuterndem Fließtext im Befehlsblock
+
+Regel:
+- Der operative Teil darf nicht im Erklärungstext versteckt sein.
+- Andreas soll ohne Interpretationsarbeit erkennen können, was nur Kontext ist
+  und was sofort auszuführen ist.
+- Bei ZIP-Lieferungen muss die **Aktion** den Apply-Block und die
+  Validierungsbefehle enthalten.
+
 ## 5. Regeln für Dateilieferungen
 
 Wenn ChatGPT Dateien liefert, dann bevorzugt als vollständige Tranche mit:
-
 - ZIP-Datei oder klarer Ordnerstruktur
 - Liste der enthaltenen Dateien
 - Zweck der Tranche
@@ -80,25 +99,22 @@ Keine halbfertigen Dateifragmente als Endzustand.
 ## 6. Vollständige-Dateien-Regel
 
 Für NEW NFL gilt ab jetzt ausdrücklich:
-
 - In der Implementierungsphase liefert ChatGPT standardmäßig vollständige
   betroffene Dateien.
 - In der Fix- und Debugging-Phase liefert ChatGPT standardmäßig vollständige
   betroffene Dateien.
 - In der Qualitäts-Gate-Reparatur liefert ChatGPT standardmäßig vollständige
   betroffene Dateien.
-- Diese Dateien werden als ZIP-Paket geliefert, sofern Andreas nicht ausdrücklich
-  etwas anderes verlangt.
+- Diese Dateien werden als ZIP-Paket geliefert, sofern Andreas nicht
+  ausdrücklich etwas anderes verlangt.
 
 Nicht der Standard sind:
-
 - Such-/Ersetz-Anweisungen
 - Zeilen- oder Snippet-Patches
 - Aufforderungen an Andreas, einzelne Zeilen selbst zusammenzusuchen
 - fragmentierte Mini-Änderungen ohne vollständige Datei
 
 Eine Abweichung davon ist nur zulässig, wenn:
-
 1. Andreas ausdrücklich um eine manuelle Änderung bittet, oder
 2. ein echter Hotfix eine minimale Sofortmaßnahme erfordert.
 
@@ -116,14 +132,12 @@ Auch dann ist die Abweichung explizit zu benennen.
 ## 8. Umgang mit Unsicherheit
 
 ChatGPT soll:
-
 - Unsicherheit offen benennen,
 - keine Betriebszustände erfinden,
 - keine ungetesteten Annahmen als Fakten ausgeben,
 - fehlende Informationen gezielt in Arbeitsbefehle übersetzen.
 
 Andreas soll:
-
 - Outputs möglichst vollständig zurückgeben,
 - Abweichungen von den Befehlen klar markieren,
 - reale Randbedingungen offen nennen.
@@ -132,7 +146,6 @@ Andreas soll:
 
 Nach jeder relevanten Tranche ist zu prüfen, ob mindestens eines der folgenden
 Dokumente angepasst werden muss:
-
 - PROJECT_STATE.md
 - HANDOFF
 - RUNBOOK
@@ -143,19 +156,18 @@ Dokumente angepasst werden muss:
 - DELIVERY_PROTOCOL.md
 - VALIDATION_PROTOCOL.md
 - RETROSPECTIVE_T1_X.md
+- WORKING_AGREEMENT.md
 
 ## 10. Eskalationsregel
 
 Wenn eine Änderung unerwartet:
-
 - Datenintegrität gefährdet,
 - das Deployment destabilisiert,
 - Scheduler/Jobs unklar macht,
 - die Upgrade-Fähigkeit beschädigt,
 - oder das Verständnis des Systemzustands verschlechtert,
 
-dann wird nicht einfach weitergebaut. Stattdessen erfolgt:
-
+then wird nicht einfach weitergebaut. Stattdessen erfolgt:
 1. Stop
 2. Lagebild
 3. Ursachenanalyse
@@ -165,7 +177,6 @@ dann wird nicht einfach weitergebaut. Stattdessen erfolgt:
 ## 11. Definition eines guten nächsten Schritts
 
 Ein guter nächster Schritt ist:
-
 - klein genug für eine kontrollierte Ausführung,
 - groß genug für echten Fortschritt,
 - klar testbar,
@@ -175,24 +186,23 @@ Ein guter nächster Schritt ist:
 ## 12. Anti-Pattern
 
 Nicht Teil der NEW-NFL-Arbeitsweise sind:
-
 - große ungetestete Umbauten
 - „wir machen erstmal weiter und sehen später“
 - nicht dokumentierte Hotfixes
 - Deployment ohne klare Rückfallstrategie
 - operatives Rätselraten
 - zu frühe Quellenexplosion ohne Konsolidierungsplan
-- manuelle Such-/Ersetz-Arbeit für Andreas, obwohl vollständige Dateien geliefert
-  werden könnten
+- manuelle Such-/Ersetz-Arbeit für Andreas, obwohl vollständige Dateien
+  geliefert werden könnten
 - Commits auf `main`, obwohl ein verpflichtender Laufzeitpfad noch rot ist
+- operative Anweisungen, bei denen Andreas erst erraten muss, welche Sätze nur
+  Einordnung sind und welche Sätze sofort auszuführen sind
 
 ## 13. Interne Vorab-Validierung durch ChatGPT
 
-Vor jeder neuen Implementierungs- oder Fix-Tranche soll ChatGPT nach Möglichkeit
-mehr tun als nur die betroffenen Dateien logisch zu prüfen.
-
-Der bevorzugte Ablauf ist:
-
+Vor jeder neuen Implementierungs- oder Fix-Tranche soll ChatGPT nach
+Möglichkeit mehr tun als nur die betroffenen Dateien logisch zu prüfen. Der
+bevorzugte Ablauf ist:
 1. Replay des letzten grünen Tranche-Zustands
 2. Prüfung gegen frische Projektzustände
 3. Prüfung gegen bestehende lokale Upgrade-Zustände

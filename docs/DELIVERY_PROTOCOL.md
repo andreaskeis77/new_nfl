@@ -43,6 +43,30 @@ Every ZIP delivery must state:
 - acceptance criteria
 - the exact DEV-LAPTOP or VPS command sequence
 
+
+## Mandatory response structure
+
+For NEW NFL, delivery messages must clearly separate:
+
+### Einordnung
+- short context or rationale
+- only as much explanation as needed for the next decision
+- no operational steps hidden in prose
+
+### Aktion
+- concrete operator instructions
+- explicit location such as DEV-LAPTOP, VPS-USER, or VPS-ADMIN
+- copyable commands
+- expected result
+- what Andreas should report back
+
+Rule:
+- Andreas must be able to identify the executable step immediately.
+- Explanatory text and action text must not be mixed in a way that forces
+  interpretation.
+- ZIP deliveries must put the apply block and validation commands under the
+  **Aktion** section.
+
 ## Full-file delivery rule
 
 For NEW NFL, the delivery default is:
