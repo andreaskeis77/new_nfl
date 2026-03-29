@@ -73,42 +73,79 @@ def test_browse_core_dictionary_returns_sorted_rows(settings: Settings) -> None:
         adapter_id='nflverse_bulk',
         limit=10,
         field_prefix='',
+        data_type_filter='',
     )
 
     assert result.qualified_table == 'core.schedule_field_dictionary'
     assert result.total_row_count == 3
     assert result.match_row_count == 3
     assert result.returned_row_count == 3
-    assert result.rows[0][0] == 'away_team'
-    assert result.rows[1][0] == 'game_id'
-    assert result.rows[2][0] == 'home_team'
+    assert result.rows == (
+        ('away_team', 'character', 'Away team abbreviation'),
+        ('game_id', 'numeric', 'Game identifier'),
+        ('home_team', 'character', 'Home team abbreviation'),
+    )
+    assert result.data_type_filter == ''
 
 
-def test_browse_core_dictionary_applies_prefix_filter(settings: Settings) -> None:
+def test_browse_core_dictionary_filters_by_prefix(settings: Settings) -> None:
     _prepare_core_table(settings)
 
     result = browse_core_dictionary(
         settings,
         adapter_id='nflverse_bulk',
         limit=10,
-        field_prefix='ho',
+        field_prefix='ga',
+        data_type_filter='',
     )
 
-    assert result.total_row_count == 3
     assert result.match_row_count == 1
-    assert result.returned_row_count == 1
-    assert result.field_prefix == 'ho'
-    assert result.rows == (('home_team', 'character', 'Home team abbreviation'),)
+    assert result.rows == (('game_id', 'numeric', 'Game identifier'),)
 
 
-def test_browse_core_dictionary_requires_existing_table(settings: Settings) -> None:
-    bootstrap_local_environment(settings)
-    seed_default_sources(settings)
+def test_browse_core_dictionary_filters_by_data_type(settings: Settings) -> None:
+    _prepare_core_table(settings)
 
-    with pytest.raises(ValueError, match='does not exist; run core-load'):
+    result = browse_core_dictionary(
+        settings,
+        adapter_id='nflverse_bulk',
+        limit=10,
+        field_prefix='',
+        data_type_filter='character',
+    )
+
+    assert result.match_row_count == 2
+    assert result.returned_row_count == 2
+    assert result.data_type_filter == 'character'
+    assert result.rows == (
+        ('away_team', 'character', 'Away team abbreviation'),
+        ('home_team', 'character', 'Home team abbreviation'),
+    )
+
+
+def test_browse_core_dictionary_combines_prefix_and_data_type_filter(settings: Settings) -> None:
+    _prepare_core_table(settings)
+
+    result = browse_core_dictionary(
+        settings,
+        adapter_id='nflverse_bulk',
+        limit=10,
+        field_prefix='g',
+        data_type_filter='numeric',
+    )
+
+    assert result.match_row_count == 1
+    assert result.rows == (('game_id', 'numeric', 'Game identifier'),)
+
+
+def test_browse_core_dictionary_rejects_limit_below_one(settings: Settings) -> None:
+    _prepare_core_table(settings)
+
+    with pytest.raises(ValueError, match='limit must be >= 1'):
         browse_core_dictionary(
             settings,
             adapter_id='nflverse_bulk',
-            limit=10,
+            limit=0,
             field_prefix='',
+            data_type_filter='',
         )

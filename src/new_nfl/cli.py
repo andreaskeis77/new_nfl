@@ -238,12 +238,13 @@ def _cmd_core_load(adapter_id: str, execute: bool) -> int:
     return 0
 
 
-def _cmd_browse_core(adapter_id: str, field_prefix: str, limit: int) -> int:
+def _cmd_browse_core(adapter_id: str, field_prefix: str, data_type: str, limit: int) -> int:
     settings = load_settings()
     result = browse_core_dictionary(
         settings,
         adapter_id=adapter_id,
         field_prefix=field_prefix,
+        data_type_filter=data_type,
         limit=limit,
     )
     print(f'ADAPTER_ID={result.adapter_id}')
@@ -255,6 +256,7 @@ def _cmd_browse_core(adapter_id: str, field_prefix: str, limit: int) -> int:
     print(f'RETURNED_ROW_COUNT={result.returned_row_count}')
     print(f'LIMIT={result.limit}')
     print(f'FIELD_PREFIX={result.field_prefix}')
+    print(f'DATA_TYPE_FILTER={result.data_type_filter}')
     print(f'STAGE_DATASET={result.stage_dataset}')
     print(f'SOURCE_STATUS={result.source_status}')
     for row in result.rows:
@@ -359,6 +361,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     browse_core.add_argument('--adapter-id', required=True)
     browse_core.add_argument('--field-prefix', default='')
+    browse_core.add_argument('--data-type', default='')
     browse_core.add_argument('--limit', type=int, default=20)
 
     describe_core_field = sub.add_parser(
@@ -413,7 +416,7 @@ def main() -> int:
     if args.command == 'core-load':
         return _cmd_core_load(args.adapter_id, args.execute)
     if args.command == 'browse-core':
-        return _cmd_browse_core(args.adapter_id, args.field_prefix, args.limit)
+        return _cmd_browse_core(args.adapter_id, args.field_prefix, args.data_type, args.limit)
     if args.command == 'describe-core-field':
         return _cmd_describe_core_field(args.adapter_id, args.field)
     if args.command == 'list-ingest-runs':

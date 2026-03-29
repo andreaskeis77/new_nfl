@@ -19,6 +19,7 @@ class CoreBrowseResult:
     returned_row_count: int
     limit: int
     field_prefix: str
+    data_type_filter: str
     stage_dataset: str
     source_status: str
     rows: tuple[tuple[str, str, str], ...]
@@ -57,6 +58,7 @@ def browse_core_dictionary(
     adapter_id: str,
     limit: int,
     field_prefix: str,
+    data_type_filter: str,
 ) -> CoreBrowseResult:
     if limit <= 0:
         raise ValueError('limit must be >= 1')
@@ -65,17 +67,23 @@ def browse_core_dictionary(
     source_schema, source_object = _target_table_for_adapter(adapter_id)
     qualified_table = f'{source_schema}.{source_object}'
     normalized_prefix = field_prefix.strip().lower()
+    normalized_data_type = data_type_filter.strip().lower()
 
     _assert_required_columns(settings, qualified_table)
+
+    where_parts: list[str] = []
+    params: list[str | int] = []
+    if normalized_prefix:
+        where_parts.append('LOWER(field) LIKE ?')
+        params.append(f'{normalized_prefix}%')
+    if normalized_data_type:
+        where_parts.append('LOWER(data_type) = ?')
+        params.append(normalized_data_type)
+    where_clause = '' if not where_parts else 'WHERE ' + ' AND '.join(where_parts)
 
     con = duckdb.connect(str(settings.db_path))
     try:
         total_row_count = int(con.execute(f'SELECT COUNT(*) FROM {qualified_table}').fetchone()[0])
-        where_clause = ''
-        params: list[str | int] = []
-        if normalized_prefix:
-            where_clause = 'WHERE LOWER(field) LIKE ?'
-            params.append(f'{normalized_prefix}%')
         match_row_count = int(
             con.execute(f'SELECT COUNT(*) FROM {qualified_table} {where_clause}', params).fetchone()[0]
         )
@@ -105,6 +113,7 @@ def browse_core_dictionary(
         returned_row_count=len(normalized_rows),
         limit=limit,
         field_prefix=normalized_prefix,
+        data_type_filter=normalized_data_type,
         stage_dataset=plan.stage_dataset,
         source_status=plan.source_status,
         rows=normalized_rows,
