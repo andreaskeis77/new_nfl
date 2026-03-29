@@ -10,6 +10,7 @@ from new_nfl.adapters import (
     list_adapter_descriptors,
 )
 from new_nfl.bootstrap import bootstrap_local_environment
+from new_nfl.core_browse import browse_core_dictionary
 from new_nfl.core_load import execute_core_load
 from new_nfl.metadata import (
     get_pipeline_state,
@@ -236,6 +237,30 @@ def _cmd_core_load(adapter_id: str, execute: bool) -> int:
     return 0
 
 
+def _cmd_browse_core(adapter_id: str, limit: int, field_prefix: str) -> int:
+    settings = load_settings()
+    result = browse_core_dictionary(
+        settings,
+        adapter_id=adapter_id,
+        limit=limit,
+        field_prefix=field_prefix,
+    )
+    print(f'ADAPTER_ID={result.adapter_id}')
+    print(f'SOURCE_SCHEMA={result.source_schema}')
+    print(f'SOURCE_OBJECT={result.source_object}')
+    print(f'QUALIFIED_TABLE={result.qualified_table}')
+    print(f'TOTAL_ROW_COUNT={result.total_row_count}')
+    print(f'MATCH_ROW_COUNT={result.match_row_count}')
+    print(f'RETURNED_ROW_COUNT={result.returned_row_count}')
+    print(f'LIMIT={result.limit}')
+    print(f'FIELD_PREFIX={result.field_prefix}')
+    print(f'STAGE_DATASET={result.stage_dataset}')
+    print(f'SOURCE_STATUS={result.source_status}')
+    for row in result.rows:
+        print(f'ROW={row[0]}|{row[1]}|{row[2]}')
+    return 0
+
+
 def _cmd_list_ingest_runs(pipeline_name: str | None) -> int:
     settings = load_settings()
     rows = list_ingest_runs(settings, pipeline_name)
@@ -303,6 +328,14 @@ def build_parser() -> argparse.ArgumentParser:
     core_load.add_argument('--adapter-id', required=True)
     core_load.add_argument('--execute', action='store_true')
 
+    browse_core = sub.add_parser(
+        'browse-core',
+        help='Browse the first canonical dictionary slice from core',
+    )
+    browse_core.add_argument('--adapter-id', required=True)
+    browse_core.add_argument('--limit', type=int, default=20)
+    browse_core.add_argument('--field-prefix', default='')
+
     list_runs = sub.add_parser('list-ingest-runs', help='List ingest runs')
     list_runs.add_argument('--pipeline-name', default=None)
 
@@ -347,6 +380,8 @@ def main() -> int:
         return _cmd_stage_load(args.adapter_id, args.execute)
     if args.command == 'core-load':
         return _cmd_core_load(args.adapter_id, args.execute)
+    if args.command == 'browse-core':
+        return _cmd_browse_core(args.adapter_id, args.limit, args.field_prefix)
     if args.command == 'list-ingest-runs':
         return _cmd_list_ingest_runs(args.pipeline_name)
     if args.command == 'set-pipeline-state':
