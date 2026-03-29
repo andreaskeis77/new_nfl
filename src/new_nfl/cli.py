@@ -25,6 +25,7 @@ from new_nfl.settings import load_settings
 from new_nfl.source_files import list_source_files
 from new_nfl.stage_load import execute_stage_load
 from new_nfl.web_preview import render_core_dictionary_preview
+from new_nfl.web_server import serve_web_preview
 
 
 def _cmd_bootstrap() -> int:
@@ -359,6 +360,25 @@ def _cmd_render_web_preview(adapter_id: str, output: str, limit: int, data_type:
     return 0
 
 
+def _cmd_serve_web_preview(
+    adapter_id: str,
+    host: str,
+    port: int,
+    limit: int,
+    data_type: str,
+) -> int:
+    settings = load_settings()
+    serve_web_preview(
+        settings,
+        adapter_id=adapter_id,
+        host=host,
+        port=port,
+        limit=limit,
+        data_type_filter=data_type,
+    )
+    return 0
+
+
 def _cmd_list_ingest_runs(pipeline_name: str | None) -> int:
     settings = load_settings()
     rows = list_ingest_runs(settings, pipeline_name)
@@ -465,6 +485,16 @@ def build_parser() -> argparse.ArgumentParser:
     render_web_preview.add_argument('--limit', type=int, default=20)
     render_web_preview.add_argument('--data-type', default='')
 
+    serve_web_preview_parser = sub.add_parser(
+        'serve-web-preview',
+        help='Serve the local core dictionary preview over HTTP',
+    )
+    serve_web_preview_parser.add_argument('--adapter-id', required=True)
+    serve_web_preview_parser.add_argument('--host', default='127.0.0.1')
+    serve_web_preview_parser.add_argument('--port', type=int, default=8787)
+    serve_web_preview_parser.add_argument('--limit', type=int, default=20)
+    serve_web_preview_parser.add_argument('--data-type', default='')
+
     list_runs = sub.add_parser('list-ingest-runs', help='List ingest runs')
     list_runs.add_argument('--pipeline-name', default=None)
 
@@ -519,6 +549,14 @@ def main() -> int:
         return _cmd_list_source_files(args.adapter_id, args.limit)
     if args.command == 'render-web-preview':
         return _cmd_render_web_preview(args.adapter_id, args.output, args.limit, args.data_type)
+    if args.command == 'serve-web-preview':
+        return _cmd_serve_web_preview(
+            args.adapter_id,
+            args.host,
+            args.port,
+            args.limit,
+            args.data_type,
+        )
     if args.command == 'list-ingest-runs':
         return _cmd_list_ingest_runs(args.pipeline_name)
     if args.command == 'set-pipeline-state':
