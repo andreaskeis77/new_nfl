@@ -195,9 +195,14 @@ def _cmd_fetch_remote(adapter_id: str, execute: bool, remote_url: str) -> int:
     return 0
 
 
-def _cmd_stage_load(adapter_id: str, execute: bool) -> int:
+def _cmd_stage_load(adapter_id: str, execute: bool, source_file_id: str) -> int:
     settings = load_settings()
-    result = execute_stage_load(settings, adapter_id=adapter_id, execute=execute)
+    result = execute_stage_load(
+        settings,
+        adapter_id=adapter_id,
+        execute=execute,
+        source_file_id=source_file_id or None,
+    )
     print(f'ADAPTER_ID={result.adapter_id}')
     print(f'PIPELINE_NAME={result.pipeline_name}')
     print(f'RUN_MODE={result.run_mode}')
@@ -239,12 +244,7 @@ def _cmd_core_load(adapter_id: str, execute: bool) -> int:
     return 0
 
 
-def _cmd_browse_core(
-    adapter_id: str,
-    field_prefix: str,
-    data_type: str,
-    limit: int,
-) -> int:
+def _cmd_browse_core(adapter_id: str, field_prefix: str, data_type: str, limit: int) -> int:
     settings = load_settings()
     result = browse_core_dictionary(
         settings,
@@ -265,18 +265,14 @@ def _cmd_browse_core(
     print(f'DATA_TYPE_FILTER={result.data_type_filter}')
     print(f'STAGE_DATASET={result.stage_dataset}')
     print(f'SOURCE_STATUS={result.source_status}')
-    for field, data_type_value, description in result.rows:
-        print(f'ROW={field}|{data_type_value}|{description}')
+    for field, data_type, description in result.rows:
+        print(f'ROW={field}|{data_type}|{description}')
     return 0
 
 
 def _cmd_describe_core_field(adapter_id: str, field: str) -> int:
     settings = load_settings()
-    result = lookup_core_dictionary_field(
-        settings,
-        adapter_id=adapter_id,
-        field=field,
-    )
+    result = lookup_core_dictionary_field(settings, adapter_id=adapter_id, field=field)
     print(f'ADAPTER_ID={result.adapter_id}')
     print(f'SOURCE_SCHEMA={result.source_schema}')
     print(f'SOURCE_OBJECT={result.source_object}')
@@ -309,8 +305,8 @@ def _cmd_summarize_core(adapter_id: str) -> int:
     print(f'DISTINCT_DATA_TYPE_COUNT={result.distinct_data_type_count}')
     print(f'STAGE_DATASET={result.stage_dataset}')
     print(f'SOURCE_STATUS={result.source_status}')
-    for data_type_value, row_count in result.data_type_rows:
-        print(f'DATA_TYPE_ROW={data_type_value}|{row_count}')
+    for data_type, count in result.data_type_rows:
+        print(f'DATA_TYPE_ROW={data_type}|{count}')
     return 0
 
 
@@ -369,21 +365,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     stage_load = sub.add_parser(
         'stage-load',
-        help='Load the latest remote CSV into the first staging table',
+        help='Load one registered CSV source file into the staging layer',
     )
     stage_load.add_argument('--adapter-id', required=True)
     stage_load.add_argument('--execute', action='store_true')
+    stage_load.add_argument('--source-file-id', default='')
 
     core_load = sub.add_parser(
         'core-load',
-        help='Load the first canonical core dictionary slice',
+        help='Load the first canonical dictionary slice from staging into core',
     )
     core_load.add_argument('--adapter-id', required=True)
     core_load.add_argument('--execute', action='store_true')
 
     browse_core = sub.add_parser(
         'browse-core',
-        help='Browse the first core dictionary slice',
+        help='Browse the first canonical core dictionary slice',
     )
     browse_core.add_argument('--adapter-id', required=True)
     browse_core.add_argument('--field-prefix', default='')
@@ -392,14 +389,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     describe_core_field = sub.add_parser(
         'describe-core-field',
-        help='Lookup one exact field in the core dictionary slice',
+        help='Look up one exact core dictionary field',
     )
     describe_core_field.add_argument('--adapter-id', required=True)
     describe_core_field.add_argument('--field', required=True)
 
     summarize_core = sub.add_parser(
         'summarize-core',
-        help='Summarize the core dictionary slice by data type',
+        help='Summarize the current core dictionary slice',
     )
     summarize_core.add_argument('--adapter-id', required=True)
 
@@ -444,16 +441,11 @@ def main() -> int:
     if args.command == 'fetch-remote':
         return _cmd_fetch_remote(args.adapter_id, args.execute, args.remote_url)
     if args.command == 'stage-load':
-        return _cmd_stage_load(args.adapter_id, args.execute)
+        return _cmd_stage_load(args.adapter_id, args.execute, args.source_file_id)
     if args.command == 'core-load':
         return _cmd_core_load(args.adapter_id, args.execute)
     if args.command == 'browse-core':
-        return _cmd_browse_core(
-            args.adapter_id,
-            args.field_prefix,
-            args.data_type,
-            args.limit,
-        )
+        return _cmd_browse_core(args.adapter_id, args.field_prefix, args.data_type, args.limit)
     if args.command == 'describe-core-field':
         return _cmd_describe_core_field(args.adapter_id, args.field)
     if args.command == 'summarize-core':

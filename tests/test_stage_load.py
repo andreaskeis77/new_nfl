@@ -29,7 +29,7 @@ def _register_csv_source_file(settings, adapter_id: str, csv_path: Path) -> str:
         settings,
         ingest_run_id=ingest_run_id,
         adapter_id=adapter_id,
-        source_url='https://example.invalid/dictionary_schedules.csv',
+        source_url=f'https://example.invalid/{csv_path.name}',
         local_path=str(csv_path),
         file_size_bytes=csv_path.stat().st_size,
         sha256_hex='abc123',
@@ -82,3 +82,40 @@ def test_stage_load_execute_creates_stage_table(tmp_path, monkeypatch) -> None:
         con.close()
 
     assert row == ('2025', '1', source_file_id, 'nflverse_bulk')
+
+
+def test_stage_load_can_pin_specific_source_file_id(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv('NEW_NFL_REPO_ROOT', str(tmp_path))
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    seed_default_sources(settings)
+
+    older = tmp_path / 'payload_old.csv'
+    older.write_text('season,week\n2020,3\n', encoding='utf-8')
+    older_source_file_id = _register_csv_source_file(settings, 'nflverse_bulk', older)
+
+    newer = tmp_path / 'payload_new.csv'
+    newer.write_text('season,week\n2025,9\n', encoding='utf-8')
+    _register_csv_source_file(settings, 'nflverse_bulk', newer)
+
+    result = execute_stage_load(
+        settings,
+        adapter_id='nflverse_bulk',
+        execute=True,
+        source_file_id=older_source_file_id,
+    )
+
+    assert result.source_file_id == older_source_file_id
+    assert result.qualified_table == 'stg.nflverse_bulk_payload_old'
+    assert result.row_count == 1
+
+    con = duckdb.connect(str(settings.db_path))
+    try:
+        row = con.execute(
+            'SELECT season, week, _source_file_id, _adapter_id '
+            'FROM stg.nflverse_bulk_payload_old'
+        ).fetchone()
+    finally:
+        con.close()
+
+    assert row == ('2020', '3', older_source_file_id, 'nflverse_bulk')

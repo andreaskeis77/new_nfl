@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import duckdb
+
 from new_nfl.adapters.catalog import build_adapter_plan
 from new_nfl.metadata import (
     create_ingest_run,
@@ -38,16 +40,56 @@ def _target_object_for_file(adapter_id: str, filename: str) -> str:
     return f'{adapter_id}_{name}'
 
 
+def _resolve_source_file(
+    settings: Settings,
+    *,
+    adapter_id: str,
+    source_file_id: str | None,
+) -> dict[str, object]:
+    if not source_file_id:
+        source_file = latest_source_file(settings, adapter_id)
+        if source_file is None:
+            raise ValueError(f'No source file recorded for adapter_id={adapter_id}')
+        return source_file
+
+    con = duckdb.connect(str(settings.db_path))
+    try:
+        row = con.execute(
+            """
+            SELECT source_file_id, adapter_id, local_path
+            FROM meta.source_files
+            WHERE source_file_id = ?
+            """,
+            [source_file_id],
+        ).fetchone()
+    finally:
+        con.close()
+
+    if row is None:
+        raise ValueError(f'Unknown source_file_id={source_file_id}')
+    if str(row[1]) != adapter_id:
+        raise ValueError(
+            f'source_file_id={source_file_id} does not belong to adapter_id={adapter_id}'
+        )
+    return {
+        'source_file_id': str(row[0]),
+        'local_path': str(row[2]),
+    }
+
+
 def execute_stage_load(
     settings: Settings,
     *,
     adapter_id: str,
     execute: bool,
+    source_file_id: str | None = None,
 ) -> StageLoadResult:
     plan = build_adapter_plan(settings, adapter_id)
-    source_file = latest_source_file(settings, adapter_id)
-    if source_file is None:
-        raise ValueError(f'No source file recorded for adapter_id={adapter_id}')
+    source_file = _resolve_source_file(
+        settings,
+        adapter_id=adapter_id,
+        source_file_id=source_file_id,
+    )
 
     source_file_id = str(source_file['source_file_id'])
     source_file_path = str(source_file['local_path'])
@@ -93,7 +135,7 @@ def execute_stage_load(
         receipt_path='',
         asset_count=1,
         landed_file_count=1,
-        message='T1.5 first normalized staging load',
+        message='T2.1A stage load source-file pinning',
     )
     load_event_id = record_load_event(
         settings,
