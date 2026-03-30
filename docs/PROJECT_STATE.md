@@ -2,7 +2,7 @@
 
 ## Current phase
 
-T2.0 — Canonical Ingest Entry
+T2.2A — VPS Deploy Runbook for Preview Release
 
 ## Completed
 
@@ -15,68 +15,53 @@ T2.0 — Canonical Ingest Entry
 - T1.5 first normalized staging load for `nflverse_bulk`
 - T1.5 repair 01: remove the `stage_load` circular export and restore the import/collection gate
 - T1.x method hardening for artifact apply and validation workflow
+- T2.0 entry cycle cut
+- T2.0A first canonical dictionary core load
+- T2.0B methodik bolt for separation of `Einordnung` and `Aktion`
+- T2.0C first browseable core dictionary slice
+- T2.0D exact core dictionary field lookup
+- T2.0E negative lookup miss-path hardening
+- T2.0F core dictionary browse with `data_type` filter
+- T2.0G core dictionary summary by `data_type`
+- T2.1A stage-load source-file pinning
+- T2.1B source-file discovery for operators
+- T2.1C local HTML preview for core dictionary
+- T2.1D local mini webserver for preview
 
 ## Current runtime posture
 
-- local Python package
+- local Python package with CLI surface
 - local DuckDB metadata surface
 - seeded source registry
 - adapter catalog
 - raw landing receipts
-- first true remote fetch path with dry-run and execute modes
+- true remote fetch path with dry-run and execute modes
+- source-file discovery and explicit `source_file_id` pinning
 - first normalized staging load into `stg.nflverse_bulk_schedule_dictionary`
-- CLI surface for `fetch-remote` and `stage-load`
-- import/collection gate restored after the T1.5 repair bolt
+- first canonical core load into `core.schedule_field_dictionary`
+- browse / exact lookup / summary over the core dictionary
+- local HTML preview export
+- local mini webserver for preview
 
-## T1 foundation cycle summary
+## Current release posture
 
-T1 is considered delivered as the ingestion foundation cycle.
+The project now has a **local preview-release candidate**.
 
-What T1 established:
-- technical bootstrap
-- metadata and pipeline-state surface
-- adapter registry and descriptor surface
-- first fetch contract
-- first true remote fetch
-- first normalized staging load
+That means:
+- data can be fetched and loaded locally
+- the first canonical core object can be built locally
+- the first web-facing preview can be rendered and served locally
 
-What T1 deliberately did **not** establish:
-- canonical `stg -> core` ingest
-- broad multi-table canonical modeling
-- browseable/query-facing data path
-- broader data-quality and replay coverage beyond the current narrow slice
+What is still missing before the first VPS preview release:
+- a pinned VPS runbook with exact operator steps
+- a preview release cut that is replayed on the VPS
+- a VPS smoke test covering `/healthz` and `/`
+- an explicit rollback / restart note for the preview service
 
 ## Current cycle
 
-We are now in the T2.0 entry step.
-
-The purpose of this step is to:
-1. keep the cycle cut explicit in repo documentation
-2. protect T2.0 from starting on an ambiguous T1/T2 boundary
-3. set the first T2.0 implementation slice as a narrow canonical ingest bolt
+We are now in T2.2 release preparation.
 
 ## Preferred next bolt
 
-T2.0A — First canonical reference slice
-
-Scope:
-- read from `stg.nflverse_bulk_schedule_dictionary`
-- create the first minimal canonical `core` object
-- keep the slice narrow around a `season` / `week` reference path
-- make the source-table contract explicit
-- support dry-run and execute modes
-- keep provenance and key validation visible
-
-Do not mix into T2.0A:
-- browseable/query-facing read paths
-- additional sources
-- broader canonical modeling
-- scheduler or operational automation
-- non-essential UX polish
-
-## Validation posture
-
-Before starting T2.0A:
-- keep T1.5 targeted tests green
-- keep the repaired import/collection gate green
-- treat this T2.0 entry bolt as docs-only
+T2.2B — VPS preview release execution and smoke test
