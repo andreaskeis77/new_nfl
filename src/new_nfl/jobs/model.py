@@ -1,24 +1,30 @@
 from __future__ import annotations
 
 import json
-import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-import duckdb
 from pydantic import BaseModel, Field, field_validator
 
+from new_nfl._db import connect as _connect
+from new_nfl._db import new_id as _new_id
+from new_nfl._db import row_to_dict as _row_to_dict
 from new_nfl.metadata import ensure_metadata_surface
 from new_nfl.settings import Settings
 
-JobType = Literal[
+JobType = str
+# Canonical built-in job types. Extension points (tests, future domain
+# executors) register additional types via ``runner.register_executor``;
+# validation happens at dispatch time, not at registration time, so we keep
+# the Pydantic field open.
+BUILTIN_JOB_TYPES: tuple[str, ...] = (
     "fetch_remote",
     "stage_load",
     "core_load",
     "dedupe",
     "maintenance",
     "custom",
-]
+)
 
 ScheduleKind = Literal["cron", "interval", "manual"]
 BackoffKind = Literal["fixed", "exponential", "linear"]
@@ -125,25 +131,6 @@ class RunArtifact(BaseModel):
     ref_path: str | None = None
     detail_json: str = "{}"
     recorded_at: datetime | None = None
-
-
-def _new_id() -> str:
-    return str(uuid.uuid4())
-
-
-def _connect(settings: Settings) -> duckdb.DuckDBPyConnection:
-    settings.db_path.parent.mkdir(parents=True, exist_ok=True)
-    return duckdb.connect(str(settings.db_path))
-
-
-def _row_to_dict(
-    cursor: duckdb.DuckDBPyConnection,
-    sql: str,
-    params: list[Any] | None = None,
-) -> list[dict[str, Any]]:
-    result = cursor.execute(sql, params or [])
-    cols = [item[0] for item in result.description]
-    return [dict(zip(cols, row, strict=False)) for row in result.fetchall()]
 
 
 def register_retry_policy(

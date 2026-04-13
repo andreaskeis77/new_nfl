@@ -5,7 +5,6 @@ import argparse
 from new_nfl.adapters import (
     build_adapter_plan,
     execute_fetch_contract,
-    execute_remote_fetch,
     get_adapter_descriptor,
     list_adapter_descriptors,
 )
@@ -16,9 +15,15 @@ from new_nfl.core_lookup import lookup_core_dictionary_field
 from new_nfl.core_summary import summarize_core_dictionary
 from new_nfl.jobs import (
     describe_job,
+    enqueue_job,
     list_jobs,
+    list_run_artifacts,
+    load_run,
     register_job,
     register_retry_policy,
+    replay_failed_run,
+    run_worker_once,
+    run_worker_serve,
 )
 from new_nfl.metadata import (
     get_pipeline_state,
@@ -29,7 +34,6 @@ from new_nfl.metadata import (
 )
 from new_nfl.settings import load_settings
 from new_nfl.source_files import list_source_files
-from new_nfl.stage_load import execute_stage_load
 from new_nfl.web_preview import render_core_dictionary_preview
 from new_nfl.web_server import serve_web_preview
 
@@ -176,57 +180,120 @@ def _cmd_run_adapter(adapter_id: str, execute: bool) -> int:
     return 0
 
 
+def _run_cli_job(
+    settings,
+    *,
+    job_key: str,
+    job_type: str,
+    adapter_id: str,
+    description: str,
+    params: dict,
+) -> 'tuple[int, dict]':
+    """Register (idempotent) + enqueue + execute via the internal runner.
+
+    Returns ``(return_code, run_detail)`` where ``run_detail`` mirrors the
+    executor's result dict. Runner evidence lives in ``meta.job_run`` and
+    related tables — see ADR-0025 and Manifest §3.13.
+    """
+    bootstrap_local_environment(settings)
+    register_job(
+        settings,
+        job_key=job_key,
+        job_type=job_type,  # type: ignore[arg-type]
+        target_ref=adapter_id,
+        description=description,
+        concurrency_key=adapter_id,
+        params={},
+    )
+    queue_item = enqueue_job(
+        settings,
+        job_key=job_key,
+        trigger_kind='cli',
+        params=params,
+    )
+    tick = run_worker_once(
+        settings,
+        worker_id='cli',
+        queue_item_id=queue_item.queue_item_id,
+    )
+    if not tick.claimed:
+        print('STATUS=claim_blocked')
+        return 1, {}
+    if tick.run_status != 'success':
+        print(f'STATUS={tick.run_status or "failed"}')
+        print(f'JOB_RUN_ID={tick.job_run_id or ""}')
+        print(f'MESSAGE={tick.message or ""}')
+        return 1, tick.detail or {}
+    return 0, tick.detail or {}
+
+
 def _cmd_fetch_remote(adapter_id: str, execute: bool, remote_url: str) -> int:
     settings = load_settings()
-    result = execute_remote_fetch(
+    rc, detail = _run_cli_job(
         settings,
+        job_key=f'cli_fetch_remote__{adapter_id}',
+        job_type='fetch_remote',
         adapter_id=adapter_id,
-        execute=execute,
-        remote_url_override=remote_url or None,
+        description=f'CLI auto-job for fetch-remote {adapter_id}',
+        params={
+            'adapter_id': adapter_id,
+            'execute': execute,
+            'remote_url': remote_url or '',
+        },
     )
-    print(f'ADAPTER_ID={result.adapter_id}')
-    print(f'PIPELINE_NAME={result.pipeline_name}')
-    print(f'RUN_MODE={result.run_mode}')
-    print(f'RUN_STATUS={result.run_status}')
-    print(f'INGEST_RUN_ID={result.ingest_run_id}')
-    print(f'LANDING_DIR={result.landing_dir}')
-    print(f'MANIFEST_PATH={result.manifest_path}')
-    print(f'RECEIPT_PATH={result.receipt_path}')
-    print(f'LOAD_EVENT_ID={result.load_event_id}')
-    print(f'LANDED_FILE_COUNT={result.landed_file_count}')
-    print(f'ASSET_COUNT={result.asset_count}')
-    print(f'STAGE_DATASET={result.stage_dataset}')
-    print(f'SOURCE_STATUS={result.source_status}')
-    print(f'SOURCE_URL={result.source_url}')
-    print(f'DOWNLOADED_FILE_PATH={result.downloaded_file_path}')
-    print(f'DOWNLOADED_BYTES={result.downloaded_bytes}')
-    print(f'SHA256_HEX={result.sha256_hex}')
-    return 0
+    if rc != 0 and not detail:
+        return rc
+    print(f'ADAPTER_ID={detail.get("adapter_id", adapter_id)}')
+    print(f'PIPELINE_NAME={detail.get("pipeline_name", "")}')
+    print(f'RUN_MODE={detail.get("run_mode", "")}')
+    print(f'RUN_STATUS={detail.get("run_status", "")}')
+    print(f'INGEST_RUN_ID={detail.get("ingest_run_id", "")}')
+    print(f'LANDING_DIR={detail.get("landing_dir", "")}')
+    print(f'MANIFEST_PATH={detail.get("manifest_path", "")}')
+    print(f'RECEIPT_PATH={detail.get("receipt_path", "")}')
+    print(f'LOAD_EVENT_ID={detail.get("load_event_id", "")}')
+    print(f'LANDED_FILE_COUNT={detail.get("landed_file_count", 0)}')
+    print(f'ASSET_COUNT={detail.get("asset_count", 0)}')
+    print(f'STAGE_DATASET={detail.get("stage_dataset", "")}')
+    print(f'SOURCE_STATUS={detail.get("source_status", "")}')
+    print(f'SOURCE_URL={detail.get("source_url", "")}')
+    print(f'DOWNLOADED_FILE_PATH={detail.get("downloaded_file_path", "")}')
+    print(f'DOWNLOADED_BYTES={detail.get("downloaded_bytes", 0)}')
+    print(f'SHA256_HEX={detail.get("sha256_hex", "")}')
+    return rc
 
 
 def _cmd_stage_load(adapter_id: str, execute: bool, source_file_id: str) -> int:
     settings = load_settings()
-    result = execute_stage_load(
+    rc, detail = _run_cli_job(
         settings,
+        job_key=f'cli_stage_load__{adapter_id}',
+        job_type='stage_load',
         adapter_id=adapter_id,
-        execute=execute,
-        source_file_id=source_file_id or None,
+        description=f'CLI auto-job for stage-load {adapter_id}',
+        params={
+            'adapter_id': adapter_id,
+            'execute': execute,
+            'source_file_id': source_file_id or '',
+        },
     )
-    print(f'ADAPTER_ID={result.adapter_id}')
-    print(f'PIPELINE_NAME={result.pipeline_name}')
-    print(f'RUN_MODE={result.run_mode}')
-    print(f'RUN_STATUS={result.run_status}')
-    print(f'INGEST_RUN_ID={result.ingest_run_id}')
-    print(f'SOURCE_FILE_ID={result.source_file_id}')
-    print(f'SOURCE_FILE_PATH={result.source_file_path}')
-    print(f'TARGET_SCHEMA={result.target_schema}')
-    print(f'TARGET_OBJECT={result.target_object}')
-    print(f'QUALIFIED_TABLE={result.qualified_table}')
-    print(f'ROW_COUNT={result.row_count}')
-    print(f'LOAD_EVENT_ID={result.load_event_id}')
-    print(f'STAGE_DATASET={result.stage_dataset}')
-    print(f'SOURCE_STATUS={result.source_status}')
-    return 0
+    if rc != 0 and not detail:
+        return rc
+    print(f'ADAPTER_ID={detail.get("adapter_id", adapter_id)}')
+    print(f'PIPELINE_NAME={detail.get("pipeline_name", "")}')
+    print(f'RUN_MODE={detail.get("run_mode", "")}')
+    print(f'RUN_STATUS={detail.get("run_status", "")}')
+    print(f'INGEST_RUN_ID={detail.get("ingest_run_id", "")}')
+    print(f'SOURCE_FILE_ID={detail.get("source_file_id", "")}')
+    print(f'SOURCE_FILE_PATH={detail.get("source_file_path", "")}')
+    print(f'TARGET_SCHEMA={detail.get("target_schema", "")}')
+    print(f'TARGET_OBJECT={detail.get("target_object", "")}')
+    print(f'QUALIFIED_TABLE={detail.get("qualified_table", "")}')
+    print(f'ROW_COUNT={detail.get("row_count", 0)}')
+    print(f'LOAD_EVENT_ID={detail.get("load_event_id", "")}')
+    print(f'STAGE_DATASET={detail.get("stage_dataset", "")}')
+    print(f'SOURCE_STATUS={detail.get("source_status", "")}')
+    return rc
 
 
 def _cmd_core_load(adapter_id: str, execute: bool) -> int:
@@ -502,6 +569,68 @@ def _cmd_register_job(
     return 0
 
 
+def _print_tick(prefix: str, tick) -> None:
+    print(f'{prefix}CLAIMED={"yes" if tick.claimed else "no"}')
+    print(f'{prefix}JOB_RUN_ID={tick.job_run_id or ""}')
+    print(f'{prefix}JOB_KEY={tick.job_key or ""}')
+    print(f'{prefix}JOB_TYPE={tick.job_type or ""}')
+    print(f'{prefix}RUN_STATUS={tick.run_status or ""}')
+    print(f'{prefix}MESSAGE={tick.message or ""}')
+
+
+def _cmd_run_worker(
+    once: bool,
+    serve: bool,
+    worker_id: str,
+    max_iterations: int,
+    idle_sleep: float,
+    stop_when_idle: bool,
+) -> int:
+    if once == serve:
+        print('STATUS=invalid_mode')
+        print('HINT=exactly_one_of_--once_or_--serve')
+        return 2
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    if once:
+        tick = run_worker_once(settings, worker_id=worker_id or None)
+        _print_tick('', tick)
+        return 0 if tick.run_status in (None, 'success') else 1
+    ticks = run_worker_serve(
+        settings,
+        worker_id=worker_id or None,
+        idle_sleep_seconds=idle_sleep,
+        max_iterations=max_iterations if max_iterations > 0 else None,
+        stop_when_idle=stop_when_idle,
+    )
+    print(f'TICK_COUNT={len(ticks)}')
+    for idx, tick in enumerate(ticks):
+        _print_tick(f'TICK_{idx}_', tick)
+    failed = [t for t in ticks if t.run_status == 'failed']
+    return 1 if failed else 0
+
+
+def _cmd_replay_run(job_run_id: str) -> int:
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    tick = replay_failed_run(settings, job_run_id=job_run_id, worker_id='cli-replay')
+    print(f'SOURCE_JOB_RUN_ID={job_run_id}')
+    _print_tick('REPLAY_', tick)
+    run = load_run(settings, tick.job_run_id) if tick.job_run_id else None
+    artifacts = list_run_artifacts(settings, tick.job_run_id) if tick.job_run_id else []
+    if run is not None:
+        print(f'REPLAY_ATTEMPT_NUMBER={run.attempt_number}')
+    print(f'REPLAY_ARTIFACT_COUNT={len(artifacts)}')
+    for artifact in artifacts:
+        print(
+            'REPLAY_ARTIFACT='
+            f'{artifact.get("artifact_kind", "")}|'
+            f'{artifact.get("ref_id") or ""}|'
+            f'{artifact.get("ref_path") or ""}'
+        )
+    return 0 if tick.run_status == 'success' else 1
+
+
 def _cmd_register_retry_policy(
     policy_key: str,
     max_attempts: int,
@@ -663,6 +792,23 @@ def build_parser() -> argparse.ArgumentParser:
     register_job_parser.add_argument('--retry-policy-key', default='')
     register_job_parser.add_argument('--inactive', action='store_true')
 
+    run_worker_parser = sub.add_parser(
+        'run-worker',
+        help='Run the internal job runner (once or in serve mode)',
+    )
+    run_worker_parser.add_argument('--once', action='store_true')
+    run_worker_parser.add_argument('--serve', action='store_true')
+    run_worker_parser.add_argument('--worker-id', default='')
+    run_worker_parser.add_argument('--max-iterations', type=int, default=0)
+    run_worker_parser.add_argument('--idle-sleep', type=float, default=5.0)
+    run_worker_parser.add_argument('--stop-when-idle', action='store_true')
+
+    replay_run_parser = sub.add_parser(
+        'replay-run',
+        help='Replay a failed job run deterministically',
+    )
+    replay_run_parser.add_argument('--job-run-id', required=True)
+
     register_policy_parser = sub.add_parser(
         'register-retry-policy',
         help='Register or update a retry policy',
@@ -745,6 +891,17 @@ def main() -> int:
             args.retry_policy_key,
             args.inactive,
         )
+    if args.command == 'run-worker':
+        return _cmd_run_worker(
+            args.once,
+            args.serve,
+            args.worker_id,
+            args.max_iterations,
+            args.idle_sleep,
+            args.stop_when_idle,
+        )
+    if args.command == 'replay-run':
+        return _cmd_replay_run(args.job_run_id)
     if args.command == 'register-retry-policy':
         return _cmd_register_retry_policy(
             args.policy_key,

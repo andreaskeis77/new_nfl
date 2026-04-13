@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.3 Foundation Hardening** — T2.3A abgeschlossen, bereit für T2.3B
+**T2.3 Foundation Hardening** — T2.3B abgeschlossen, bereit für T2.3C
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -39,6 +39,7 @@
 - T2.1C local HTML preview for core dictionary
 - T2.1D local mini webserver for preview
 - T2.3A Job-/Run-Modell-Skeleton (meta.job_definition, job_schedule, job_queue, job_run, run_event, run_artifact, retry_policy + Pydantic-Modelle + CLI `list-jobs`/`describe-job`/`register-job`/`register-retry-policy`)
+- T2.3B Internal Runner (`src/new_nfl/jobs/runner.py`: atomarer Claim, Executor-Registry, Retry-Policy-Auswertung, Replay; geteilter DB-Helper `src/new_nfl/_db.py`; CLI `run-worker --once|--serve` und `replay-run`; `fetch-remote`/`stage-load` laufen nur noch über den Runner)
 
 ## Current runtime posture
 
@@ -55,6 +56,7 @@
 - local HTML preview export
 - local mini webserver for preview
 - interner Job-/Run-Modell-Store in DuckDB (meta.job_*, meta.retry_policy, meta.run_event, meta.run_artifact) mit Pydantic-Modellen und CLI-Oberfläche
+- interner Job-Runner: atomares Claim auf `meta.job_queue`, Executor-Registry (`fetch_remote`, `stage_load`, `custom`), Retry-Policy-Auswertung, deterministischer Replay gescheiterter Runs; CLI `run-worker --once|--serve` und `replay-run --job-run-id`; `fetch-remote` und `stage-load` erzeugen nur noch über den Runner Evidence (Manifest §3.9, §3.13)
 
 ## Current release posture
 
@@ -77,7 +79,7 @@ T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nac
 
 ## Preferred next bolt
 
-**T2.3B — Internal Runner** gemäß `T2_3_PLAN.md` §2 und ADR-0025: Worker-Loop, der `meta.job_queue` atomar claimt, ausführt, Retries gemäß Policy fährt, `meta.job_run` + `meta.run_event` + `meta.run_artifact` schreibt.
+**T2.3C — Quarantäne-Domäne** gemäß `T2_3_PLAN.md` §2 und ADR-0028: `meta.quarantine_case`, `meta.recovery_action` plus CLI (`list-quarantine`, `quarantine-show`, `quarantine-resolve`). DoD: künstlich erzeugter Parser-Fehler landet in Quarantäne, Resolve erzeugt nachweisbar neuen Run über den Runner.
 
 ## Zielkorridor v1.0
 

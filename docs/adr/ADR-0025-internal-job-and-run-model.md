@@ -1,7 +1,7 @@
 # ADR-0025: Internal Job and Run Model in DuckDB Metadata
 
 ## Status
-Proposed — Schema in T2.3A (2026-04-13) implementiert, Final-Accept am Ende von T2.3B nach Runner-Verifikation.
+Accepted — Schema in T2.3A (2026-04-13), Runner in T2.3B (2026-04-13) mit atomarem Claim, Retry, Replay und CLI-Integration verifiziert.
 
 ## Kontext
 NEW NFL braucht in v1.0 einen autonomen Scheduler, der Quellen periodisch abruft, Stage-Loads ausführt, Promotionen in den Kanon triggert und Fehler nicht still verschluckt. v0.2 hat dies offengelassen. Externe Orchestratoren (Airflow, Dagster, Temporal, Celery) sind für einen single-operator Windows-VPS überdimensioniert und teilweise OS-inkompatibel (Celery ≥ 4.x kein Windows).
@@ -53,6 +53,16 @@ Claims erfolgen über atomare DuckDB-Updates mit Idempotency-Keys. Worker-Prozes
   - `meta.run_artifact.artifact_kind` ist bewusst frei gehalten (z. B. `ingest_run`, `source_file`, `receipt`) um Kopplung an bestehende Domänen weich zu halten.
 - `ensure_metadata_surface` erzeugt die Tabellen idempotent über `TABLE_SPECS`; bestehende Backfill-Hooks sind neutral (keine Legacy-Vorgänger).
 
-## Offene Punkte
-- Concurrency-Key-Strategie pro Quelle.
-- Backoff-Defaults pro Jobtyp.
+## Implementierungs-Notizen (T2.3B)
+- **Runner-Modul:** `src/new_nfl/jobs/runner.py` mit Claim-Loop, Executor-Registry (`EXECUTORS`), `run_worker_once` / `run_worker_serve`, `replay_failed_run`, `compute_backoff_seconds`.
+- **Atomarer Claim:** Kandidaten-SELECT + bedingter `UPDATE ... RETURNING` in einer DuckDB-Transaktion. Two-writer-Test (`test_claim_atomic_only_one_worker_wins`) pinnt Mutual Exclusion.
+- **Concurrency-Key:** Default = `target_ref` (meist `adapter_id`). Blockiert weitere Claims eines Jobs mit gleichem Key, solange ein Queue-Item auf `claimed` steht (`test_concurrency_key_blocks_second_claim`).
+- **Retry-Defaults:** exponentiell, `base=30s`, `factor=2`, `max=30min`, `max_attempts=5` als operative Baseline; pro Jobtyp via `meta.retry_policy` konfigurierbar.
+- **Replay:** `replay_failed_run` legt ein neues `meta.job_queue`-Item mit `trigger_kind='replay'` an, referenziert den Ursprungs-Run über ein `replay_enqueued`-Event. Raw-Artefakte bleiben unverändert (Manifest §3.9).
+- **CLI-Migration:** `fetch-remote` und `stage-load` registrieren beim ersten Aufruf synthetische Jobs (`cli_fetch_remote__<adapter_id>` / `cli_stage_load__<adapter_id>`) und laufen verpflichtend über den Runner — kein Pfad umgeht mehr `meta.job_run` (Manifest §3.13).
+- **DB-Helper-Konsolidierung:** `src/new_nfl/_db.py` bündelt `connect` / `row_to_dict` / `new_id`; `jobs/model.py` und `jobs/runner.py` nutzen den geteilten Helper. `metadata.py` bleibt mit eigenen privaten Helfern unverändert (Scope-Begrenzung; Konsolidierung dort wäre Refactor-Tranche für sich).
+- **Job-Typ-Erweiterung:** `JobType` ist zu `str` geöffnet, Routing erfolgt über `runner.register_executor`. `BUILTIN_JOB_TYPES` dokumentiert die Baseline; Domain-Tranchen (Ontology, Quarantine) registrieren eigene Executor ohne Schemaänderung.
+
+## Offene Punkte (nach T2.3B)
+- Jitter im Backoff ist absichtlich noch nicht aktiv (deterministische Tests); Aktivierung mit T2.7 (Resilienz).
+- Mehrere gleichzeitige Worker-Prozesse gegen dieselbe DuckDB-Datei sind laut DuckDB-Docs nicht unterstützt; Phase-1 bleibt single-worker. Eskalation auf Postgres nur bei echter Multi-Writer-Last.

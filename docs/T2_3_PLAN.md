@@ -39,11 +39,12 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 - **Pflichtpfade:** `cli list-jobs`, `cli describe-job`, `cli register-job`, `cli register-retry-policy` verfügbar.
 - **DoD:** Tests grün (73/73), Schema dokumentiert in ADR-0025.
 
-### T2.3B — Internal Runner
+### T2.3B — Internal Runner ✅ (abgeschlossen 2026-04-13)
 - **Ziel:** Worker-Loop, der `job_queue` claimt (Idempotency-Key, atomarer Update-claim), Job ausführt, Run schreibt, Retries gemäß Policy macht.
-- **Artefakte:** `src/new_nfl/jobs/runner.py`, `cli run-worker --once`, `cli run-worker --serve`.
-- **Pflichtpfade:** existierende `fetch-remote` und `stage-load` über den Runner ausführbar.
-- **DoD:** Replay eines fehlgeschlagenen Runs reproduziert deterministisch.
+- **Artefakte:** `src/new_nfl/jobs/runner.py` (Claim-Loop, Executor-Registry, Retry-Logik, `replay_failed_run`), geteilter DB-Helper `src/new_nfl/_db.py`, CLI `run-worker --once|--serve` und `replay-run --job-run-id`.
+- **Pflichtpfade:** `fetch-remote` und `stage-load` routen verpflichtend über den Runner; jedes CLI-Invocation erzeugt `meta.job_run`-Evidence (Manifest §3.13).
+- **Defaults:** Concurrency-Key = `target_ref` (i. d. R. `adapter_id`), Backoff exponentiell `base=30s`, `factor=2`, `max=30min`, Serve-Tick 5 s idle-sleep.
+- **DoD:** Replay eines fehlgeschlagenen Runs reproduziert deterministisch (verifiziert in `tests/test_jobs_runner.py::test_replay_failed_run_reproduces_deterministically`); Suite grün (90/90); ADR-0025 final accepted.
 
 ### T2.3C — Quarantäne-Domäne
 - **Ziel:** `meta.quarantine_case`, `meta.recovery_action` mit CLI-Surface.
