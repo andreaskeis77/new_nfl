@@ -14,6 +14,12 @@ from new_nfl.core_browse import browse_core_dictionary
 from new_nfl.core_load import execute_core_load
 from new_nfl.core_lookup import lookup_core_dictionary_field
 from new_nfl.core_summary import summarize_core_dictionary
+from new_nfl.jobs import (
+    describe_job,
+    list_jobs,
+    register_job,
+    register_retry_policy,
+)
 from new_nfl.metadata import (
     get_pipeline_state,
     list_ingest_runs,
@@ -398,6 +404,130 @@ def _cmd_list_ingest_runs(pipeline_name: str | None) -> int:
     return 0
 
 
+def _cmd_list_jobs() -> int:
+    settings = load_settings()
+    jobs = list_jobs(settings)
+    print(f'JOB_COUNT={len(jobs)}')
+    for job in jobs:
+        print(
+            '|'.join(
+                [
+                    job.job_key,
+                    job.job_type,
+                    job.target_ref or '',
+                    'active' if job.is_active else 'inactive',
+                    job.concurrency_key or '',
+                    job.retry_policy_id or '',
+                ]
+            )
+        )
+    return 0
+
+
+def _cmd_describe_job(job_key: str) -> int:
+    settings = load_settings()
+    result = describe_job(settings, job_key)
+    if result is None:
+        print(f'JOB_KEY={job_key}')
+        print('STATUS=not_found')
+        return 1
+    job = result['job']
+    retry_policy = result['retry_policy']
+    schedules = result['schedules']
+    recent_runs = result['recent_runs']
+    print(f'JOB_KEY={job.job_key}')
+    print(f'JOB_ID={job.job_id}')
+    print(f'JOB_TYPE={job.job_type}')
+    print(f'TARGET_REF={job.target_ref or ""}')
+    print(f'DESCRIPTION={job.description or ""}')
+    print(f'IS_ACTIVE={job.is_active}')
+    print(f'CONCURRENCY_KEY={job.concurrency_key or ""}')
+    print(f'PARAMS_JSON={job.params_json}')
+    if retry_policy is not None:
+        print(
+            'RETRY_POLICY='
+            f'{retry_policy.policy_key}|'
+            f'{retry_policy.backoff_kind}|'
+            f'max_attempts={retry_policy.max_attempts}|'
+            f'base_seconds={retry_policy.base_seconds}'
+        )
+    else:
+        print('RETRY_POLICY=')
+    print(f'SCHEDULE_COUNT={len(schedules)}')
+    for schedule in schedules:
+        print(
+            'SCHEDULE='
+            f'{schedule.schedule_kind}|{schedule.schedule_expr or ""}|'
+            f'tz={schedule.timezone or ""}|'
+            f'active={schedule.is_active}'
+        )
+    print(f'RECENT_RUN_COUNT={len(recent_runs)}')
+    for run in recent_runs:
+        print(
+            'RUN='
+            f'{run.job_run_id}|{run.run_status}|'
+            f'attempt={run.attempt_number}|'
+            f'started_at={run.started_at or ""}'
+        )
+    return 0
+
+
+def _cmd_register_job(
+    job_key: str,
+    job_type: str,
+    target_ref: str,
+    description: str,
+    concurrency_key: str,
+    params_json: str,
+    retry_policy_key: str,
+    inactive: bool,
+) -> int:
+    settings = load_settings()
+    import json as _json
+    params = _json.loads(params_json) if params_json else {}
+    job = register_job(
+        settings,
+        job_key=job_key,
+        job_type=job_type,  # type: ignore[arg-type]
+        target_ref=target_ref or None,
+        description=description or None,
+        is_active=not inactive,
+        concurrency_key=concurrency_key or None,
+        params=params,
+        retry_policy_key=retry_policy_key or None,
+    )
+    print(f'JOB_KEY={job.job_key}')
+    print(f'JOB_ID={job.job_id}')
+    print('STATUS=registered')
+    return 0
+
+
+def _cmd_register_retry_policy(
+    policy_key: str,
+    max_attempts: int,
+    backoff_kind: str,
+    base_seconds: int,
+    max_seconds: int,
+    jitter_ratio: float,
+    notes: str,
+) -> int:
+    settings = load_settings()
+    policy = register_retry_policy(
+        settings,
+        policy_key=policy_key,
+        max_attempts=max_attempts,
+        backoff_kind=backoff_kind,  # type: ignore[arg-type]
+        base_seconds=base_seconds,
+        max_seconds=max_seconds if max_seconds > 0 else None,
+        jitter_ratio=jitter_ratio if jitter_ratio > 0 else None,
+        notes=notes or None,
+    )
+    print(f'POLICY_KEY={policy.policy_key}')
+    print(f'POLICY_ID={policy.retry_policy_id}')
+    print('STATUS=registered')
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='new-nfl',
@@ -512,6 +642,39 @@ def build_parser() -> argparse.ArgumentParser:
     )
     show_state.add_argument('--pipeline-name', required=True)
 
+    sub.add_parser('list-jobs', help='List registered job definitions')
+
+    describe_job_parser = sub.add_parser(
+        'describe-job',
+        help='Describe one job definition with schedules and recent runs',
+    )
+    describe_job_parser.add_argument('--job-key', required=True)
+
+    register_job_parser = sub.add_parser(
+        'register-job',
+        help='Register or update a job definition',
+    )
+    register_job_parser.add_argument('--job-key', required=True)
+    register_job_parser.add_argument('--job-type', required=True)
+    register_job_parser.add_argument('--target-ref', default='')
+    register_job_parser.add_argument('--description', default='')
+    register_job_parser.add_argument('--concurrency-key', default='')
+    register_job_parser.add_argument('--params-json', default='{}')
+    register_job_parser.add_argument('--retry-policy-key', default='')
+    register_job_parser.add_argument('--inactive', action='store_true')
+
+    register_policy_parser = sub.add_parser(
+        'register-retry-policy',
+        help='Register or update a retry policy',
+    )
+    register_policy_parser.add_argument('--policy-key', required=True)
+    register_policy_parser.add_argument('--max-attempts', type=int, required=True)
+    register_policy_parser.add_argument('--backoff-kind', required=True)
+    register_policy_parser.add_argument('--base-seconds', type=int, required=True)
+    register_policy_parser.add_argument('--max-seconds', type=int, default=0)
+    register_policy_parser.add_argument('--jitter-ratio', type=float, default=0.0)
+    register_policy_parser.add_argument('--notes', default='')
+
     return parser
 
 
@@ -567,6 +730,31 @@ def main() -> int:
         )
     if args.command == 'show-pipeline-state':
         return _cmd_show_pipeline_state(args.pipeline_name)
+    if args.command == 'list-jobs':
+        return _cmd_list_jobs()
+    if args.command == 'describe-job':
+        return _cmd_describe_job(args.job_key)
+    if args.command == 'register-job':
+        return _cmd_register_job(
+            args.job_key,
+            args.job_type,
+            args.target_ref,
+            args.description,
+            args.concurrency_key,
+            args.params_json,
+            args.retry_policy_key,
+            args.inactive,
+        )
+    if args.command == 'register-retry-policy':
+        return _cmd_register_retry_policy(
+            args.policy_key,
+            args.max_attempts,
+            args.backoff_kind,
+            args.base_seconds,
+            args.max_seconds,
+            args.jitter_ratio,
+            args.notes,
+        )
 
     parser.error('Unknown command')
     return 2

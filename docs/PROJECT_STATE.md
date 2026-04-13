@@ -2,7 +2,18 @@
 
 ## Current phase
 
-T2.2A — VPS Deploy Runbook for Preview Release
+**T2.3 Foundation Hardening** — T2.3A abgeschlossen, bereit für T2.3B
+
+## Architektur-Baseline (freigegeben am 2026-04-13)
+
+- `concepts/NEW_NFL_SYSTEM_CONCEPT_v0_3.md` — verbindlicher Architektur-Anker
+- `ENGINEERING_MANIFEST_v1_3.md` — verbindliche Engineering-Regeln
+- `UI_STYLE_GUIDE_v0_1.md` — verbindliche UI-Regeln
+- `T2_3_PLAN.md` — aktiver Tranche-Plan zum v1.0-Ziel (Ende Juni 2026)
+- `USE_CASE_VALIDATION_v0_1.md` — abgenommene Use Cases
+- ADR-0025 bis ADR-0030 — neue Architekturentscheidungen (Proposed)
+- `CHAT_HANDOFF_PROTOCOL.md`, `LESSONS_LEARNED_PROTOCOL.md` — Methode
+- Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260413-1700_t23a-job-run-skeleton-done.md`
 
 ## Completed
 
@@ -27,6 +38,7 @@ T2.2A — VPS Deploy Runbook for Preview Release
 - T2.1B source-file discovery for operators
 - T2.1C local HTML preview for core dictionary
 - T2.1D local mini webserver for preview
+- T2.3A Job-/Run-Modell-Skeleton (meta.job_definition, job_schedule, job_queue, job_run, run_event, run_artifact, retry_policy + Pydantic-Modelle + CLI `list-jobs`/`describe-job`/`register-job`/`register-retry-policy`)
 
 ## Current runtime posture
 
@@ -42,6 +54,7 @@ T2.2A — VPS Deploy Runbook for Preview Release
 - browse / exact lookup / summary over the core dictionary
 - local HTML preview export
 - local mini webserver for preview
+- interner Job-/Run-Modell-Store in DuckDB (meta.job_*, meta.retry_policy, meta.run_event, meta.run_artifact) mit Pydantic-Modellen und CLI-Oberfläche
 
 ## Current release posture
 
@@ -60,8 +73,14 @@ What is still missing before the first VPS preview release:
 
 ## Current cycle
 
-We are now in T2.2 release preparation.
+T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nach v1.0 verschoben** (Operator-Entscheidung, siehe `concepts/NEW_NFL_SYSTEM_CONCEPT_v0_3.md` §2). Der Fokus wechselt auf interne Foundation-Härtung, damit alle Phase-1-Domänen autonom, evidenz- und replay-fähig laufen.
 
 ## Preferred next bolt
 
-T2.2B — VPS preview release execution and smoke test
+**T2.3B — Internal Runner** gemäß `T2_3_PLAN.md` §2 und ADR-0025: Worker-Loop, der `meta.job_queue` atomar claimt, ausführt, Retries gemäß Policy fährt, `meta.job_run` + `meta.run_event` + `meta.run_artifact` schreibt.
+
+## Zielkorridor v1.0
+
+- feature-complete: Ende Juni 2026
+- Testphase: Juli 2026
+- produktiv (auf Windows-VPS): vor Preseason-Start Anfang August 2026
