@@ -320,7 +320,30 @@ def _cmd_core_load(adapter_id: str, execute: bool) -> int:
     print(f'LOAD_EVENT_ID={result.load_event_id}')
     print(f'STAGE_DATASET={result.stage_dataset}')
     print(f'SOURCE_STATUS={result.source_status}')
+    print(f'MART_QUALIFIED_TABLE={result.mart_qualified_table}')
+    print(f'MART_ROW_COUNT={result.mart_row_count}')
     return 0
+
+
+def _cmd_mart_rebuild(mart_key: str) -> int:
+    settings = load_settings()
+    rc, detail = _run_cli_job(
+        settings,
+        job_key=f'cli_mart_rebuild__{mart_key}',
+        job_type='mart_build',
+        adapter_id=mart_key,
+        description=f'CLI auto-job for mart-rebuild {mart_key}',
+        params={'mart_key': mart_key},
+    )
+    if rc != 0 and not detail:
+        return rc
+    print(f'MART_KEY={detail.get("mart_key", mart_key)}')
+    print(f'QUALIFIED_TABLE={detail.get("qualified_table", "")}')
+    print(f'SOURCE_TABLE={detail.get("source_table", "")}')
+    print(f'SOURCE_ROW_COUNT={detail.get("source_row_count", 0)}')
+    print(f'ROW_COUNT={detail.get("row_count", 0)}')
+    print(f'BUILT_AT={detail.get("built_at", "")}')
+    return rc
 
 
 def _cmd_browse_core(adapter_id: str, field_prefix: str, data_type: str, limit: int) -> int:
@@ -784,6 +807,16 @@ def build_parser() -> argparse.ArgumentParser:
     core_load.add_argument('--adapter-id', required=True)
     core_load.add_argument('--execute', action='store_true')
 
+    mart_rebuild = sub.add_parser(
+        'mart-rebuild',
+        help='Rebuild a mart.* read projection from core.* (ADR-0029)',
+    )
+    mart_rebuild.add_argument(
+        '--mart-key',
+        default='schedule_field_dictionary_v1',
+        help='Projection key (default: schedule_field_dictionary_v1)',
+    )
+
     browse_core = sub.add_parser(
         'browse-core',
         help='Browse rows from the first core dictionary slice',
@@ -948,6 +981,8 @@ def main() -> int:
         return _cmd_stage_load(args.adapter_id, args.execute, args.source_file_id)
     if args.command == 'core-load':
         return _cmd_core_load(args.adapter_id, args.execute)
+    if args.command == 'mart-rebuild':
+        return _cmd_mart_rebuild(args.mart_key)
     if args.command == 'browse-core':
         return _cmd_browse_core(args.adapter_id, args.field_prefix, args.data_type, args.limit)
     if args.command == 'describe-core-field':

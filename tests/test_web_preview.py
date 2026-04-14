@@ -25,6 +25,8 @@ def settings(tmp_path: Path) -> Settings:
 
 
 def _prepare_core_table(settings: Settings) -> None:
+    from new_nfl.mart import build_schedule_field_dictionary_v1
+
     bootstrap_local_environment(settings)
     con = duckdb.connect(str(settings.db_path))
     try:
@@ -48,6 +50,7 @@ def _prepare_core_table(settings: Settings) -> None:
         )
     finally:
         con.close()
+    build_schedule_field_dictionary_v1(settings)
 
 
 def test_render_core_dictionary_preview_writes_html(settings: Settings, tmp_path: Path) -> None:

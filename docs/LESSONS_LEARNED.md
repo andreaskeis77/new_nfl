@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-04-14 — T2.3D Read-Modell-Trennung (`mart.*`)
+**Status:** accepted (Operator-Freigabe 2026-04-14)
+
+1. **Was lief gut:**
+   - Schema + Builder + Runner-Executor + CLI + Lint-Test in einer geschlossenen Tranche. Nach Abschluss zeigt der `qualified_table` aller Read-Wege auf `mart.schedule_field_dictionary_v1`, kein gemischter Zustand.
+   - `core-load --execute` ruft den Mart-Builder direkt am Ende des Execute-Pfads — kein zweiter Operator-Schritt nötig, kein Risiko, dass UI gegen veraltetes Mart läuft. Gleichzeitig bleibt `cli mart-rebuild` als unabhängiger Runner-Job verfügbar (für `_v2`-Bumps oder Repair).
+   - **AST-basierter Lint-Test** (`test_read_modules_do_not_reference_core_or_stg_directly`) erkennt String-Literale, die `core.` / `stg.` / `raw/` enthalten — Docstrings sind sauber exempt. Damit wird die ADR-0029-Pflicht zu einem objektiven Code-Review-Kriterium statt einer Erinnerung.
+   - **Spalten-toleranter Builder**: Quell-Schema von `core.schedule_field_dictionary` darf optionale Provenance-Spalten (`_source_file_id`, `_adapter_id`, `_canonicalized_at`/`_loaded_at`) tragen oder weglassen. Tests-Fixtures, die die alte Form pflegten, brauchten keine Schema-Anpassung.
+
+2. **Was lief nicht gut:**
+   - Die Read-Module heißen weiterhin `core_browse.py`/`core_lookup.py`/`core_summary.py`. Inhaltlich sind es jetzt Mart-Reader. Konsistente Umbenennung bewusst aufgeschoben, weil sie ansonsten Diff-Volumen ohne Verhaltensgewinn produziert; bleibt offener Refactor-Punkt für T2.5.
+   - `MAX(built_at)`-Roundtrip in DuckDB schlug initial mit `ModuleNotFoundError: pytz` fehl — aufgefallen erst beim Test, nicht beim Local-Smoke. Dropdown auf `datetime.now()` aus Python war die richtige Wahl, aber das Pytz-Problem ist eine Latenzbombe für jede künftige `MAX(timestamp)`-Aggregation.
+   - `assert qualified_table == MART_SCHEDULE_FIELD_DICTIONARY_V1` ist in den Read-Modulen verteilt redundant. Bleibt als billige Defense-in-Depth, lässt sich aber bei jedem neuen Mart-Reader vergessen — sollte beim Refactor in T2.5 zentralisiert werden.
+
+3. **Root Cause:**
+   - DuckDB-`pytz`-Abhängigkeit für Timestamp-Aggregate ist eine bekannte Eigenheit, die in unserem `requirements.txt` nicht abgedeckt ist. Wir vermeiden sie heute, indem Build-Timestamps Python-seitig erzeugt werden — aber die Falle bleibt für jeden, der naiv `SELECT MAX(timestamp_col)` in DuckDB schreibt.
+   - Die Read-Modul-Namensgebung stammt aus T2.0C, wo es noch keine Mart-Schicht gab. Refactor-Aufschub ist eine Scope-Entscheidung.
+
+4. **Konkrete Methodänderung:**
+   - Jeder neue Mart-Reader-Modul wird ab T2.5 direkt unter dem `mart_*.py`-Präfix angelegt; bestehende `core_*.py`-Reader werden im Rahmen der ersten T2.5-Domäne mit umbenannt (atomarer Rename + Test-Update).
+   - DuckDB-Pytz-Falle in `LESSONS_LEARNED` als Snippet-Warnung dokumentiert; bei künftigen `built_at`/`updated_at`-Aggregaten Python-seitig oder über `epoch_ms`-Casts arbeiten.
+   - Lint-Wand erweitern, sobald HTTP-API-Module entstehen (T2.6): die `READ_MODULES`-Liste wird einfach ergänzt.
+
+5. **Verifikation:**
+   - `tests/test_mart.py` (9 Tests) + volle Suite grün (112/112).
+   - ADR-0029 auf `Accepted` mit Implementierungs-Notizen.
+   - `PROJECT_STATE.md` und `T2_3_PLAN.md` aktualisiert auf Nächstpunkt T2.3E (ADR-Indexpflege).
+
+---
+
 ## 2026-04-14 — T2.3C Quarantäne-Domäne
 **Status:** accepted (Operator-Freigabe 2026-04-14)
 

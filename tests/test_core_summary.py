@@ -27,6 +27,8 @@ def settings(tmp_path: Path) -> Settings:
 
 
 def _prepare_core_table(settings: Settings) -> None:
+    from new_nfl.mart import build_schedule_field_dictionary_v1
+
     bootstrap_local_environment(settings)
     seed_default_sources(settings)
     con = duckdb.connect(str(settings.db_path))
@@ -56,6 +58,7 @@ def _prepare_core_table(settings: Settings) -> None:
         )
     finally:
         con.close()
+    build_schedule_field_dictionary_v1(settings)
 
 
 def test_summarize_core_dictionary_returns_grouped_counts(settings: Settings) -> None:
@@ -64,7 +67,7 @@ def test_summarize_core_dictionary_returns_grouped_counts(settings: Settings) ->
     result = summarize_core_dictionary(settings, adapter_id='nflverse_bulk')
 
     assert result.adapter_id == 'nflverse_bulk'
-    assert result.qualified_table == 'core.schedule_field_dictionary'
+    assert result.qualified_table == 'mart.schedule_field_dictionary_v1'
     assert result.total_row_count == 5
     assert result.distinct_data_type_count == 2
     assert result.data_type_rows == (

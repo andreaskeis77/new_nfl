@@ -187,9 +187,49 @@ def _executor_custom(settings: Settings, params: dict[str, Any]) -> ExecutionRes
     )
 
 
+def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> ExecutionResult:
+    """Rebuild a versioned ``mart.*`` read projection (ADR-0029).
+
+    ``params['mart_key']`` selects the projection. Each projection is a full
+    rebuild (``CREATE OR REPLACE TABLE``) over ``core.*``; the runner records
+    the build as a ``meta.job_run`` so operators can audit freshness.
+    """
+    from new_nfl.mart import build_schedule_field_dictionary_v1
+
+    mart_key = params.get("mart_key", "schedule_field_dictionary_v1")
+    if mart_key == "schedule_field_dictionary_v1":
+        result = build_schedule_field_dictionary_v1(settings)
+    else:
+        raise ValueError(f"unknown mart_key={mart_key!r}")
+
+    return ExecutionResult(
+        success=True,
+        message=(
+            f"mart_build mart_key={mart_key} "
+            f"rows={result.row_count} source_rows={result.source_row_count}"
+        ),
+        detail={
+            "mart_key": mart_key,
+            "qualified_table": result.qualified_table,
+            "source_table": result.source_table,
+            "source_row_count": result.source_row_count,
+            "row_count": result.row_count,
+            "built_at": result.built_at.isoformat() if result.built_at else None,
+        },
+        artifacts=[
+            ExecutionArtifact(
+                artifact_kind="mart_table",
+                ref_id=result.qualified_table,
+                detail={"row_count": result.row_count},
+            )
+        ],
+    )
+
+
 EXECUTORS: dict[str, Executor] = {
     "fetch_remote": _executor_fetch_remote,
     "stage_load": _executor_stage_load,
+    "mart_build": _executor_mart_build,
     "custom": _executor_custom,
 }
 

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import duckdb
 
 from new_nfl.adapters.catalog import build_adapter_plan
+from new_nfl.mart import build_schedule_field_dictionary_v1
 from new_nfl.metadata import create_ingest_run, record_load_event
 from new_nfl.settings import Settings
 
@@ -29,6 +30,8 @@ class CoreLoadResult:
     load_event_id: str
     stage_dataset: str
     source_status: str
+    mart_qualified_table: str
+    mart_row_count: int
 
 
 def _source_table_for_adapter(adapter_id: str) -> tuple[str, str]:
@@ -167,9 +170,12 @@ def execute_core_load(
             load_event_id='',
             stage_dataset=plan.stage_dataset,
             source_status=plan.source_status,
+            mart_qualified_table='',
+            mart_row_count=0,
         )
 
     row_count = _rebuild_core_table(settings, source_table, qualified_table)
+    mart_result = build_schedule_field_dictionary_v1(settings)
     ingest_run_id = create_ingest_run(
         settings,
         pipeline_name=pipeline_name,
@@ -201,6 +207,8 @@ def execute_core_load(
             'distinct_key_count': distinct_key_count,
             'invalid_row_count': invalid_row_count,
             'row_count': row_count,
+            'mart_qualified_table': mart_result.qualified_table,
+            'mart_row_count': mart_result.row_count,
         },
     )
     return CoreLoadResult(
@@ -222,4 +230,6 @@ def execute_core_load(
         load_event_id=load_event_id,
         stage_dataset=plan.stage_dataset,
         source_status=plan.source_status,
+        mart_qualified_table=mart_result.qualified_table,
+        mart_row_count=mart_result.row_count,
     )

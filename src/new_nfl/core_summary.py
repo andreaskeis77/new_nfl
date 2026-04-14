@@ -1,4 +1,4 @@
-
+"""Summary over ``mart.schedule_field_dictionary_v1`` (ADR-0029)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import duckdb
 
 from new_nfl.adapters.catalog import build_adapter_plan
+from new_nfl.mart import MART_SCHEDULE_FIELD_DICTIONARY_V1
 from new_nfl.settings import Settings
 
 
@@ -25,9 +26,9 @@ class CoreSummaryResult:
 def _target_table_for_adapter(adapter_id: str) -> tuple[str, str]:
     if adapter_id != 'nflverse_bulk':
         raise ValueError(
-            'T2.0G only supports adapter_id=nflverse_bulk for the first summary core slice'
+            'summary currently only supports adapter_id=nflverse_bulk'
         )
-    return ('core', 'schedule_field_dictionary')
+    return ('mart', 'schedule_field_dictionary_v1')
 
 
 def summarize_core_dictionary(
@@ -37,6 +38,7 @@ def summarize_core_dictionary(
 ) -> CoreSummaryResult:
     source_schema, source_object = _target_table_for_adapter(adapter_id)
     qualified_table = f'{source_schema}.{source_object}'
+    assert qualified_table == MART_SCHEDULE_FIELD_DICTIONARY_V1
     plan = build_adapter_plan(settings, adapter_id)
 
     con = duckdb.connect(str(settings.db_path))

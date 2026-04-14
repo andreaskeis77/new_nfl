@@ -49,6 +49,8 @@ def settings(tmp_path: Path) -> Settings:
 
 
 def _prepare_core_table(settings: Settings) -> None:
+    from new_nfl.mart import build_schedule_field_dictionary_v1
+
     bootstrap_local_environment(settings)
     seed_default_sources(settings)
     con = duckdb.connect(str(settings.db_path))
@@ -77,6 +79,7 @@ def _prepare_core_table(settings: Settings) -> None:
         )
     finally:
         con.close()
+    build_schedule_field_dictionary_v1(settings)
 
 
 def test_cmd_describe_core_field_returns_zero_for_hit(

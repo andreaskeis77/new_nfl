@@ -1,3 +1,8 @@
+"""Read-path browse over ``mart.schedule_field_dictionary_v1`` (ADR-0029).
+
+Reads go exclusively against the ``mart.*`` projection; ``core.*`` is only
+touched by the mart builder.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,6 +10,7 @@ from dataclasses import dataclass
 import duckdb
 
 from new_nfl.adapters.catalog import build_adapter_plan
+from new_nfl.mart import MART_SCHEDULE_FIELD_DICTIONARY_V1
 from new_nfl.settings import Settings
 
 
@@ -28,9 +34,9 @@ class CoreBrowseResult:
 def _target_table_for_adapter(adapter_id: str) -> tuple[str, str]:
     if adapter_id != 'nflverse_bulk':
         raise ValueError(
-            'T2.0C only supports adapter_id=nflverse_bulk for the first browseable core slice'
+            'browse currently only supports adapter_id=nflverse_bulk'
         )
-    return ('core', 'schedule_field_dictionary')
+    return ('mart', 'schedule_field_dictionary_v1')
 
 
 def _assert_required_columns(settings: Settings, qualified_table: str) -> None:
@@ -39,7 +45,9 @@ def _assert_required_columns(settings: Settings, qualified_table: str) -> None:
         rows = con.execute(f'DESCRIBE {qualified_table}').fetchall()
     except duckdb.Error as exc:
         raise ValueError(
-            f'{qualified_table} does not exist; run core-load --adapter-id nflverse_bulk --execute first'
+            f'{qualified_table} does not exist; run mart-rebuild '
+            '--mart-key schedule_field_dictionary_v1 first '
+            '(or core-load --execute which rebuilds mart downstream)'
         ) from exc
     finally:
         con.close()
@@ -66,6 +74,7 @@ def browse_core_dictionary(
     plan = build_adapter_plan(settings, adapter_id)
     source_schema, source_object = _target_table_for_adapter(adapter_id)
     qualified_table = f'{source_schema}.{source_object}'
+    assert qualified_table == MART_SCHEDULE_FIELD_DICTIONARY_V1
     normalized_prefix = field_prefix.strip().lower()
     normalized_data_type = data_type_filter.strip().lower()
 
@@ -74,10 +83,10 @@ def browse_core_dictionary(
     where_parts: list[str] = []
     params: list[str | int] = []
     if normalized_prefix:
-        where_parts.append('LOWER(field) LIKE ?')
+        where_parts.append('field_lower LIKE ?')
         params.append(f'{normalized_prefix}%')
     if normalized_data_type:
-        where_parts.append('LOWER(data_type) = ?')
+        where_parts.append('data_type_lower = ?')
         params.append(normalized_data_type)
     where_clause = '' if not where_parts else 'WHERE ' + ' AND '.join(where_parts)
 

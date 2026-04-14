@@ -25,7 +25,8 @@ def settings(tmp_path: Path) -> Settings:
     )
 
 
-def _prepare_core_table(settings: Settings) -> None:
+def _prepare_core_table(settings: Settings) -> None:  # also builds mart projection
+    from new_nfl.mart import build_schedule_field_dictionary_v1
     bootstrap_local_environment(settings)
     seed_default_sources(settings)
     con = duckdb.connect(str(settings.db_path))
@@ -63,6 +64,7 @@ def _prepare_core_table(settings: Settings) -> None:
         )
     finally:
         con.close()
+    build_schedule_field_dictionary_v1(settings)
 
 
 def test_browse_core_dictionary_returns_sorted_rows(settings: Settings) -> None:
@@ -76,7 +78,7 @@ def test_browse_core_dictionary_returns_sorted_rows(settings: Settings) -> None:
         data_type_filter='',
     )
 
-    assert result.qualified_table == 'core.schedule_field_dictionary'
+    assert result.qualified_table == 'mart.schedule_field_dictionary_v1'
     assert result.total_row_count == 3
     assert result.match_row_count == 3
     assert result.returned_row_count == 3

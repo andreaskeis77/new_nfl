@@ -51,10 +51,10 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 - **Artefakte:** Modul `src/new_nfl/jobs/quarantine.py` (Dedupe per `(scope_type, scope_ref, reason_code)` über offene Status, Severity-Eskalation, Evidence-Merge); Auto-Quarantäne-Hook `_auto_quarantine_failed_run` in `jobs/runner.py` bei `runner_exhausted`; CLI `list-quarantine --status`, `quarantine-show --quarantine-case-id`, `quarantine-resolve --action replay|override|suppress --note "…"`; Tests (`tests/test_quarantine.py`).
 - **DoD:** Künstlich erzeugter Parser-Fehler landet in Quarantäne, Resolve `--action replay` erzeugt nachweisbar neuen `job_run_id` und schließt den Case (`tests/test_quarantine.py::test_quarantine_replay_resolves_case_on_success`); Suite grün (103/103); ADR-0028 final accepted.
 
-### T2.3D — Read-Modell-Trennung formalisieren
+### T2.3D — Read-Modell-Trennung formalisieren ✅ (abgeschlossen 2026-04-14)
 - **Ziel:** Schema `mart` in DuckDB mit ersten Read-Modellen (`mart.schedule_field_dictionary_v1`). Web-Preview und CLI-Browse lesen ausschließlich aus `mart.*`.
-- **Artefakte:** Migration, Refactor `core_browse.py` → liest `mart.*`, ADR-0029.
-- **DoD:** Grep über `web_*` und CLI-Browse zeigt keine Direktzugriffe auf `core.*` oder `stg.*`.
+- **Artefakte:** `src/new_nfl/mart/schedule_field_dictionary.py` (Builder mit Spalten-Tolerantem Select über `core.schedule_field_dictionary`); Runner-Executor `mart_build` in `jobs/runner.py`; CLI `mart-rebuild --mart-key …`; `core_load` triggert Mart-Build implizit am Ende des Execute-Pfads (`CoreLoadResult.mart_qualified_table` / `mart_row_count` neu); Refactor `core_browse.py`/`core_lookup.py`/`core_summary.py` auf `mart.*` (mit pre-lowercased `field_lower`/`data_type_lower`); Tests `tests/test_mart.py` (9) mit Lint-Test, der Direktzugriffe auf `core.*`/`stg.*`/`raw/` in den Read-Modulen über AST-Walk verbietet.
+- **DoD:** AST-Lint-Test (`tests/test_mart.py::test_read_modules_do_not_reference_core_or_stg_directly`) ist grün, alle Read-Module zeigen `qualified_table='mart.schedule_field_dictionary_v1'`; Suite grün (112/112); ADR-0029 final accepted.
 
 ### T2.3E — ADR-Block schreiben
 - **Ziel:** ADR-0025 bis ADR-0030 (siehe Abschnitt 8).

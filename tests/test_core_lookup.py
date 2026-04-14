@@ -26,6 +26,8 @@ def settings(tmp_path: Path) -> Settings:
 
 
 def _prepare_core_table(settings: Settings) -> None:
+    from new_nfl.mart import build_schedule_field_dictionary_v1
+
     bootstrap_local_environment(settings)
     seed_default_sources(settings)
     con = duckdb.connect(str(settings.db_path))
@@ -54,6 +56,7 @@ def _prepare_core_table(settings: Settings) -> None:
         )
     finally:
         con.close()
+    build_schedule_field_dictionary_v1(settings)
 
 
 def test_lookup_core_dictionary_field_returns_exact_match(settings: Settings) -> None:
@@ -69,7 +72,7 @@ def test_lookup_core_dictionary_field_returns_exact_match(settings: Settings) ->
     assert result.field == 'game_id'
     assert result.data_type == 'numeric'
     assert result.description == 'Primary game identifier'
-    assert result.qualified_table == 'core.schedule_field_dictionary'
+    assert result.qualified_table == 'mart.schedule_field_dictionary_v1'
     assert result.miss_reason == ''
     assert result.suggestions == ()
 

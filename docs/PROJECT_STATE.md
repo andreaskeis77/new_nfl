@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.3 Foundation Hardening** — T2.3C abgeschlossen, bereit für T2.3D
+**T2.3 Foundation Hardening** — T2.3D abgeschlossen, bereit für T2.3E
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -41,6 +41,7 @@
 - T2.3A Job-/Run-Modell-Skeleton (meta.job_definition, job_schedule, job_queue, job_run, run_event, run_artifact, retry_policy + Pydantic-Modelle + CLI `list-jobs`/`describe-job`/`register-job`/`register-retry-policy`)
 - T2.3B Internal Runner (`src/new_nfl/jobs/runner.py`: atomarer Claim, Executor-Registry, Retry-Policy-Auswertung, Replay; geteilter DB-Helper `src/new_nfl/_db.py`; CLI `run-worker --once|--serve` und `replay-run`; `fetch-remote`/`stage-load` laufen nur noch über den Runner)
 - T2.3C Quarantäne-Domäne (`src/new_nfl/jobs/quarantine.py`: `meta.quarantine_case`, `meta.recovery_action`; Dedupe per `(scope_type, scope_ref, reason_code)`; Auto-Quarantäne-Hook im Runner bei `runner_exhausted`; CLI `list-quarantine`, `quarantine-show`, `quarantine-resolve --action replay|override|suppress`; Replay erzeugt neuen `job_run_id` und schließt den Case bei Erfolg)
+- T2.3D Read-Modell-Trennung (`src/new_nfl/mart/`: `mart.schedule_field_dictionary_v1` als versionierte Read-Projektion über `core.schedule_field_dictionary`; Runner-Executor `mart_build`; CLI `mart-rebuild --mart-key …`; `core-load --execute` triggert Mart-Build implizit; `core_browse`/`core_lookup`/`core_summary`/`web_preview`/`web_server` lesen ausschließlich aus `mart.*`; Lint-Test verbietet `core.*`/`stg.*`/`raw/` in Read-Modulen)
 
 ## Current runtime posture
 
@@ -59,6 +60,7 @@
 - interner Job-/Run-Modell-Store in DuckDB (meta.job_*, meta.retry_policy, meta.run_event, meta.run_artifact) mit Pydantic-Modellen und CLI-Oberfläche
 - interner Job-Runner: atomares Claim auf `meta.job_queue`, Executor-Registry (`fetch_remote`, `stage_load`, `custom`), Retry-Policy-Auswertung, deterministischer Replay gescheiterter Runs; CLI `run-worker --once|--serve` und `replay-run --job-run-id`; `fetch-remote` und `stage-load` erzeugen nur noch über den Runner Evidence (Manifest §3.9, §3.13)
 - First-class Quarantäne-Domäne: jeder `runner_exhausted`-Run öffnet einen `meta.quarantine_case` mit Evidence-Ref; Operator-Aktionen (`replay`, `override`, `suppress`) werden als `meta.recovery_action` persistiert und verlinken bei Replay den neuen `job_run_id` (ADR-0028)
+- Read-Modell-Schicht `mart.*` als einziger Lesepfad für CLI-Browse/Web-Preview (ADR-0029): `mart.schedule_field_dictionary_v1` voll rebuildbar aus `core.*`, automatisch nach `core-load --execute` aufgefrischt, separat über CLI `mart-rebuild` als Runner-Job; Direktzugriffe aus Read-Modulen auf `core.*`/`stg.*`/`raw/` werden durch einen Lint-Test blockiert
 
 ## Current release posture
 
@@ -81,7 +83,7 @@ T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nac
 
 ## Preferred next bolt
 
-**T2.3D — Read-Modell-Trennung (mart.*)** gemäß `T2_3_PLAN.md` §2 und ADR-0027: UI/API sollen ausschließlich aus `mart.*` lesen; core.* bleibt Konstruktions-Schicht. DoD: `core.schedule_field_dictionary` wird über eine materialisierte `mart.*`-View exponiert, Preview/API wechseln auf die mart-Oberfläche, Umschalter dokumentiert.
+**T2.3E — ADR-Block schließen** gemäß `T2_3_PLAN.md` §2 und §8: ADR-0025/0028/0029 sind bereits Accepted; ADR-0026 (Ontology-as-Code, T2.4A), ADR-0027 (Dedupe-Pipeline, T2.4B) und ADR-0030 (UI Stack, T2.6A) bleiben Proposed bis zur jeweiligen Tranche. T2.3E reduziert sich auf das Indexieren und Verlinken im `adr/README.md`.
 
 ## Zielkorridor v1.0
 
