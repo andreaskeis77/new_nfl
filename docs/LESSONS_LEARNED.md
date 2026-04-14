@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-04-14 — T2.3E ADR-Index abgeschlossen
+**Status:** accepted (Operator-Freigabe 2026-04-14)
+
+1. **Was lief gut:**
+   - `docs/adr/README.md` ist jetzt ein vollständiger Index ADR-0001–ADR-0030 mit Status + Tranchen-Anker. Status-Quelle bleibt das ADR-Dokument selbst (single source of truth), der Index ist nur Navigations- und Übersichts-Layer.
+   - Bewusste Trennung: T2.3-eigene ADRs (0025/0028/0029) sind `Accepted`. ADR-0026/0027/0030 bleiben `Proposed` bis zur Umsetzung in T2.4A/T2.4B/T2.6A — keine vorgezogene Akzeptanz, die später relativiert werden müsste.
+
+2. **Was lief nicht gut:**
+   - ADR-0001 bis ADR-0018 verwenden eine ältere Status-Konvention (`Status: Accepted` als Inline-Zeile statt eigener Section). Der Index normalisiert das nach außen, aber die Heterogenität bleibt im Bestand. Kein Refactor, weil low-value.
+   - Die Tabelle ist statisch — Status-Drift im ADR-Dokument selbst wird nicht automatisch gespiegelt. Bei nächster Tranche prüfen, ob ein Mini-Skript den Index regeneriert.
+
+3. **Root Cause:**
+   - Die Inline-Status-Konvention der frühen ADRs ist Erblast aus A0 vor `LESSONS_LEARNED_PROTOCOL.md`. Die neueren ADRs nutzen `## Status` als Section, was maschinenlesbar ist.
+
+4. **Konkrete Methodänderung:**
+   - Neue ADRs (ab ADR-0031) verwenden ausschließlich die `## Status`-Section-Konvention. Bestand bleibt unangetastet.
+   - Beim nächsten Index-Update (T2.4-ADRs `Accepted` setzen) Snippet `awk '/^## Status/{getline; print}'` als Regenerator verwenden.
+
+5. **Verifikation:**
+   - `docs/adr/README.md` mit Tabelle ADR-0001–ADR-0030 + Status + Tranchen-Anker.
+   - `PROJECT_STATE.md` und `T2_3_PLAN.md` markieren T2.3E ✅; nächster Bolzen ist T2.4A (Ontology-as-Code).
+
+---
+
 ## 2026-04-14 — T2.3D Read-Modell-Trennung (`mart.*`)
 **Status:** accepted (Operator-Freigabe 2026-04-14)
 

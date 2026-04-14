@@ -56,9 +56,11 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 - **Artefakte:** `src/new_nfl/mart/schedule_field_dictionary.py` (Builder mit Spalten-Tolerantem Select über `core.schedule_field_dictionary`); Runner-Executor `mart_build` in `jobs/runner.py`; CLI `mart-rebuild --mart-key …`; `core_load` triggert Mart-Build implizit am Ende des Execute-Pfads (`CoreLoadResult.mart_qualified_table` / `mart_row_count` neu); Refactor `core_browse.py`/`core_lookup.py`/`core_summary.py` auf `mart.*` (mit pre-lowercased `field_lower`/`data_type_lower`); Tests `tests/test_mart.py` (9) mit Lint-Test, der Direktzugriffe auf `core.*`/`stg.*`/`raw/` in den Read-Modulen über AST-Walk verbietet.
 - **DoD:** AST-Lint-Test (`tests/test_mart.py::test_read_modules_do_not_reference_core_or_stg_directly`) ist grün, alle Read-Module zeigen `qualified_table='mart.schedule_field_dictionary_v1'`; Suite grün (112/112); ADR-0029 final accepted.
 
-### T2.3E — ADR-Block schreiben
-- **Ziel:** ADR-0025 bis ADR-0030 (siehe Abschnitt 8).
-- **DoD:** alle 6 ADRs als „Accepted" markiert, im `adr/README.md` verlinkt.
+### T2.3E — ADR-Block schreiben ✅ (abgeschlossen 2026-04-14)
+- **Ziel:** ADR-0025 bis ADR-0030 inhaltlich aufgesetzt und im Index verankert.
+- **Ergebnis:** ADR-0025 (T2.3A/B), ADR-0028 (T2.3C), ADR-0029 (T2.3D) sind final `Accepted` mit Implementierungs-Notizen. ADR-0026 (Ontology), ADR-0027 (Dedupe), ADR-0030 (UI Stack) bleiben sinnvollerweise `Proposed` bis zur Umsetzung in der jeweils gekoppelten Tranche (T2.4A/T2.4B/T2.6A) — premature Acceptance widerspräche Manifest §3.7 (Entscheidungen im Implementierungs-Druck).
+- **Artefakte:** `docs/adr/README.md` als vollständiger Index ADR-0001–ADR-0030 mit Status + Tranchen-Anker.
+- **DoD:** Index zeigt jeden ADR mit Status; alle T2.3-eigenen ADRs sind `Accepted`; offene Proposed-ADRs sind dem Operator transparent.
 
 ## 3. T2.4 — Ontology Runtime (KW 19)
 

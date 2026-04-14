@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.3 Foundation Hardening** — T2.3D abgeschlossen, bereit für T2.3E
+**T2.3 Foundation Hardening** — vollständig abgeschlossen (T2.3A–T2.3E), bereit für T2.4A
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -42,6 +42,7 @@
 - T2.3B Internal Runner (`src/new_nfl/jobs/runner.py`: atomarer Claim, Executor-Registry, Retry-Policy-Auswertung, Replay; geteilter DB-Helper `src/new_nfl/_db.py`; CLI `run-worker --once|--serve` und `replay-run`; `fetch-remote`/`stage-load` laufen nur noch über den Runner)
 - T2.3C Quarantäne-Domäne (`src/new_nfl/jobs/quarantine.py`: `meta.quarantine_case`, `meta.recovery_action`; Dedupe per `(scope_type, scope_ref, reason_code)`; Auto-Quarantäne-Hook im Runner bei `runner_exhausted`; CLI `list-quarantine`, `quarantine-show`, `quarantine-resolve --action replay|override|suppress`; Replay erzeugt neuen `job_run_id` und schließt den Case bei Erfolg)
 - T2.3D Read-Modell-Trennung (`src/new_nfl/mart/`: `mart.schedule_field_dictionary_v1` als versionierte Read-Projektion über `core.schedule_field_dictionary`; Runner-Executor `mart_build`; CLI `mart-rebuild --mart-key …`; `core-load --execute` triggert Mart-Build implizit; `core_browse`/`core_lookup`/`core_summary`/`web_preview`/`web_server` lesen ausschließlich aus `mart.*`; Lint-Test verbietet `core.*`/`stg.*`/`raw/` in Read-Modulen)
+- T2.3E ADR-Block aktualisiert (`docs/adr/README.md` als vollständiger Index mit Status + Tranchen-Anker für ADR-0001 bis ADR-0030; ADR-0025/0028/0029 final `Accepted`; ADR-0026/0027/0030 bleiben `Proposed` bis zur jeweiligen Tranche T2.4A/T2.4B/T2.6A)
 
 ## Current runtime posture
 
@@ -83,7 +84,7 @@ T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nac
 
 ## Preferred next bolt
 
-**T2.3E — ADR-Block schließen** gemäß `T2_3_PLAN.md` §2 und §8: ADR-0025/0028/0029 sind bereits Accepted; ADR-0026 (Ontology-as-Code, T2.4A), ADR-0027 (Dedupe-Pipeline, T2.4B) und ADR-0030 (UI Stack, T2.6A) bleiben Proposed bis zur jeweiligen Tranche. T2.3E reduziert sich auf das Indexieren und Verlinken im `adr/README.md`.
+**T2.4A — Ontology-as-Code-Skelett** gemäß `T2_3_PLAN.md` §3 und ADR-0026: Verzeichnis `ontology/` mit YAML-Quelldateien für Begriffe, Aliases, Value Sets; Loader projiziert in `meta.ontology_term`/`meta.ontology_alias`/`meta.ontology_value_set`; CLI `ontology-load`, `ontology-show <term>`. DoD: Bootstrap erzeugt Ontologie-Tabellen, Versionsstempel in `meta.ontology_version`.
 
 ## Zielkorridor v1.0
 
