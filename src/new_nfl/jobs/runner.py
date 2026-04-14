@@ -552,6 +552,43 @@ def _finalize_failure(
     return "failed"
 
 
+def _auto_quarantine_failed_run(
+    settings: Settings,
+    *,
+    job_run_id: str,
+    job_key: str,
+    job_type: str,
+    message: str,
+    detail: dict[str, Any],
+) -> None:
+    """Open (or refresh) a quarantine case for a runner-exhausted failure.
+
+    Manifest §3.12 (Quarantäne ist ein Lebenszustand) — a failed run cannot
+    be silently abandoned. The case is keyed by ``(job_run, job_run_id,
+    runner_exhausted)`` so each failed run gets exactly one case.
+    """
+    # Local import keeps the module dependency one-way (quarantine -> runner
+    # for replay; runner -> quarantine only at call time).
+    from new_nfl.jobs.quarantine import open_quarantine_case
+
+    open_quarantine_case(
+        settings,
+        scope_type="job_run",
+        scope_ref=job_run_id,
+        reason_code="runner_exhausted",
+        severity="error",
+        evidence_refs=[
+            {
+                "kind": "job_run",
+                "job_run_id": job_run_id,
+                "job_key": job_key,
+                "job_type": job_type,
+            }
+        ],
+        notes=message,
+    )
+
+
 def _execute_claimed(
     settings: Settings,
     claimed: dict[str, Any],
@@ -609,17 +646,28 @@ def _execute_claimed(
                 message=message,
                 detail={"job_type": job_type},
             )
-            return RunnerTick(
-                claimed=True,
+            no_executor_status = final_status
+    finally:
+        con.close()
+    if executor is None:
+        if no_executor_status == "failed":
+            _auto_quarantine_failed_run(
+                settings,
                 job_run_id=job_run_id,
                 job_key=job_key,
                 job_type=job_type,
-                run_status=final_status,
-                message=message,
-                detail={},
+                message=f"no executor registered for job_type={job_type}",
+                detail={"job_type": job_type},
             )
-    finally:
-        con.close()
+        return RunnerTick(
+            claimed=True,
+            job_run_id=job_run_id,
+            job_key=job_key,
+            job_type=job_type,
+            run_status=no_executor_status,
+            message=f"no executor registered for job_type={job_type}",
+            detail={},
+        )
 
     try:
         result = executor(settings, effective_params)
@@ -647,6 +695,15 @@ def _execute_claimed(
             )
         finally:
             con.close()
+        if final_status == "failed":
+            _auto_quarantine_failed_run(
+                settings,
+                job_run_id=job_run_id,
+                job_key=job_key,
+                job_type=job_type,
+                message=f"executor raised: {exc}",
+                detail={"error": str(exc)},
+            )
         return RunnerTick(
             claimed=True,
             job_run_id=job_run_id,
@@ -692,6 +749,16 @@ def _execute_claimed(
                 _insert_run_artifact(con, job_run_id=job_run_id, artifact=artifact)
     finally:
         con.close()
+
+    if final_status == "failed":
+        _auto_quarantine_failed_run(
+            settings,
+            job_run_id=job_run_id,
+            job_key=job_key,
+            job_type=job_type,
+            message=result.message or "executor reported failure",
+            detail=result.detail,
+        )
 
     return RunnerTick(
         claimed=True,

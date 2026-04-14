@@ -219,6 +219,38 @@ TABLE_SPECS: dict[str, dict[str, Any]] = {
             "recorded_at": "TIMESTAMP DEFAULT current_timestamp",
         },
     },
+    "quarantine_case": {
+        "primary_key": "quarantine_case_id",
+        "columns": {
+            "quarantine_case_id": "VARCHAR",
+            "scope_type": "VARCHAR NOT NULL",
+            "scope_ref": "VARCHAR NOT NULL",
+            "reason_code": "VARCHAR NOT NULL",
+            "severity": "VARCHAR NOT NULL",
+            "evidence_refs_json": "VARCHAR",
+            "status": "VARCHAR NOT NULL",
+            "owner": "VARCHAR",
+            "notes": "VARCHAR",
+            "first_seen_at": "TIMESTAMP DEFAULT current_timestamp",
+            "last_seen_at": "TIMESTAMP DEFAULT current_timestamp",
+            "resolved_at": "TIMESTAMP",
+            "created_at": "TIMESTAMP DEFAULT current_timestamp",
+            "updated_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
+    "recovery_action": {
+        "primary_key": "recovery_action_id",
+        "columns": {
+            "recovery_action_id": "VARCHAR",
+            "quarantine_case_id": "VARCHAR NOT NULL",
+            "action_kind": "VARCHAR NOT NULL",
+            "triggered_by": "VARCHAR",
+            "resulting_run_id": "VARCHAR",
+            "note": "VARCHAR",
+            "detail_json": "VARCHAR",
+            "triggered_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
 }
 
 DEFAULT_SOURCES: tuple[dict[str, Any], ...] = (

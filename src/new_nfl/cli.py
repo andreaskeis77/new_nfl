@@ -15,13 +15,16 @@ from new_nfl.core_lookup import lookup_core_dictionary_field
 from new_nfl.core_summary import summarize_core_dictionary
 from new_nfl.jobs import (
     describe_job,
+    describe_quarantine_case,
     enqueue_job,
     list_jobs,
+    list_quarantine_cases,
     list_run_artifacts,
     load_run,
     register_job,
     register_retry_policy,
     replay_failed_run,
+    resolve_quarantine_case,
     run_worker_once,
     run_worker_serve,
 )
@@ -631,6 +634,81 @@ def _cmd_replay_run(job_run_id: str) -> int:
     return 0 if tick.run_status == 'success' else 1
 
 
+def _cmd_list_quarantine(status: str) -> int:
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    cases = list_quarantine_cases(settings, status_filter=status or 'open')
+    print(f'CASE_COUNT={len(cases)}')
+    for case in cases:
+        print(
+            'CASE='
+            f'{case.quarantine_case_id}|'
+            f'{case.status}|'
+            f'{case.severity}|'
+            f'{case.scope_type}|'
+            f'{case.scope_ref}|'
+            f'{case.reason_code}'
+        )
+    return 0
+
+
+def _cmd_quarantine_show(quarantine_case_id: str) -> int:
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    detail = describe_quarantine_case(settings, quarantine_case_id)
+    if detail is None:
+        print(f'QUARANTINE_CASE_ID={quarantine_case_id}')
+        print('STATUS=not_found')
+        return 1
+    case = detail['case']
+    actions = detail['actions']
+    print(f'QUARANTINE_CASE_ID={case.quarantine_case_id}')
+    print(f'STATUS={case.status}')
+    print(f'SEVERITY={case.severity}')
+    print(f'SCOPE_TYPE={case.scope_type}')
+    print(f'SCOPE_REF={case.scope_ref}')
+    print(f'REASON_CODE={case.reason_code}')
+    print(f'OWNER={case.owner or ""}')
+    print(f'NOTES={case.notes or ""}')
+    print(f'FIRST_SEEN_AT={case.first_seen_at or ""}')
+    print(f'LAST_SEEN_AT={case.last_seen_at or ""}')
+    print(f'RESOLVED_AT={case.resolved_at or ""}')
+    print(f'EVIDENCE_REFS_JSON={case.evidence_refs_json}')
+    print(f'ACTION_COUNT={len(actions)}')
+    for action in actions:
+        print(
+            'ACTION='
+            f'{action.action_kind}|'
+            f'{action.triggered_by or ""}|'
+            f'{action.resulting_run_id or ""}|'
+            f'{action.note or ""}'
+        )
+    return 0
+
+
+def _cmd_quarantine_resolve(
+    quarantine_case_id: str, action: str, note: str
+) -> int:
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    result = resolve_quarantine_case(
+        settings,
+        quarantine_case_id=quarantine_case_id,
+        action=action,  # type: ignore[arg-type]
+        note=note or None,
+        triggered_by='cli',
+    )
+    case = result['case']
+    print(f'QUARANTINE_CASE_ID={quarantine_case_id}')
+    print(f'ACTION={action}')
+    print(f'NEW_STATUS={case.status if case else ""}')
+    print(f'RESULTING_RUN_ID={result.get("resulting_run_id") or ""}')
+    print(f'REPLAY_STATUS={result.get("replay_status") or ""}')
+    if action == 'replay' and result.get('replay_status') != 'success':
+        return 1
+    return 0
+
+
 def _cmd_register_retry_policy(
     policy_key: str,
     max_attempts: int,
@@ -809,6 +887,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     replay_run_parser.add_argument('--job-run-id', required=True)
 
+    list_quarantine_parser = sub.add_parser(
+        'list-quarantine',
+        help='List quarantine cases',
+    )
+    list_quarantine_parser.add_argument('--status', default='open')
+
+    quarantine_show_parser = sub.add_parser(
+        'quarantine-show',
+        help='Describe one quarantine case with recovery actions',
+    )
+    quarantine_show_parser.add_argument('--quarantine-case-id', required=True)
+
+    quarantine_resolve_parser = sub.add_parser(
+        'quarantine-resolve',
+        help='Resolve a quarantine case via replay / override / suppress',
+    )
+    quarantine_resolve_parser.add_argument('--quarantine-case-id', required=True)
+    quarantine_resolve_parser.add_argument(
+        '--action', required=True, choices=('replay', 'override', 'suppress'),
+    )
+    quarantine_resolve_parser.add_argument('--note', default='')
+
     register_policy_parser = sub.add_parser(
         'register-retry-policy',
         help='Register or update a retry policy',
@@ -902,6 +1002,14 @@ def main() -> int:
         )
     if args.command == 'replay-run':
         return _cmd_replay_run(args.job_run_id)
+    if args.command == 'list-quarantine':
+        return _cmd_list_quarantine(args.status)
+    if args.command == 'quarantine-show':
+        return _cmd_quarantine_show(args.quarantine_case_id)
+    if args.command == 'quarantine-resolve':
+        return _cmd_quarantine_resolve(
+            args.quarantine_case_id, args.action, args.note
+        )
     if args.command == 'register-retry-policy':
         return _cmd_register_retry_policy(
             args.policy_key,

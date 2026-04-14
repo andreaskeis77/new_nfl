@@ -1,7 +1,7 @@
 # ADR-0028: Quarantine as First-Class Domain
 
 ## Status
-Proposed (target: Accepted at end of T2.3C)
+Accepted (2026-04-14, umgesetzt in T2.3C)
 
 ## Kontext
 Bisher werden Fehler beim Fetch / Parse / Stage-Load über Logs sichtbar, aber nicht als persistente Domäne geführt. Das widerspricht dem Manifest-Prinzip „Fail loud on data integrity" und macht Recovery zu einer Ad-hoc-Aktivität.
@@ -33,3 +33,20 @@ Pflichtregeln:
 
 ## Rollout
 - T2.3C: Schema, CLI, ein synthetischer Quarantäne-Test im Pytest-Suite.
+
+## Implementierungs-Notizen (T2.3C, 2026-04-14)
+
+- Tabellen sind in `metadata.TABLE_SPECS` versioniert; `ensure_metadata_surface` legt sie beim Bootstrap an.
+- Dedupe-Schlüssel: `(scope_type, scope_ref, reason_code)` solange Status `open` oder `in_progress`. Re-Occurrence aktualisiert `last_seen_at`, merged `evidence_refs` dedupliziert und eskaliert `severity` monoton (`info < warning < error < critical`).
+- Runner-Hook: `jobs/runner._auto_quarantine_failed_run` öffnet bei jedem `runner_exhausted`-Abschluss einen Case mit `scope_type='job_run'`, `reason_code='runner_exhausted'` und dem `job_run_id` als `scope_ref`. Evidence-Ref enthält `job_key` + letzte Fehlernachricht.
+- Operator-Aktionen (`meta.recovery_action.action_kind`):
+  - `override` → Case `resolved`, kein neuer Run.
+  - `suppress` → Case `suppressed`.
+  - `replay` → verlangt `scope_type='job_run'`; ruft `jobs/runner.replay_failed_run` auf, verlinkt den neuen `job_run_id`. Bei Erfolg wird der Case `resolved`; bei erneutem Fehlschlag bleibt er `in_progress` — der Runner öffnet autom. einen neuen Case für den neuen Failed Run.
+- Import-Zyklen (`runner ↔ quarantine`) werden über Lazy-Imports in den beiden Hook-Funktionen aufgelöst.
+- CLI-Output folgt dem `KEY=VALUE`-Stil der anderen Job-Kommandos (grep-bar).
+
+Offene Punkte → Folge-Tranchen:
+- UI-Surface (v1.1 / T2.6).
+- Schema-validierte `evidence_refs` (heute frei-form JSON) sobald die ersten Adapter stabilisiert sind.
+- `owner`-Workflow (Zuweisung) kommt mit Multi-Operator-Modus (post-v1.0).

@@ -46,10 +46,10 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 - **Defaults:** Concurrency-Key = `target_ref` (i. d. R. `adapter_id`), Backoff exponentiell `base=30s`, `factor=2`, `max=30min`, Serve-Tick 5 s idle-sleep.
 - **DoD:** Replay eines fehlgeschlagenen Runs reproduziert deterministisch (verifiziert in `tests/test_jobs_runner.py::test_replay_failed_run_reproduces_deterministically`); Suite grün (90/90); ADR-0025 final accepted.
 
-### T2.3C — Quarantäne-Domäne
+### T2.3C — Quarantäne-Domäne ✅ (abgeschlossen 2026-04-14)
 - **Ziel:** `meta.quarantine_case`, `meta.recovery_action` mit CLI-Surface.
-- **Artefakte:** Modul `src/new_nfl/jobs/quarantine.py`, `cli list-quarantine`, `cli quarantine-show <id>`, `cli quarantine-resolve <id> --action replay|override|suppress --note "…"`.
-- **DoD:** Künstlich erzeugter Parser-Fehler landet in Quarantäne, Resolve erzeugt nachweisbar neuen Run.
+- **Artefakte:** Modul `src/new_nfl/jobs/quarantine.py` (Dedupe per `(scope_type, scope_ref, reason_code)` über offene Status, Severity-Eskalation, Evidence-Merge); Auto-Quarantäne-Hook `_auto_quarantine_failed_run` in `jobs/runner.py` bei `runner_exhausted`; CLI `list-quarantine --status`, `quarantine-show --quarantine-case-id`, `quarantine-resolve --action replay|override|suppress --note "…"`; Tests (`tests/test_quarantine.py`).
+- **DoD:** Künstlich erzeugter Parser-Fehler landet in Quarantäne, Resolve `--action replay` erzeugt nachweisbar neuen `job_run_id` und schließt den Case (`tests/test_quarantine.py::test_quarantine_replay_resolves_case_on_success`); Suite grün (103/103); ADR-0028 final accepted.
 
 ### T2.3D — Read-Modell-Trennung formalisieren
 - **Ziel:** Schema `mart` in DuckDB mit ersten Read-Modellen (`mart.schedule_field_dictionary_v1`). Web-Preview und CLI-Browse lesen ausschließlich aus `mart.*`.

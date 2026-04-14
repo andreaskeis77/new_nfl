@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-04-14 — T2.3C Quarantäne-Domäne
+**Status:** accepted (Operator-Freigabe 2026-04-14)
+
+1. **Was lief gut:**
+   - Schema + Domain-Modul + Runner-Hook + CLI + Tests in einem geschlossenen Rutsch. Kein Pfad bleibt „still" — jeder `runner_exhausted`-Run öffnet automatisch einen `meta.quarantine_case` (Manifest §3.5 / §3.12 erfüllt).
+   - DoD-Test (`test_quarantine_replay_resolves_case_on_success`) deckt den vollen Operator-Zyklus ab: Fehler → Auto-Case → Defektbehebung → `quarantine-resolve --action replay` → neuer `job_run_id` → Case `resolved` → `recovery_action` verlinkt.
+   - Replay-Failed-Pfad explizit getestet (`test_quarantine_replay_failed_keeps_case_in_progress`): alter Case bleibt `in_progress`, Runner-Hook öffnet sauber einen neuen Case für den neuen Failed Run — keine stille Vermischung.
+   - Import-Zyklus `runner ↔ quarantine` ohne neue Zwischenschicht gelöst (Lazy-Imports in beiden Hook-Funktionen). Kein Architektur-Krater für einen technischen Import-Effekt.
+
+2. **Was lief nicht gut:**
+   - Severity-Eskalation ist im SQL mit mehrstufiger `CASE`-Kaskade umgesetzt. Funktionsfähig und getestet, aber die Ordnungsregel (`info < warning < error < critical`) lebt halb in Python-Literalen und halb in SQL. Wenn ein fünftes Level dazukommt, muss an zwei Stellen gepflegt werden.
+   - Das CLI-Kommando für die „offenen" Listenansicht zeigt beide Stati (`open` + `in_progress`) zusammen, filtert aber nicht prominent in der Ausgabe — Operator muss den Detailview nehmen, um `in_progress` zu erkennen. Akzeptabel in v1.0 CLI-Only, aber bleibt UI-Punkt für T2.6.
+   - `evidence_refs_json` bleibt frei-form. Für den Auto-Quarantäne-Pfad ist das Schema implizit stabil, aber externe Opener (künftige Stage-Load-Parser-Fehler) haben noch keinen Vertrag.
+
+3. **Root Cause:**
+   - Severity-Ordnung als Literal-Strings war Design-Default aus T2.3A-Mustern; für Phase-1 tragfähig, aber nicht skalierend. Eine `meta.quarantine_severity`-Referenz-Tabelle wäre konsequenter, ist aber für nur vier Werte Overkill.
+   - Das generische `evidence_refs`-Feld ist gewollt offen gelassen, weil jede Quell-Domäne eine andere Art Beleg liefert (Dateizeile, Adapter-Request, Schema-Diff). Formalisierung kommt, wenn die ersten drei Opener-Stellen existieren (T2.4/T2.5).
+
+4. **Konkrete Methodänderung:**
+   - Bei jedem neuen Executor in T2.4/T2.5: Fehlerpfad muss explizit entscheiden, ob er `open_quarantine_case` selbst ruft (mit scope-spezifischem `reason_code`) oder auf den Runner-Hook vertraut. Wird als Checkliste in den LL-Eintrag jeder Domäne-Tranche aufgenommen.
+   - Sobald drei verschiedene Opener existieren: `evidence_refs`-Shape konsolidieren (Pydantic-Model oder JSON-Schema).
+   - `quarantine-resolve --action replay` wird zur erwarteten Demo-Flow-Abnahme für jede Phase-1-Domäne (T2.5).
+
+5. **Verifikation:**
+   - `tests/test_quarantine.py` (13 Tests) + volle Suite grün (103/103).
+   - ADR-0028 auf `Accepted` mit Implementierungs-Notizen.
+   - `PROJECT_STATE.md` und `T2_3_PLAN.md` aktualisiert auf Nächstpunkt T2.3D.
+
+---
+
 ## 2026-04-13 — T2.3B Internal Runner
 **Status:** accepted (Operator-Freigabe 2026-04-13)
 
