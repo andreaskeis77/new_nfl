@@ -70,10 +70,11 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 - **Artefakte:** [ontology/v0_1/](../ontology/v0_1), [src/new_nfl/ontology/loader.py](../src/new_nfl/ontology/loader.py), [tests/test_ontology.py](../tests/test_ontology.py).
 - **DoD:** Erfüllt — Bootstrap legt `meta.ontology_*` an, `ontology-load` stempelt `meta.ontology_version` mit `content_sha256`, `is_active`-Flag pro Quellverzeichnis.
 
-### T2.4B — Dedupe-Pipeline-Skelett
+### T2.4B — Dedupe-Pipeline-Skelett ✅ (2026-04-16)
 - **Ziel:** Stub-Pipeline mit klaren Stufen (normalize → block → score → cluster → review-queue), zunächst nur deterministische Normalisierung implementiert, probabilistischer Score als TODO mit Interface.
-- **Artefakte:** `src/new_nfl/dedupe/`, `cli dedupe-run --domain <name>`, ADR-0027 (bereits in T2.3E).
-- **DoD:** Player-Stammdaten laufen einmal durch die Pipeline ohne Crash.
+- **Ergebnis:** Fünf Module unter [src/new_nfl/dedupe/](../src/new_nfl/dedupe) (`normalize`, `block`, `score`, `cluster`, `review`) plus `pipeline.py`. Stdlib-only Normalisierung (NFKD, Suffix-Erkennung Jr./Sr./II–V). `RuleBasedPlayerScorer` (`kind=rule_based_v1`) mit sechs Score-Stufen 1.00/0.95/0.80/0.70/0.60/0.50; `Scorer`-Protocol bleibt offen für ML-Erweiterung. Connected-Components-Cluster mit Singleton-Erhalt. `meta.dedupe_run` + `meta.review_item` als Evidence. CLI `dedupe-run --domain players --demo`, `dedupe-review-list`. ADR-0027 final `Accepted`.
+- **Artefakte:** [src/new_nfl/dedupe/](../src/new_nfl/dedupe), [tests/test_dedupe.py](../tests/test_dedupe.py).
+- **DoD:** Erfüllt — Demo-Set (6 QB-Records inkl. Mahomes-Twin, A. Rodgers-Initial-Match, Tom-Brady-Singleton) durchläuft die Pipeline und produziert Auto-Merge + Review + No-Match in einem Lauf, persistiert in `meta.dedupe_run`/`meta.review_item`.
 
 ## 4. T2.5 — Domain Expansion (KW 20–22)
 

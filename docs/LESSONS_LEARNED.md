@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-04-16 — T2.4B Dedupe-Pipeline-Skelett
+**Status:** draft (wartet auf Operator-Freigabe)
+
+1. **Was lief gut:**
+   - **Fünf-Stufen-Trennung explizit als Module** (`normalize`, `block`, `score`, `cluster`, `review`, plus `pipeline.py`). Jede Stufe hat eine schlanke API (Funktion in, Datenklasse out), ist isoliert testbar (sechs Stage-Tests vor dem ersten E2E-Lauf) und lässt sich später ohne Pipeline-Rewrite austauschen — speziell `Scorer` als `typing.Protocol` macht den späteren ML-Tausch zu einer Drei-Zeilen-Änderung in `pipeline.py`.
+   - **Demo-Set deckt alle drei Buckets in einem Lauf** (Auto-Merge: Mahomes-Twin, Review: A. Rodgers vs Aaron Rodgers + P. Mahomes Initial-Match, No-Match: Tom Brady singleton). Damit ist der DoD-Smoke-Pfad nicht synthetisch-leer, sondern führt jeden Code-Pfad einmal aus.
+   - **Score-Tabelle ist bewusst flach** (sechs feste Stufen 1.00/0.95/0.80/0.70/0.60/0.50). Reicht für Phase-1, ist trivial dokumentier- und review-bar; Operator versteht nach 30 Sekunden, warum ein Pair in Auto-Merge oder Review landet. Komplexere gewichtete Summen wären für einen Stub Premature Optimization.
+   - **Block-Drop für Records ohne Last-Name.** Statt sie als O(n)-Vergleichspartner durchzuschieben, fallen sie aus dem Block-Pool — fail-loud-Prinzip aus dem Manifest. In realen Daten sind das Datenfehler, kein Match-Kandidat.
+   - **Singletons als eigene Cluster gezählt.** `cluster_count` spiegelt die wahre Anzahl distinkter Entitäten, nicht nur die Auto-Merge-Cluster — sonst gäbe es bei sechs Inputs ohne jeden Auto-Merge `cluster_count = 0`, was irreführend ist.
+
+2. **Was lief nicht gut:**
+   - **`meta.cluster_assignment` fehlt.** Cluster werden in v0_1 nicht persistiert (nur `cluster_count`). Für T2.5C ist das ein Vorausschulden — die Pipeline kann nicht out-of-the-box „welche Records gehören zur selben Entität" beantworten, sobald sie den DuckDB-Lebenszyklus verlässt. Bewusst akzeptiert: persistente Cluster-Tabelle wäre Vorgriff auf T2.5C-Anforderungen, die heute nicht bekannt sind.
+   - **`dedupe-review-resolve` CLI fehlt.** Operator kann Review-Items nur lesen (`dedupe-review-list`), nicht direkt schließen. Analog zu `quarantine-resolve` aus T2.3C — wäre symmetrisch sinnvoll, ist aber nicht im DoD von T2.4B. Backlog-Eintrag in ADR-0027 §Offene Punkte.
+   - **Kein Adapter zwischen `core.player` und `RawPlayerRecord`.** Die Pipeline läuft heute nur gegen das eingebaute Demo-Set oder gegen extern injizierte `list[RawPlayerRecord]`. Sobald T2.5C echte Player-Records erzeugt, braucht es einen `core_to_dedupe_input(...)`-Adapter. Heute zu früh — Schema von `core.player` steht noch nicht fest.
+   - **Kein Runner-Executor für `dedupe-run`.** Der CLI-Pfad ruft `run_player_dedupe` direkt, nicht über `meta.job_run`. Begründung: T2.3D/T2.3C-Pattern routen Schreibpfade über den Runner, aber Demo-Smokes sind keine Produktions-Runs. Sobald T2.5C Dedupe gegen reale Daten fährt, sollte ein `dedupe_run`-Executor analog zu `mart_build` her.
+
+3. **Root Cause:**
+   - Cluster-Persistenz und Review-Resolve-Pfad hängen am Player-Schema. Solange `core.player` nicht existiert (kommt mit T2.5C), gibt es keinen Pin, an dem ein FK festgemacht werden könnte. Manifest §3.7: keine Schema-Entscheidungen unter spekulativem Druck.
+   - Runner-Bypass ist temporär — der Demo-Pfad braucht keine Replay-Garantie. Sobald „echte" Dedupe-Runs Quarantäne erzeugen können, dreht sich das.
+
+4. **Konkrete Methodänderung:**
+   - **Pipeline-Stufen werden ab T2.5 immer mit eigenem Pydantic-Modell als Stage-Output definiert** (nicht: Tuple/Dict). T2.4B folgt dem schon (`NormalizedPlayer`, `BlockedPair`, `ScoredPair`, `Cluster`); ist die Default-Form für jede neue Pipeline.
+   - **Stub-Pipelines bekommen Demo-Inputs aus dem Code, nicht aus Test-Fixtures.** Tests fahren auf demselben Demo-Set wie der CLI-Smoke (`DEMO_PLAYER_RECORDS`). Gleichzeitig sind sie Doku — ein neuer Mitarbeiter sieht in einer Datei, was die Pipeline tut.
+   - **Scorer-Tausch geht über `Scorer`-Protocol-Argument** in der Top-Level-Funktion (`run_player_dedupe(scorer=...)`). Kein Registry, kein Settings-Schalter. Wenn T2.5C einen anderen Scorer braucht, wird er als Default-Argument durchgereicht.
+
+5. **Verifikation:**
+   - `pytest` grün: 13 Tests in [tests/test_dedupe.py](../tests/test_dedupe.py), gesamte Suite 136 passed.
+   - `cli dedupe-run --domain players --demo` erzeugt einen `meta.dedupe_run`-Datensatz mit `RUN_STATUS=success`, `INPUT_RECORD_COUNT=6`, `AUTO_MERGE_PAIR_COUNT >= 1`, `REVIEW_PAIR_COUNT >= 1`.
+   - `cli dedupe-review-list --domain players` listet die offenen Review-Pairs sortiert nach Score.
+   - ADR-0027 final `Accepted` mit Implementierungs-Notizen + Offenen-Punkte-Backlog für T2.5C.
+   - `PROJECT_STATE.md` markiert T2.4 vollständig abgeschlossen, nächster Bolzen ist T2.5A (Teams-Domäne).
+
+---
+
 ## 2026-04-16 — T2.4A Ontology-as-Code-Skelett
 **Status:** draft (wartet auf Operator-Freigabe)
 

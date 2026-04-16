@@ -13,6 +13,8 @@ from new_nfl.core_browse import browse_core_dictionary
 from new_nfl.core_load import execute_core_load
 from new_nfl.core_lookup import lookup_core_dictionary_field
 from new_nfl.core_summary import summarize_core_dictionary
+from new_nfl.dedupe import open_review_items, run_player_dedupe
+from new_nfl.dedupe.pipeline import DEMO_PLAYER_RECORDS
 from new_nfl.jobs import (
     describe_job,
     describe_quarantine_case,
@@ -345,6 +347,66 @@ def _cmd_mart_rebuild(mart_key: str) -> int:
     print(f'ROW_COUNT={detail.get("row_count", 0)}')
     print(f'BUILT_AT={detail.get("built_at", "")}')
     return rc
+
+
+def _cmd_dedupe_run(domain: str, demo: bool, lower: float, upper: float) -> int:
+    if domain != 'players':
+        print(f'DOMAIN={domain}')
+        print('STATUS=unsupported_domain')
+        print('MESSAGE=T2.4B v0_1 only ships the players domain')
+        return 2
+    if not demo:
+        print(f'DOMAIN={domain}')
+        print('STATUS=missing_source')
+        print('MESSAGE=Pass --demo to run against the bundled demo player set')
+        return 2
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    result = run_player_dedupe(
+        settings,
+        records=list(DEMO_PLAYER_RECORDS),
+        source_ref='demo:builtin',
+        lower_threshold=lower,
+        upper_threshold=upper,
+    )
+    print(f'DEDUPE_RUN_ID={result.dedupe_run_id}')
+    print(f'DOMAIN={result.domain}')
+    print(f'SOURCE_REF={result.source_ref}')
+    print(f'SCORER_KIND={result.scorer_kind}')
+    print(f'LOWER_THRESHOLD={result.lower_threshold}')
+    print(f'UPPER_THRESHOLD={result.upper_threshold}')
+    print(f'INPUT_RECORD_COUNT={result.input_record_count}')
+    print(f'CANDIDATE_PAIR_COUNT={result.candidate_pair_count}')
+    print(f'AUTO_MERGE_PAIR_COUNT={result.auto_merge_pair_count}')
+    print(f'REVIEW_PAIR_COUNT={result.review_pair_count}')
+    print(f'CLUSTER_COUNT={result.cluster_count}')
+    print(f'RUN_STATUS={result.run_status}')
+    for cluster in result.clusters:
+        print(
+            'CLUSTER='
+            + '|'.join([str(cluster.cluster_id), ','.join(cluster.record_ids)])
+        )
+    return 0
+
+
+def _cmd_dedupe_review_list(domain: str, limit: int) -> int:
+    settings = load_settings()
+    rows = open_review_items(settings, domain=domain or None, limit=limit)
+    print(f'OPEN_REVIEW_ITEM_COUNT={len(rows)}')
+    for row in rows:
+        print(
+            'REVIEW_ITEM=' + '|'.join(
+                [
+                    str(row['review_item_id']),
+                    str(row['domain']),
+                    str(row['left_record_id']),
+                    str(row['right_record_id']),
+                    f'{float(row["score"]):.2f}',
+                    str(row['block_key'] or ''),
+                ]
+            )
+        )
+    return 0
 
 
 def _cmd_ontology_load(source_dir: str, version_label: str, activate: bool) -> int:
@@ -900,6 +962,26 @@ def build_parser() -> argparse.ArgumentParser:
         help='Projection key (default: schedule_field_dictionary_v1)',
     )
 
+    dedupe_run_parser = sub.add_parser(
+        'dedupe-run',
+        help='Run the dedupe pipeline (T2.4B, ADR-0027)',
+    )
+    dedupe_run_parser.add_argument('--domain', required=True)
+    dedupe_run_parser.add_argument(
+        '--demo',
+        action='store_true',
+        help='Use the bundled demo record set (only mode supported in v0_1)',
+    )
+    dedupe_run_parser.add_argument('--lower-threshold', type=float, default=0.50)
+    dedupe_run_parser.add_argument('--upper-threshold', type=float, default=0.85)
+
+    dedupe_review_parser = sub.add_parser(
+        'dedupe-review-list',
+        help='List open review items from prior dedupe runs',
+    )
+    dedupe_review_parser.add_argument('--domain', default='')
+    dedupe_review_parser.add_argument('--limit', type=int, default=50)
+
     ontology_load_parser = sub.add_parser(
         'ontology-load',
         help='Load a versioned ontology directory into meta.ontology_* (ADR-0026)',
@@ -1091,6 +1173,12 @@ def main() -> int:
         return _cmd_core_load(args.adapter_id, args.execute)
     if args.command == 'mart-rebuild':
         return _cmd_mart_rebuild(args.mart_key)
+    if args.command == 'dedupe-run':
+        return _cmd_dedupe_run(
+            args.domain, args.demo, args.lower_threshold, args.upper_threshold
+        )
+    if args.command == 'dedupe-review-list':
+        return _cmd_dedupe_review_list(args.domain, args.limit)
     if args.command == 'ontology-load':
         return _cmd_ontology_load(args.source_dir, args.version_label, args.activate)
     if args.command == 'ontology-list':
