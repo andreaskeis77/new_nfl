@@ -1,0 +1,55 @@
+# Ontology term: NFL player injury / availability status (T2.4A, ADR-0026)
+term_key = "injury_status"
+label = "Injury status"
+description = "Weekly availability designation for a player on the injury report."
+aliases = ["injury", "availability", "injury_designation"]
+
+[[value_sets]]
+key = "all_injury_statuses"
+label = "All injury statuses"
+description = "Standard NFL injury report designations plus season-ending flag."
+
+  [[value_sets.members]]
+  value = "healthy"
+  label = "Healthy"
+  ordinal = 10
+
+  [[value_sets.members]]
+  value = "probable"
+  label = "Probable"
+  ordinal = 20
+
+  [[value_sets.members]]
+  value = "questionable"
+  label = "Questionable"
+  ordinal = 30
+
+  [[value_sets.members]]
+  value = "doubtful"
+  label = "Doubtful"
+  ordinal = 40
+
+  [[value_sets.members]]
+  value = "out"
+  label = "Out"
+  ordinal = 50
+
+  [[value_sets.members]]
+  value = "ir"
+  label = "Injured Reserve"
+  ordinal = 60
+
+  [[value_sets.members]]
+  value = "pup"
+  label = "Physically Unable to Perform"
+  ordinal = 70
+
+  [[value_sets.members]]
+  value = "nfi"
+  label = "Non-Football Injury"
+  ordinal = 80
+
+  [[value_sets.members]]
+  value = "suspended"
+  label = "Suspended"
+  ordinal = 90

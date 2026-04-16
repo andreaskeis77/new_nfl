@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-04-16 — T2.4A Ontology-as-Code-Skelett
+**Status:** draft (wartet auf Operator-Freigabe)
+
+1. **Was lief gut:**
+   - **TOML statt YAML.** Stdlib `tomllib` (Python 3.12+) deckt die rein deklarative Struktur (Term, Aliases, Value Sets) vollständig ab — keine zusätzliche Runtime-Abhängigkeit (PyYAML), keine Versionspflege. ADR-0026 hatte YAML als Default vorgesehen, das war im Implementierungs-Druck eine vermeidbare Abhängigkeit.
+   - **`content_sha256`-Idempotenz** über sortierten Hash aus `(Dateiname, Inhalt)` — wiederholter Load identischer Quelle ist garantiert No-Op und liefert dieselbe `ontology_version_id` zurück. Kein Diff-Vergleich pro Tabelle, kein UPSERT-Pfad: einmal geladen, fertig. `is_active`-Flag pro `source_dir` macht Versions-Switching billig.
+   - **Service-Surface mit Pydantic-Modellen** (`OntologyTerm`, `OntologyValueSet`, `OntologyValueSetMember`, `OntologyTermDetail`) — CLI, Tests und (später) Web-Routen reden über stabile Typen, nicht über rohe Dicts. Konsistenz zur Quarantäne- und Mart-Surface aus T2.3C/D.
+   - **Alias-Auflösung in `describe_term`** — `cli ontology-show --term-key pos` findet `position`, ohne dass Operator die kanonische Form raten muss. `alias_lower`-Spalte ist vorberechnet, kein `LOWER(...)` in der WHERE-Klausel.
+
+2. **Was lief nicht gut:**
+   - `meta.ontology_mapping` ist als Tabelle angelegt, in v0_1 aber unbenutzt — der Schema-Aufwand ist gerechtfertigt, weil T2.5 die Tabelle braucht, aber das ist genau der Typ Vorgriff, vor dem Manifest §3.7 warnt. Bewusst akzeptiert: das Schema einer einzelnen Tabelle ist günstig, ein Migration-Pfad mit FK-Hinzufügung später wäre teurer.
+   - Kein impliziter Bootstrap-Load. Der Operator muss `cli ontology-load --source-dir ontology/v0_1` einmal explizit ausführen. Das ist gewollt (Promotion soll explizite Version referenzieren), aber für die nächste Tranche eine offene UX-Frage: `cli bootstrap` könnte v0_1 aus dem Repo-Root automatisch laden.
+   - Im Loader hartcodiert: TOML-Erwartung an `term_key`, `aliases`, `value_sets[*].key`, `value_sets[*].members[*].value`. Kein Schema-Validator (Pydantic gegen Roh-TOML) — Fehler werden als `ValueError` mit Dateiname geworfen. Reicht für v0_1, aber sobald externe Beiträger Terme schreiben, will man Pydantic-Validation auf der Rohstruktur.
+
+3. **Root Cause:**
+   - YAML im ADR war Erblast aus dem A0-Konzept, wo eine breite Werkzeug-Auswahl noch sinnvoll war. Im Implementierungs-Druck zeigt sich, dass für drei flach strukturierte Term-Dateien TOML reicht — und die Manifest-§3.13-Pflicht zur minimal-möglichen Abhängigkeit gewinnt.
+   - `ontology_mapping`-Tabelle ohne Loader-Pfad: bewusster Trade-off zwischen jetzigem Schema-Vorgriff und späterem ALTER-TABLE-Risiko.
+
+4. **Konkrete Methodänderung:**
+   - **Default-Format für deklarative Repo-Quellen ist TOML**, solange stdlib reicht. YAML nur, wenn Anchors/Multiline/Komplexstruktur das brauchen. ADR-Updates spiegeln diese Entscheidung als Implementierungs-Notiz wider.
+   - **Neue Domänen-Loader stempeln `content_sha256`** auf der Versions-Zeile (nicht erst pro Datei). Erlaubt Idempotenz auf Verzeichnisebene.
+   - Nächster Bolzen (T2.4B) prüft, ob ein gemeinsamer `Loader`-Helper-Layer (`hash_directory`, `apply_idempotent`) die Wiederholung lohnt — heute zu früh, T2.4A ist die erste Instanz.
+
+5. **Verifikation:**
+   - `pytest` grün: 11 Tests in [tests/test_ontology.py](../tests/test_ontology.py), gesamte Suite 123 passed.
+   - CLI-Smoke: `ontology-load` druckt `IS_NEW=yes` beim ersten Lauf, `IS_NEW=no` beim zweiten gegen identische Quelle.
+   - `meta.ontology_version` enthält pro Quellverzeichnis genau eine `is_active=TRUE`-Zeile; ein zweiter Load aus alternativem Verzeichnis erzeugt zweite aktive Version (parallele Quellen erlaubt).
+   - ADR-0026 final `Accepted` mit Implementierungs-Notizen; `docs/adr/README.md` zeigt neuen Status; `PROJECT_STATE.md` markiert T2.4A ✅.
+
+---
+
 ## 2026-04-14 — T2.3E ADR-Index abgeschlossen
 **Status:** accepted (Operator-Freigabe 2026-04-14)
 

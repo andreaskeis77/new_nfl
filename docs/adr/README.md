@@ -8,7 +8,7 @@ Architectural Decision Records, neueste oben. Status-Quelle ist immer das ADR-Do
 | [ADR-0029](ADR-0029-read-model-separation.md) | Read-model separation (`mart.*` only for UI/API) | Accepted (2026-04-14) | T2.3D |
 | [ADR-0028](ADR-0028-quarantine-as-first-class-domain.md) | Quarantine as first-class domain | Accepted (2026-04-14) | T2.3C |
 | [ADR-0027](ADR-0027-dedupe-pipeline-as-explicit-stage.md) | Dedupe pipeline as explicit stage | Proposed | T2.4B |
-| [ADR-0026](ADR-0026-ontology-as-code-with-runtime-projection.md) | Ontology-as-code with runtime projection | Proposed | T2.4A |
+| [ADR-0026](ADR-0026-ontology-as-code-with-runtime-projection.md) | Ontology-as-code with runtime projection | Accepted (2026-04-16) | T2.4A |
 | [ADR-0025](ADR-0025-internal-job-and-run-model.md) | Internal job and run model in DuckDB metadata | Accepted (2026-04-13) | T2.3A / T2.3B |
 | [ADR-0024](ADR-0024-stage-load-contract-and-provenance-columns.md) | Stage-load contract and provenance columns | Accepted | T1.5 |
 | [ADR-0023](ADR-0023-first-normalized-staging-load.md) | First normalized staging load | Accepted | T1.5 |

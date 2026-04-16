@@ -64,10 +64,11 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 
 ## 3. T2.4 — Ontology Runtime (KW 19)
 
-### T2.4A — Ontology-as-Code-Skelett
-- **Ziel:** Verzeichnis `ontology/` mit YAML-Quelldateien für Begriffe, Aliases, Value Sets. Loader, der in `meta.ontology_term`, `meta.ontology_alias`, `meta.ontology_value_set` projiziert.
-- **Artefakte:** `ontology/v0_1/*.yaml`, `src/new_nfl/ontology/loader.py`, `cli ontology-load`, `cli ontology-show <term>`.
-- **DoD:** Bootstrap erzeugt Ontologie-Tabellen, Versionsstempel in `meta.ontology_version`.
+### T2.4A — Ontology-as-Code-Skelett ✅ (2026-04-16)
+- **Ziel:** Verzeichnis `ontology/` mit Quelldateien für Begriffe, Aliases, Value Sets. Loader, der in `meta.ontology_term`, `meta.ontology_alias`, `meta.ontology_value_set` projiziert.
+- **Ergebnis:** TOML statt YAML (stdlib `tomllib`, keine neue Runtime-Abhängigkeit) — siehe ADR-0026 Implementierungs-Notizen. `ontology/v0_1/` mit drei Termen (`position`, `game_status`, `injury_status`), 8 Aliases, 4 Value Sets, 34 Members. Loader idempotent über `content_sha256`. Sechs `meta.ontology_*`-Tabellen (inkl. `ontology_mapping`-Skeleton für T2.5). CLI `ontology-load --source-dir … [--version-label] [--no-activate]`, `ontology-list`, `ontology-show --term-key <key|alias>`. Pydantic-Service `load_ontology_directory`/`list_terms`/`describe_term`. ADR-0026 final `Accepted`.
+- **Artefakte:** [ontology/v0_1/](../ontology/v0_1), [src/new_nfl/ontology/loader.py](../src/new_nfl/ontology/loader.py), [tests/test_ontology.py](../tests/test_ontology.py).
+- **DoD:** Erfüllt — Bootstrap legt `meta.ontology_*` an, `ontology-load` stempelt `meta.ontology_version` mit `content_sha256`, `is_active`-Flag pro Quellverzeichnis.
 
 ### T2.4B — Dedupe-Pipeline-Skelett
 - **Ziel:** Stub-Pipeline mit klaren Stufen (normalize → block → score → cluster → review-queue), zunächst nur deterministische Normalisierung implementiert, probabilistischer Score als TODO mit Interface.

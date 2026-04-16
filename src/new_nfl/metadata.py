@@ -251,6 +251,82 @@ TABLE_SPECS: dict[str, dict[str, Any]] = {
             "triggered_at": "TIMESTAMP DEFAULT current_timestamp",
         },
     },
+    "ontology_version": {
+        "primary_key": "ontology_version_id",
+        "columns": {
+            "ontology_version_id": "VARCHAR",
+            "version_label": "VARCHAR NOT NULL",
+            "source_dir": "VARCHAR NOT NULL",
+            "content_sha256": "VARCHAR NOT NULL",
+            "file_count": "INTEGER NOT NULL",
+            "term_count": "INTEGER NOT NULL",
+            "alias_count": "INTEGER NOT NULL",
+            "value_set_count": "INTEGER NOT NULL",
+            "value_set_member_count": "INTEGER NOT NULL",
+            "is_active": "BOOLEAN DEFAULT FALSE",
+            "loaded_at": "TIMESTAMP DEFAULT current_timestamp",
+            "created_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
+    "ontology_term": {
+        "primary_key": "ontology_term_id",
+        "columns": {
+            "ontology_term_id": "VARCHAR",
+            "ontology_version_id": "VARCHAR NOT NULL",
+            "term_key": "VARCHAR NOT NULL",
+            "label": "VARCHAR",
+            "description": "VARCHAR",
+            "source_path": "VARCHAR",
+            "created_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
+    "ontology_alias": {
+        "primary_key": "ontology_alias_id",
+        "columns": {
+            "ontology_alias_id": "VARCHAR",
+            "ontology_term_id": "VARCHAR NOT NULL",
+            "alias": "VARCHAR NOT NULL",
+            "alias_lower": "VARCHAR NOT NULL",
+            "created_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
+    "ontology_value_set": {
+        "primary_key": "ontology_value_set_id",
+        "columns": {
+            "ontology_value_set_id": "VARCHAR",
+            "ontology_term_id": "VARCHAR NOT NULL",
+            "value_set_key": "VARCHAR NOT NULL",
+            "label": "VARCHAR",
+            "description": "VARCHAR",
+            "created_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
+    "ontology_value_set_member": {
+        "primary_key": "ontology_value_set_member_id",
+        "columns": {
+            "ontology_value_set_member_id": "VARCHAR",
+            "ontology_value_set_id": "VARCHAR NOT NULL",
+            "value": "VARCHAR NOT NULL",
+            "value_lower": "VARCHAR NOT NULL",
+            "label": "VARCHAR",
+            "ordinal": "INTEGER",
+            "created_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
+    "ontology_mapping": {
+        "primary_key": "ontology_mapping_id",
+        "columns": {
+            "ontology_mapping_id": "VARCHAR",
+            "ontology_version_id": "VARCHAR NOT NULL",
+            "from_term_key": "VARCHAR NOT NULL",
+            "from_value": "VARCHAR NOT NULL",
+            "to_term_key": "VARCHAR NOT NULL",
+            "to_value": "VARCHAR NOT NULL",
+            "mapping_kind": "VARCHAR NOT NULL",
+            "description": "VARCHAR",
+            "created_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
 }
 
 DEFAULT_SOURCES: tuple[dict[str, Any], ...] = (

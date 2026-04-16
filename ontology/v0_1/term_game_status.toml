@@ -1,0 +1,45 @@
+# Ontology term: NFL game status (T2.4A, ADR-0026)
+term_key = "game_status"
+label = "Game status"
+description = "Lifecycle status of a scheduled NFL game."
+aliases = ["status", "game_state"]
+
+[[value_sets]]
+key = "all_game_statuses"
+label = "All game statuses"
+description = "Statuses a game can move through from scheduling to final."
+
+  [[value_sets.members]]
+  value = "scheduled"
+  label = "Scheduled"
+  ordinal = 10
+
+  [[value_sets.members]]
+  value = "in_progress"
+  label = "In Progress"
+  ordinal = 20
+
+  [[value_sets.members]]
+  value = "halftime"
+  label = "Halftime"
+  ordinal = 25
+
+  [[value_sets.members]]
+  value = "final"
+  label = "Final"
+  ordinal = 30
+
+  [[value_sets.members]]
+  value = "final_overtime"
+  label = "Final / Overtime"
+  ordinal = 35
+
+  [[value_sets.members]]
+  value = "postponed"
+  label = "Postponed"
+  ordinal = 40
+
+  [[value_sets.members]]
+  value = "cancelled"
+  label = "Cancelled"
+  ordinal = 50

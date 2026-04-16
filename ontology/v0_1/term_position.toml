@@ -1,0 +1,105 @@
+# Ontology term: NFL on-field player position (T2.4A, ADR-0026)
+term_key = "position"
+label = "Player position"
+description = "On-field position a player occupies during a play."
+aliases = ["pos", "position_code", "player_position"]
+
+[[value_sets]]
+key = "all_positions"
+label = "All on-field positions"
+description = "Union of offense, defense and special teams positions used in box scores."
+
+  [[value_sets.members]]
+  value = "QB"
+  label = "Quarterback"
+  ordinal = 10
+
+  [[value_sets.members]]
+  value = "RB"
+  label = "Running Back"
+  ordinal = 20
+
+  [[value_sets.members]]
+  value = "FB"
+  label = "Fullback"
+  ordinal = 25
+
+  [[value_sets.members]]
+  value = "WR"
+  label = "Wide Receiver"
+  ordinal = 30
+
+  [[value_sets.members]]
+  value = "TE"
+  label = "Tight End"
+  ordinal = 40
+
+  [[value_sets.members]]
+  value = "OL"
+  label = "Offensive Line"
+  ordinal = 50
+
+  [[value_sets.members]]
+  value = "DL"
+  label = "Defensive Line"
+  ordinal = 60
+
+  [[value_sets.members]]
+  value = "LB"
+  label = "Linebacker"
+  ordinal = 70
+
+  [[value_sets.members]]
+  value = "DB"
+  label = "Defensive Back"
+  ordinal = 80
+
+  [[value_sets.members]]
+  value = "K"
+  label = "Kicker"
+  ordinal = 90
+
+  [[value_sets.members]]
+  value = "P"
+  label = "Punter"
+  ordinal = 95
+
+  [[value_sets.members]]
+  value = "LS"
+  label = "Long Snapper"
+  ordinal = 96
+
+[[value_sets]]
+key = "offense_positions"
+label = "Offensive positions"
+description = "Subset of all_positions limited to offensive roles."
+
+  [[value_sets.members]]
+  value = "QB"
+  label = "Quarterback"
+  ordinal = 10
+
+  [[value_sets.members]]
+  value = "RB"
+  label = "Running Back"
+  ordinal = 20
+
+  [[value_sets.members]]
+  value = "FB"
+  label = "Fullback"
+  ordinal = 25
+
+  [[value_sets.members]]
+  value = "WR"
+  label = "Wide Receiver"
+  ordinal = 30
+
+  [[value_sets.members]]
+  value = "TE"
+  label = "Tight End"
+  ordinal = 40
+
+  [[value_sets.members]]
+  value = "OL"
+  label = "Offensive Line"
+  ordinal = 50

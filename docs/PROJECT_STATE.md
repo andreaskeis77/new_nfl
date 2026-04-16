@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.3 Foundation Hardening** — vollständig abgeschlossen (T2.3A–T2.3E), bereit für T2.4A
+**T2.4 Ontology Runtime** — T2.4A abgeschlossen, bereit für T2.4B (Dedupe-Pipeline-Skelett)
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -11,7 +11,7 @@
 - `UI_STYLE_GUIDE_v0_1.md` — verbindliche UI-Regeln
 - `T2_3_PLAN.md` — aktiver Tranche-Plan zum v1.0-Ziel (Ende Juni 2026)
 - `USE_CASE_VALIDATION_v0_1.md` — abgenommene Use Cases
-- ADR-0025 bis ADR-0030 — neue Architekturentscheidungen (Proposed)
+- ADR-0025, ADR-0026, ADR-0028, ADR-0029 — `Accepted`; ADR-0027 (Dedupe), ADR-0030 (UI Stack) bleiben `Proposed` bis T2.4B/T2.6A
 - `CHAT_HANDOFF_PROTOCOL.md`, `LESSONS_LEARNED_PROTOCOL.md` — Methode
 - Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260413-1700_t23a-job-run-skeleton-done.md`
 
@@ -43,6 +43,7 @@
 - T2.3C Quarantäne-Domäne (`src/new_nfl/jobs/quarantine.py`: `meta.quarantine_case`, `meta.recovery_action`; Dedupe per `(scope_type, scope_ref, reason_code)`; Auto-Quarantäne-Hook im Runner bei `runner_exhausted`; CLI `list-quarantine`, `quarantine-show`, `quarantine-resolve --action replay|override|suppress`; Replay erzeugt neuen `job_run_id` und schließt den Case bei Erfolg)
 - T2.3D Read-Modell-Trennung (`src/new_nfl/mart/`: `mart.schedule_field_dictionary_v1` als versionierte Read-Projektion über `core.schedule_field_dictionary`; Runner-Executor `mart_build`; CLI `mart-rebuild --mart-key …`; `core-load --execute` triggert Mart-Build implizit; `core_browse`/`core_lookup`/`core_summary`/`web_preview`/`web_server` lesen ausschließlich aus `mart.*`; Lint-Test verbietet `core.*`/`stg.*`/`raw/` in Read-Modulen)
 - T2.3E ADR-Block aktualisiert (`docs/adr/README.md` als vollständiger Index mit Status + Tranchen-Anker für ADR-0001 bis ADR-0030; ADR-0025/0028/0029 final `Accepted`; ADR-0026/0027/0030 bleiben `Proposed` bis zur jeweiligen Tranche T2.4A/T2.4B/T2.6A)
+- T2.4A Ontology-as-Code-Skelett (`ontology/v0_1/term_*.toml`, `src/new_nfl/ontology/loader.py` mit `content_sha256`-Idempotenz; `meta.ontology_version`/`ontology_term`/`ontology_alias`/`ontology_value_set`/`ontology_value_set_member`/`ontology_mapping`; CLI `ontology-load`, `ontology-list`, `ontology-show --term-key <key|alias>`; Pydantic-Service `load_ontology_directory`/`list_terms`/`describe_term`; ADR-0026 final `Accepted`, TOML-Format statt YAML)
 
 ## Current runtime posture
 
@@ -62,6 +63,7 @@
 - interner Job-Runner: atomares Claim auf `meta.job_queue`, Executor-Registry (`fetch_remote`, `stage_load`, `custom`), Retry-Policy-Auswertung, deterministischer Replay gescheiterter Runs; CLI `run-worker --once|--serve` und `replay-run --job-run-id`; `fetch-remote` und `stage-load` erzeugen nur noch über den Runner Evidence (Manifest §3.9, §3.13)
 - First-class Quarantäne-Domäne: jeder `runner_exhausted`-Run öffnet einen `meta.quarantine_case` mit Evidence-Ref; Operator-Aktionen (`replay`, `override`, `suppress`) werden als `meta.recovery_action` persistiert und verlinken bei Replay den neuen `job_run_id` (ADR-0028)
 - Read-Modell-Schicht `mart.*` als einziger Lesepfad für CLI-Browse/Web-Preview (ADR-0029): `mart.schedule_field_dictionary_v1` voll rebuildbar aus `core.*`, automatisch nach `core-load --execute` aufgefrischt, separat über CLI `mart-rebuild` als Runner-Job; Direktzugriffe aus Read-Modulen auf `core.*`/`stg.*`/`raw/` werden durch einen Lint-Test blockiert
+- Ontologie-as-Code v0_1 (ADR-0026): TOML-Quellen unter `ontology/v0_1/` (Position, Game-Status, Injury-Status), Loader idempotent über `content_sha256`, Projektion in `meta.ontology_*`; CLI `ontology-load`/`ontology-list`/`ontology-show` mit Alias-Auflösung; `meta.ontology_version` markiert die aktive Version pro Quellverzeichnis
 
 ## Current release posture
 
@@ -84,7 +86,7 @@ T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nac
 
 ## Preferred next bolt
 
-**T2.4A — Ontology-as-Code-Skelett** gemäß `T2_3_PLAN.md` §3 und ADR-0026: Verzeichnis `ontology/` mit YAML-Quelldateien für Begriffe, Aliases, Value Sets; Loader projiziert in `meta.ontology_term`/`meta.ontology_alias`/`meta.ontology_value_set`; CLI `ontology-load`, `ontology-show <term>`. DoD: Bootstrap erzeugt Ontologie-Tabellen, Versionsstempel in `meta.ontology_version`.
+**T2.4B — Dedupe-Pipeline-Skelett** gemäß `T2_3_PLAN.md` §3 und ADR-0027: Stub-Pipeline `normalize → block → score → cluster → review-queue` unter `src/new_nfl/dedupe/`, zunächst nur deterministische Normalisierung; CLI `dedupe-run --domain <name>`. DoD: Player-Stammdaten laufen einmal durch die Pipeline ohne Crash. ADR-0027 schließen.
 
 ## Zielkorridor v1.0
 

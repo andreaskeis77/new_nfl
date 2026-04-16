@@ -35,6 +35,7 @@ from new_nfl.metadata import (
     seed_default_sources,
     upsert_pipeline_state,
 )
+from new_nfl.ontology import describe_term, list_terms, load_ontology_directory
 from new_nfl.settings import load_settings
 from new_nfl.source_files import list_source_files
 from new_nfl.web_preview import render_core_dictionary_preview
@@ -344,6 +345,88 @@ def _cmd_mart_rebuild(mart_key: str) -> int:
     print(f'ROW_COUNT={detail.get("row_count", 0)}')
     print(f'BUILT_AT={detail.get("built_at", "")}')
     return rc
+
+
+def _cmd_ontology_load(source_dir: str, version_label: str, activate: bool) -> int:
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    result = load_ontology_directory(
+        settings,
+        source_dir=source_dir,
+        version_label=version_label or None,
+        activate=activate,
+    )
+    print(f'ONTOLOGY_VERSION_ID={result.ontology_version_id}')
+    print(f'VERSION_LABEL={result.version_label}')
+    print(f'SOURCE_DIR={result.source_dir}')
+    print(f'CONTENT_SHA256={result.content_sha256}')
+    print(f'FILE_COUNT={result.file_count}')
+    print(f'TERM_COUNT={result.term_count}')
+    print(f'ALIAS_COUNT={result.alias_count}')
+    print(f'VALUE_SET_COUNT={result.value_set_count}')
+    print(f'VALUE_SET_MEMBER_COUNT={result.value_set_member_count}')
+    print(f"IS_NEW={'yes' if result.is_new else 'no'}")
+    return 0
+
+
+def _cmd_ontology_list() -> int:
+    settings = load_settings()
+    terms = list_terms(settings)
+    print(f'TERM_COUNT={len(terms)}')
+    for term in terms:
+        alias_count = len(term.aliases)
+        vs_count = len(term.value_sets)
+        member_count = sum(len(vs.members) for vs in term.value_sets)
+        print(
+            'TERM=' + '|'.join(
+                [
+                    term.term_key,
+                    term.label or '',
+                    str(alias_count),
+                    str(vs_count),
+                    str(member_count),
+                ]
+            )
+        )
+    return 0
+
+
+def _cmd_ontology_show(term_key: str) -> int:
+    settings = load_settings()
+    detail = describe_term(settings, term_key)
+    if detail is None:
+        print(f'TERM_KEY={term_key}')
+        print('FOUND=no')
+        return 1
+    print(f'TERM_KEY={detail.term_key}')
+    print('FOUND=yes')
+    print(f'ONTOLOGY_VERSION_ID={detail.ontology_version_id}')
+    print(f'VERSION_LABEL={detail.version_label}')
+    print(f'LABEL={detail.label or ""}')
+    print(f'DESCRIPTION={detail.description or ""}')
+    print(f'SOURCE_PATH={detail.source_path}')
+    print(f'ALIAS_COUNT={len(detail.aliases)}')
+    for alias in detail.aliases:
+        print(f'ALIAS={alias.alias}')
+    print(f'VALUE_SET_COUNT={len(detail.value_sets)}')
+    for vs in detail.value_sets:
+        print(
+            'VALUE_SET=' + '|'.join(
+                [vs.value_set_key, vs.label or '', str(len(vs.members))]
+            )
+        )
+        for member in vs.members:
+            print(
+                'VALUE_SET_MEMBER=' + '|'.join(
+                    [
+                        vs.value_set_key,
+                        member.value,
+                        member.label or '',
+                        str(member.ordinal) if member.ordinal is not None else '',
+                    ]
+                )
+            )
+    return 0
 
 
 def _cmd_browse_core(adapter_id: str, field_prefix: str, data_type: str, limit: int) -> int:
@@ -817,6 +900,31 @@ def build_parser() -> argparse.ArgumentParser:
         help='Projection key (default: schedule_field_dictionary_v1)',
     )
 
+    ontology_load_parser = sub.add_parser(
+        'ontology-load',
+        help='Load a versioned ontology directory into meta.ontology_* (ADR-0026)',
+    )
+    ontology_load_parser.add_argument('--source-dir', required=True)
+    ontology_load_parser.add_argument('--version-label', default='')
+    ontology_load_parser.add_argument(
+        '--no-activate',
+        dest='activate',
+        action='store_false',
+        help='Load without marking the version active',
+    )
+    ontology_load_parser.set_defaults(activate=True)
+
+    sub.add_parser(
+        'ontology-list',
+        help='List terms in the currently active ontology version',
+    )
+
+    ontology_show_parser = sub.add_parser(
+        'ontology-show',
+        help='Describe one ontology term (by term_key or alias)',
+    )
+    ontology_show_parser.add_argument('--term-key', required=True)
+
     browse_core = sub.add_parser(
         'browse-core',
         help='Browse rows from the first core dictionary slice',
@@ -983,6 +1091,12 @@ def main() -> int:
         return _cmd_core_load(args.adapter_id, args.execute)
     if args.command == 'mart-rebuild':
         return _cmd_mart_rebuild(args.mart_key)
+    if args.command == 'ontology-load':
+        return _cmd_ontology_load(args.source_dir, args.version_label, args.activate)
+    if args.command == 'ontology-list':
+        return _cmd_ontology_list()
+    if args.command == 'ontology-show':
+        return _cmd_ontology_show(args.term_key)
     if args.command == 'browse-core':
         return _cmd_browse_core(args.adapter_id, args.field_prefix, args.data_type, args.limit)
     if args.command == 'describe-core-field':
