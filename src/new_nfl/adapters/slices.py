@@ -116,6 +116,40 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "score / venue drift against Tier-A."
         ),
     ),
+    SliceSpec(
+        adapter_id="nflverse_bulk",
+        slice_key="players",
+        label="NFL player master data",
+        remote_url=(
+            "https://github.com/nflverse/nflverse-data/releases/download/"
+            "players/players.csv"
+        ),
+        stage_target_object="nflverse_bulk_players",
+        core_table="core.player",
+        mart_key="player_overview_v1",
+        tier_role="primary",
+        notes=(
+            "T2.5C primary players slice; Tier-A source of truth for player_id, "
+            "display_name, position, birth_date, draft metadata and current team. "
+            "Feeds the first real dedupe application (ADR-0027) against core.player."
+        ),
+    ),
+    SliceSpec(
+        adapter_id="official_context_web",
+        slice_key="players",
+        label="Official context players cross-check",
+        remote_url="",
+        stage_target_object="official_context_web_players",
+        core_table="",
+        mart_key="",
+        tier_role="cross_check",
+        notes=(
+            "T2.5C Tier-B cross-check feed for players. remote_url empty by design: "
+            "operators pin a concrete URL per run via --remote-url or the SliceSpec "
+            "is overridden in tests via remote_url_override. Triggers quarantine on "
+            "display_name / position / jersey_number drift against Tier-A."
+        ),
+    ),
 )
 
 

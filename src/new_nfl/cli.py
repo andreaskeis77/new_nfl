@@ -13,7 +13,11 @@ from new_nfl.core_browse import browse_core_dictionary
 from new_nfl.core_load import execute_core_load
 from new_nfl.core_lookup import lookup_core_dictionary_field
 from new_nfl.core_summary import summarize_core_dictionary
-from new_nfl.dedupe import open_review_items, run_player_dedupe
+from new_nfl.dedupe import (
+    open_review_items,
+    run_player_dedupe,
+    run_player_dedupe_from_core,
+)
 from new_nfl.dedupe.pipeline import DEMO_PLAYER_RECORDS
 from new_nfl.jobs import (
     describe_job,
@@ -350,6 +354,7 @@ def _cmd_stage_load(
 
 def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
     from new_nfl.core.games import CoreGameLoadResult
+    from new_nfl.core.players import CorePlayerLoadResult
     from new_nfl.core.teams import CoreTeamLoadResult
     settings = load_settings()
     result = execute_core_load(
@@ -358,7 +363,8 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
         execute=execute,
         slice_key=slice_key,
     )
-    if isinstance(result, CoreTeamLoadResult):
+    if isinstance(result, (CoreTeamLoadResult, CoreGameLoadResult, CorePlayerLoadResult)):
+        distinct_label, distinct_value = _core_load_distinct_field(result)
         print(f'ADAPTER_ID={result.primary_slice.adapter_id}')
         print(f'SLICE_KEY={result.primary_slice.slice_key}')
         print(f'PIPELINE_NAME={result.pipeline_name}')
@@ -368,32 +374,7 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
         print(f'QUALIFIED_TABLE={result.qualified_table}')
         print(f'SOURCE_ROW_COUNT={result.source_row_count}')
         print(f'ROW_COUNT={result.row_count}')
-        print(f'DISTINCT_TEAM_COUNT={result.distinct_team_count}')
-        print(f'INVALID_ROW_COUNT={result.invalid_row_count}')
-        print(f'CONFLICT_COUNT={result.conflict_count}')
-        print(
-            f'OPENED_QUARANTINE_CASE_IDS='
-            f'{",".join(result.opened_quarantine_case_ids)}'
-        )
-        print(
-            f'CROSS_CHECK_ADAPTERS='
-            f'{",".join(result.cross_check_slice_keys)}'
-        )
-        print(f'LOAD_EVENT_ID={result.load_event_id}')
-        print(f'MART_QUALIFIED_TABLE={result.mart_qualified_table}')
-        print(f'MART_ROW_COUNT={result.mart_row_count}')
-        return 0
-    if isinstance(result, CoreGameLoadResult):
-        print(f'ADAPTER_ID={result.primary_slice.adapter_id}')
-        print(f'SLICE_KEY={result.primary_slice.slice_key}')
-        print(f'PIPELINE_NAME={result.pipeline_name}')
-        print(f'RUN_MODE={result.run_mode}')
-        print(f'RUN_STATUS={result.run_status}')
-        print(f'INGEST_RUN_ID={result.ingest_run_id}')
-        print(f'QUALIFIED_TABLE={result.qualified_table}')
-        print(f'SOURCE_ROW_COUNT={result.source_row_count}')
-        print(f'ROW_COUNT={result.row_count}')
-        print(f'DISTINCT_GAME_COUNT={result.distinct_game_count}')
+        print(f'{distinct_label}={distinct_value}')
         print(f'INVALID_ROW_COUNT={result.invalid_row_count}')
         print(f'CONFLICT_COUNT={result.conflict_count}')
         print(
@@ -432,6 +413,17 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
     return 0
 
 
+def _core_load_distinct_field(result) -> tuple[str, int]:
+    """Pick the slice-specific distinct-count label for CLI output."""
+    if hasattr(result, 'distinct_team_count'):
+        return 'DISTINCT_TEAM_COUNT', result.distinct_team_count
+    if hasattr(result, 'distinct_game_count'):
+        return 'DISTINCT_GAME_COUNT', result.distinct_game_count
+    if hasattr(result, 'distinct_player_count'):
+        return 'DISTINCT_PLAYER_COUNT', result.distinct_player_count
+    return 'DISTINCT_KEY_COUNT', 0
+
+
 def _cmd_mart_rebuild(mart_key: str) -> int:
     settings = load_settings()
     rc, detail = _run_cli_job(
@@ -453,26 +445,41 @@ def _cmd_mart_rebuild(mart_key: str) -> int:
     return rc
 
 
-def _cmd_dedupe_run(domain: str, demo: bool, lower: float, upper: float) -> int:
+def _cmd_dedupe_run(
+    domain: str, demo: bool, source: str, lower: float, upper: float
+) -> int:
     if domain != 'players':
         print(f'DOMAIN={domain}')
         print('STATUS=unsupported_domain')
         print('MESSAGE=T2.4B v0_1 only ships the players domain')
         return 2
-    if not demo:
-        print(f'DOMAIN={domain}')
-        print('STATUS=missing_source')
-        print('MESSAGE=Pass --demo to run against the bundled demo player set')
-        return 2
     settings = load_settings()
     bootstrap_local_environment(settings)
-    result = run_player_dedupe(
-        settings,
-        records=list(DEMO_PLAYER_RECORDS),
-        source_ref='demo:builtin',
-        lower_threshold=lower,
-        upper_threshold=upper,
-    )
+    if source == 'core-player':
+        try:
+            result = run_player_dedupe_from_core(
+                settings,
+                lower_threshold=lower,
+                upper_threshold=upper,
+            )
+        except ValueError as exc:
+            print(f'DOMAIN={domain}')
+            print('STATUS=missing_source_table')
+            print(f'MESSAGE={exc}')
+            return 2
+    elif demo:
+        result = run_player_dedupe(
+            settings,
+            records=list(DEMO_PLAYER_RECORDS),
+            source_ref='demo:builtin',
+            lower_threshold=lower,
+            upper_threshold=upper,
+        )
+    else:
+        print(f'DOMAIN={domain}')
+        print('STATUS=missing_source')
+        print('MESSAGE=Pass --demo or --source core-player')
+        return 2
     print(f'DEDUPE_RUN_ID={result.dedupe_run_id}')
     print(f'DOMAIN={result.domain}')
     print(f'SOURCE_REF={result.source_ref}')
@@ -1083,7 +1090,7 @@ def build_parser() -> argparse.ArgumentParser:
         default='schedule_field_dictionary_v1',
         help=(
             'Projection key. Supported: schedule_field_dictionary_v1, '
-            'team_overview_v1, game_overview_v1 '
+            'team_overview_v1, game_overview_v1, player_overview_v1 '
             '(default: schedule_field_dictionary_v1)'
         ),
     )
@@ -1101,7 +1108,16 @@ def build_parser() -> argparse.ArgumentParser:
     dedupe_run_parser.add_argument(
         '--demo',
         action='store_true',
-        help='Use the bundled demo record set (only mode supported in v0_1)',
+        help='Use the bundled demo record set (T2.4B default)',
+    )
+    dedupe_run_parser.add_argument(
+        '--source',
+        default='',
+        choices=('', 'core-player'),
+        help=(
+            "Record source: '' = fall back to --demo (default); "
+            "'core-player' = read live rows from core.player (T2.5C)"
+        ),
     )
     dedupe_run_parser.add_argument('--lower-threshold', type=float, default=0.50)
     dedupe_run_parser.add_argument('--upper-threshold', type=float, default=0.85)
@@ -1312,7 +1328,11 @@ def main() -> int:
         return _cmd_mart_rebuild(args.mart_key)
     if args.command == 'dedupe-run':
         return _cmd_dedupe_run(
-            args.domain, args.demo, args.lower_threshold, args.upper_threshold
+            args.domain,
+            args.demo,
+            args.source,
+            args.lower_threshold,
+            args.upper_threshold,
         )
     if args.command == 'dedupe-review-list':
         return _cmd_dedupe_review_list(args.domain, args.limit)
