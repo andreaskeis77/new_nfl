@@ -55,11 +55,11 @@ def test_load_ontology_directory_inserts_all_rows(tmp_path, monkeypatch):
         settings, source_dir=ONTOLOGY_SEED_DIR, version_label='v0_1'
     )
     assert result.is_new is True
-    assert result.file_count == 3
-    assert result.term_count == 3
-    assert result.alias_count >= 8
-    assert result.value_set_count >= 4
-    assert result.value_set_member_count >= 25
+    assert result.file_count == 5
+    assert result.term_count == 5
+    assert result.alias_count >= 11
+    assert result.value_set_count >= 6
+    assert result.value_set_member_count >= 35
 
     con = duckdb.connect(str(settings.db_path))
     try:
@@ -68,7 +68,7 @@ def test_load_ontology_directory_inserts_all_rows(tmp_path, monkeypatch):
         ).fetchone()[0] == 1
         assert con.execute(
             'SELECT COUNT(*) FROM meta.ontology_term'
-        ).fetchone()[0] == 3
+        ).fetchone()[0] == 5
     finally:
         con.close()
 
@@ -92,7 +92,7 @@ def test_load_ontology_directory_is_idempotent(tmp_path, monkeypatch):
     finally:
         con.close()
     assert version_count == 1
-    assert term_count == 3
+    assert term_count == 5
 
 
 def test_new_content_creates_new_version_and_activates(tmp_path, monkeypatch):
@@ -155,7 +155,7 @@ def test_list_terms_returns_all_active_terms(tmp_path, monkeypatch):
     load_ontology_directory(settings, source_dir=ONTOLOGY_SEED_DIR)
     terms = list_terms(settings)
     keys = {t.term_key for t in terms}
-    assert keys == {'position', 'game_status', 'injury_status'}
+    assert keys == {'position', 'game_status', 'injury_status', 'conference', 'division'}
 
 
 def test_empty_source_dir_rejected(tmp_path, monkeypatch):
@@ -188,7 +188,7 @@ def test_cli_ontology_load_and_show(tmp_path, monkeypatch, capsys):
     )
     assert main() == 0
     out = capsys.readouterr().out
-    assert 'TERM_COUNT=3' in out
+    assert 'TERM_COUNT=5' in out
     assert 'IS_NEW=yes' in out
 
     # Show
@@ -209,4 +209,4 @@ def test_cli_ontology_load_and_show(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(sys, 'argv', ['cli', 'ontology-list'])
     assert main() == 0
     out = capsys.readouterr().out
-    assert 'TERM_COUNT=3' in out
+    assert 'TERM_COUNT=5' in out

@@ -1,0 +1,50 @@
+# Ontology term: NFL division (T2.5A, ADR-0026)
+term_key = "division"
+label = "NFL division"
+description = "Sub-league grouping of four teams inside a conference. Modern layout has 8 divisions (4 per conference), stable since the 2002 realignment."
+aliases = ["div", "division_name"]
+
+[[value_sets]]
+key = "modern_divisions"
+label = "Modern NFL divisions (2002+)"
+description = "The 8 divisions in use since the 2002 realignment when Houston Texans joined the AFC South."
+
+  [[value_sets.members]]
+  value = "AFC East"
+  label = "AFC East"
+  ordinal = 10
+
+  [[value_sets.members]]
+  value = "AFC North"
+  label = "AFC North"
+  ordinal = 20
+
+  [[value_sets.members]]
+  value = "AFC South"
+  label = "AFC South"
+  ordinal = 30
+
+  [[value_sets.members]]
+  value = "AFC West"
+  label = "AFC West"
+  ordinal = 40
+
+  [[value_sets.members]]
+  value = "NFC East"
+  label = "NFC East"
+  ordinal = 50
+
+  [[value_sets.members]]
+  value = "NFC North"
+  label = "NFC North"
+  ordinal = 60
+
+  [[value_sets.members]]
+  value = "NFC South"
+  label = "NFC South"
+  ordinal = 70
+
+  [[value_sets.members]]
+  value = "NFC West"
+  label = "NFC West"
+  ordinal = 80

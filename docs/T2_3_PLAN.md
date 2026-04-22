@@ -80,11 +80,14 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 
 Sequenz pro Domäne identisch: Adapter → Stage-Load → Core-Promotion → Read-Modell.
 
-### T2.5A — Teams (KW 20)
-nflverse + ESPN als Quellen, Tier-A vs Tier-B Konfliktfall absichtlich provoziert und gelöst.
+### T2.5A — Teams (KW 20) ✅ (2026-04-22)
+- **Ziel:** nflverse (Tier-A) + `official_context_web` (Tier-B) als Quellen, Tier-A vs Tier-B Konfliktfall absichtlich provoziert und gelöst.
+- **Ergebnis:** Adapter-Slice-Registry [src/new_nfl/adapters/slices.py](../src/new_nfl/adapters/slices.py) — ein `adapter_id` kann mehrere Slices bedienen; `(nflverse_bulk, teams)` als Primary auf `teams_colors_logos.csv`, `(official_context_web, teams)` als Cross-Check (Fixture-Pfad in T2.5A, reale HTTP folgt in T2.5B). `core.team` ([src/new_nfl/core/teams.py](../src/new_nfl/core/teams.py)) mit Idempotent-Rebuild (`ROW_NUMBER OVER PARTITION BY UPPER(TRIM(team_id))`), TRY_CAST für Saison-Ints, Tier-A gewinnt (ADR-0007), Tier-B-Diskrepanzen (`team_abbr`, `team_name`, `team_conference`, `team_division`, `team_color`) erzeugen pro `team_id` je einen `meta.quarantine_case` mit `reason_code='tier_b_disagreement'` und aggregierten `evidence_refs_json`. Read-Modell `mart.team_overview_v1` ([src/new_nfl/mart/team_overview.py](../src/new_nfl/mart/team_overview.py)) spalten-tolerant mit `is_active = (last_season IS NULL)` und lowercased Suchspalten. Ontologie-Terme `conference` + `division` ergänzt. CLI-Flag `--slice` an `fetch-remote`/`stage-load`/`core-load`; Default-Slice `schedule_field_dictionary` hält T2.0A-Pfade bit-kompatibel. ADR-0031 `Proposed`.
+- **Artefakte:** [docs/adr/ADR-0031-adapter-slice-strategy.md](adr/ADR-0031-adapter-slice-strategy.md), [src/new_nfl/adapters/slices.py](../src/new_nfl/adapters/slices.py), [src/new_nfl/core/teams.py](../src/new_nfl/core/teams.py), [src/new_nfl/mart/team_overview.py](../src/new_nfl/mart/team_overview.py), [ontology/v0_1/term_conference.toml](../ontology/v0_1/term_conference.toml), [ontology/v0_1/term_division.toml](../ontology/v0_1/term_division.toml), [tests/test_teams.py](../tests/test_teams.py).
+- **DoD:** Erfüllt — Suite grün (141/141); Tier-B-Diskrepanz auf `KC.color` + `SF.team_name` öffnet zwei Quarantäne-Cases, Operator-Override schließt Case, Tier-A-Werte bleiben in `core.team` erhalten.
 
 ### T2.5B — Games / Schedules / Results (KW 20)
-Verfeinerung des bestehenden Schedule-Pfads zu vollständigen Games (Endstand, Boxscore-Referenz).
+Verfeinerung des bestehenden Schedule-Pfads zu vollständigen Games (Endstand, Boxscore-Referenz). Erste reale HTTP-Implementierung des `official_context_web`-Adapters inklusive Tier-B-Stage-Load wird hier erwartet, damit der Quarantäne-Flow nicht länger fixture-getrieben ist.
 
 ### T2.5C — Players Stammdaten (KW 21)
 nflverse + ESPN. Erste echte Dedupe-Anwendung (T2.4B).
@@ -175,6 +178,7 @@ Existierenden Run löschen aus `core.*`, von Raw-Artefakt replayen, Vergleich Pr
 | ADR-0028 | Quarantine as first-class domain | T2.3C |
 | ADR-0029 | Read-model separation (`mart.*` only for UI/API) | T2.3D |
 | ADR-0030 | UI tech stack: Jinja + Tailwind + htmx + Plot | T2.6A |
+| ADR-0031 | Adapter-Slice-Strategie (ein Adapter, N Slices via Code-Registry) | T2.5A |
 
 ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Abschluss der jeweils gekoppelten Tranche gesetzt.
 

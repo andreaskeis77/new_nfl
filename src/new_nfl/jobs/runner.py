@@ -58,16 +58,19 @@ Executor = Callable[[Settings, dict[str, Any]], ExecutionResult]
 
 def _executor_fetch_remote(settings: Settings, params: dict[str, Any]) -> ExecutionResult:
     from new_nfl.adapters import execute_remote_fetch
+    from new_nfl.adapters.slices import DEFAULT_SLICE_KEY
 
     adapter_id = params["adapter_id"]
     execute_flag = bool(params.get("execute", True))
     remote_url = params.get("remote_url") or None
+    slice_key = params.get("slice_key") or DEFAULT_SLICE_KEY
 
     result = execute_remote_fetch(
         settings,
         adapter_id=adapter_id,
         execute=execute_flag,
         remote_url_override=remote_url,
+        slice_key=slice_key,
     )
     detail = {
         "adapter_id": result.adapter_id,
@@ -114,17 +117,20 @@ def _executor_fetch_remote(settings: Settings, params: dict[str, Any]) -> Execut
 
 
 def _executor_stage_load(settings: Settings, params: dict[str, Any]) -> ExecutionResult:
+    from new_nfl.adapters.slices import DEFAULT_SLICE_KEY
     from new_nfl.stage_load import execute_stage_load
 
     adapter_id = params["adapter_id"]
     execute_flag = bool(params.get("execute", True))
     source_file_id = params.get("source_file_id") or None
+    slice_key = params.get("slice_key") or DEFAULT_SLICE_KEY
 
     result = execute_stage_load(
         settings,
         adapter_id=adapter_id,
         execute=execute_flag,
         source_file_id=source_file_id,
+        slice_key=slice_key,
     )
     detail = {
         "adapter_id": result.adapter_id,
@@ -194,11 +200,16 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
     rebuild (``CREATE OR REPLACE TABLE``) over ``core.*``; the runner records
     the build as a ``meta.job_run`` so operators can audit freshness.
     """
-    from new_nfl.mart import build_schedule_field_dictionary_v1
+    from new_nfl.mart import (
+        build_schedule_field_dictionary_v1,
+        build_team_overview_v1,
+    )
 
     mart_key = params.get("mart_key", "schedule_field_dictionary_v1")
     if mart_key == "schedule_field_dictionary_v1":
         result = build_schedule_field_dictionary_v1(settings)
+    elif mart_key == "team_overview_v1":
+        result = build_team_overview_v1(settings)
     else:
         raise ValueError(f"unknown mart_key={mart_key!r}")
 

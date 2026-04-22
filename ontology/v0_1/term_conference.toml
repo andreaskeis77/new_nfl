@@ -1,0 +1,20 @@
+# Ontology term: NFL conference (T2.5A, ADR-0026)
+term_key = "conference"
+label = "NFL conference"
+description = "Top-level league subdivision. The modern NFL has two conferences, AFC and NFC, since the 1970 AFL-NFL merger."
+aliases = ["conf", "conference_abbr", "league_conference"]
+
+[[value_sets]]
+key = "modern_conferences"
+label = "Modern NFL conferences (1970+)"
+description = "The two conferences established at the AFL-NFL merger and unchanged since."
+
+  [[value_sets.members]]
+  value = "AFC"
+  label = "American Football Conference"
+  ordinal = 10
+
+  [[value_sets.members]]
+  value = "NFC"
+  label = "National Football Conference"
+  ordinal = 20

@@ -233,18 +233,30 @@ def _run_cli_job(
     return 0, tick.detail or {}
 
 
-def _cmd_fetch_remote(adapter_id: str, execute: bool, remote_url: str) -> int:
+def _cmd_fetch_remote(
+    adapter_id: str,
+    execute: bool,
+    remote_url: str,
+    slice_key: str,
+) -> int:
+    from new_nfl.adapters.slices import DEFAULT_SLICE_KEY
     settings = load_settings()
+    job_key = (
+        f'cli_fetch_remote__{adapter_id}'
+        if slice_key == DEFAULT_SLICE_KEY
+        else f'cli_fetch_remote__{adapter_id}__{slice_key}'
+    )
     rc, detail = _run_cli_job(
         settings,
-        job_key=f'cli_fetch_remote__{adapter_id}',
+        job_key=job_key,
         job_type='fetch_remote',
         adapter_id=adapter_id,
-        description=f'CLI auto-job for fetch-remote {adapter_id}',
+        description=f'CLI auto-job for fetch-remote {adapter_id} slice={slice_key}',
         params={
             'adapter_id': adapter_id,
             'execute': execute,
             'remote_url': remote_url or '',
+            'slice_key': slice_key,
         },
     )
     if rc != 0 and not detail:
@@ -269,18 +281,30 @@ def _cmd_fetch_remote(adapter_id: str, execute: bool, remote_url: str) -> int:
     return rc
 
 
-def _cmd_stage_load(adapter_id: str, execute: bool, source_file_id: str) -> int:
+def _cmd_stage_load(
+    adapter_id: str,
+    execute: bool,
+    source_file_id: str,
+    slice_key: str,
+) -> int:
+    from new_nfl.adapters.slices import DEFAULT_SLICE_KEY
     settings = load_settings()
+    job_key = (
+        f'cli_stage_load__{adapter_id}'
+        if slice_key == DEFAULT_SLICE_KEY
+        else f'cli_stage_load__{adapter_id}__{slice_key}'
+    )
     rc, detail = _run_cli_job(
         settings,
-        job_key=f'cli_stage_load__{adapter_id}',
+        job_key=job_key,
         job_type='stage_load',
         adapter_id=adapter_id,
-        description=f'CLI auto-job for stage-load {adapter_id}',
+        description=f'CLI auto-job for stage-load {adapter_id} slice={slice_key}',
         params={
             'adapter_id': adapter_id,
             'execute': execute,
             'source_file_id': source_file_id or '',
+            'slice_key': slice_key,
         },
     )
     if rc != 0 and not detail:
@@ -302,10 +326,42 @@ def _cmd_stage_load(adapter_id: str, execute: bool, source_file_id: str) -> int:
     return rc
 
 
-def _cmd_core_load(adapter_id: str, execute: bool) -> int:
+def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
+    from new_nfl.core.teams import CoreTeamLoadResult
     settings = load_settings()
-    result = execute_core_load(settings, adapter_id=adapter_id, execute=execute)
+    result = execute_core_load(
+        settings,
+        adapter_id=adapter_id,
+        execute=execute,
+        slice_key=slice_key,
+    )
+    if isinstance(result, CoreTeamLoadResult):
+        print(f'ADAPTER_ID={result.primary_slice.adapter_id}')
+        print(f'SLICE_KEY={result.primary_slice.slice_key}')
+        print(f'PIPELINE_NAME={result.pipeline_name}')
+        print(f'RUN_MODE={result.run_mode}')
+        print(f'RUN_STATUS={result.run_status}')
+        print(f'INGEST_RUN_ID={result.ingest_run_id}')
+        print(f'QUALIFIED_TABLE={result.qualified_table}')
+        print(f'SOURCE_ROW_COUNT={result.source_row_count}')
+        print(f'ROW_COUNT={result.row_count}')
+        print(f'DISTINCT_TEAM_COUNT={result.distinct_team_count}')
+        print(f'INVALID_ROW_COUNT={result.invalid_row_count}')
+        print(f'CONFLICT_COUNT={result.conflict_count}')
+        print(
+            f'OPENED_QUARANTINE_CASE_IDS='
+            f'{",".join(result.opened_quarantine_case_ids)}'
+        )
+        print(
+            f'CROSS_CHECK_ADAPTERS='
+            f'{",".join(result.cross_check_slice_keys)}'
+        )
+        print(f'LOAD_EVENT_ID={result.load_event_id}')
+        print(f'MART_QUALIFIED_TABLE={result.mart_qualified_table}')
+        print(f'MART_ROW_COUNT={result.mart_row_count}')
+        return 0
     print(f'ADAPTER_ID={result.adapter_id}')
+    print(f'SLICE_KEY={slice_key}')
     print(f'PIPELINE_NAME={result.pipeline_name}')
     print(f'RUN_MODE={result.run_mode}')
     print(f'RUN_STATUS={result.run_status}')
@@ -936,6 +992,12 @@ def build_parser() -> argparse.ArgumentParser:
     fetch_remote.add_argument('--adapter-id', required=True)
     fetch_remote.add_argument('--execute', action='store_true')
     fetch_remote.add_argument('--remote-url', default='')
+    fetch_remote.add_argument(
+        '--slice',
+        dest='slice_key',
+        default='schedule_field_dictionary',
+        help='Adapter slice key (ADR-0031). Default: schedule_field_dictionary',
+    )
 
     stage_load = sub.add_parser(
         'stage-load',
@@ -944,6 +1006,12 @@ def build_parser() -> argparse.ArgumentParser:
     stage_load.add_argument('--adapter-id', required=True)
     stage_load.add_argument('--execute', action='store_true')
     stage_load.add_argument('--source-file-id', default='')
+    stage_load.add_argument(
+        '--slice',
+        dest='slice_key',
+        default='schedule_field_dictionary',
+        help='Adapter slice key (ADR-0031). Default: schedule_field_dictionary',
+    )
 
     core_load = sub.add_parser(
         'core-load',
@@ -951,6 +1019,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     core_load.add_argument('--adapter-id', required=True)
     core_load.add_argument('--execute', action='store_true')
+    core_load.add_argument(
+        '--slice',
+        dest='slice_key',
+        default='schedule_field_dictionary',
+        help='Adapter slice key (ADR-0031). Default: schedule_field_dictionary',
+    )
 
     mart_rebuild = sub.add_parser(
         'mart-rebuild',
@@ -959,7 +1033,10 @@ def build_parser() -> argparse.ArgumentParser:
     mart_rebuild.add_argument(
         '--mart-key',
         default='schedule_field_dictionary_v1',
-        help='Projection key (default: schedule_field_dictionary_v1)',
+        help=(
+            'Projection key. Supported: schedule_field_dictionary_v1, '
+            'team_overview_v1 (default: schedule_field_dictionary_v1)'
+        ),
     )
 
     dedupe_run_parser = sub.add_parser(
@@ -1166,11 +1243,15 @@ def main() -> int:
     if args.command == 'run-adapter':
         return _cmd_run_adapter(args.adapter_id, args.execute)
     if args.command == 'fetch-remote':
-        return _cmd_fetch_remote(args.adapter_id, args.execute, args.remote_url)
+        return _cmd_fetch_remote(
+            args.adapter_id, args.execute, args.remote_url, args.slice_key
+        )
     if args.command == 'stage-load':
-        return _cmd_stage_load(args.adapter_id, args.execute, args.source_file_id)
+        return _cmd_stage_load(
+            args.adapter_id, args.execute, args.source_file_id, args.slice_key
+        )
     if args.command == 'core-load':
-        return _cmd_core_load(args.adapter_id, args.execute)
+        return _cmd_core_load(args.adapter_id, args.execute, args.slice_key)
     if args.command == 'mart-rebuild':
         return _cmd_mart_rebuild(args.mart_key)
     if args.command == 'dedupe-run':

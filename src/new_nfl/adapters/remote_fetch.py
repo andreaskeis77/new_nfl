@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from new_nfl.adapters.catalog import build_adapter_plan, get_adapter_descriptor
+from new_nfl.adapters.slices import DEFAULT_SLICE_KEY, SLICE_REGISTRY
 from new_nfl.metadata import (
     compute_sha256,
     create_ingest_run,
@@ -56,6 +57,7 @@ def execute_remote_fetch(
     adapter_id: str,
     execute: bool,
     remote_url_override: str | None = None,
+    slice_key: str = DEFAULT_SLICE_KEY,
 ) -> RemoteFetchResult:
     descriptor = get_adapter_descriptor(adapter_id)
     if descriptor is None:
@@ -66,9 +68,18 @@ def execute_remote_fetch(
         raise ValueError(f"Unknown source registry entry for adapter_id={adapter_id}")
 
     pipeline_name = f"adapter.{adapter_id}.remote_fetch"
-    remote_url = (remote_url_override or source.get("default_remote_url") or "").strip()
+    slice_spec = SLICE_REGISTRY.get((adapter_id, slice_key))
+    slice_url = (slice_spec.remote_url if slice_spec else "").strip()
+    legacy_url = (source.get("default_remote_url") or "").strip()
+    remote_url = (
+        (remote_url_override or "").strip()
+        or slice_url
+        or legacy_url
+    )
     if not remote_url:
-        raise ValueError(f"No remote URL configured for adapter_id={adapter_id}")
+        raise ValueError(
+            f"No remote URL configured for adapter_id={adapter_id} slice_key={slice_key}"
+        )
 
     plan = build_adapter_plan(settings, adapter_id)
 

@@ -6,6 +6,7 @@ from pathlib import Path
 import duckdb
 
 from new_nfl.adapters.catalog import build_adapter_plan
+from new_nfl.adapters.slices import DEFAULT_SLICE_KEY, SLICE_REGISTRY
 from new_nfl.metadata import (
     create_ingest_run,
     latest_source_file,
@@ -38,6 +39,18 @@ def _target_object_for_file(adapter_id: str, filename: str) -> str:
     if adapter_id == 'nflverse_bulk' and name == 'dictionary_schedules':
         return 'nflverse_bulk_schedule_dictionary'
     return f'{adapter_id}_{name}'
+
+
+def _target_object_for_slice(adapter_id: str, slice_key: str) -> str | None:
+    # The legacy schedule-dictionary slice keeps the historical filename-based
+    # stage naming (see T2.0A tests). Only non-default slices consult the
+    # registry for deterministic stage-table placement.
+    if slice_key == DEFAULT_SLICE_KEY:
+        return None
+    spec = SLICE_REGISTRY.get((adapter_id, slice_key))
+    if spec is None:
+        return None
+    return spec.stage_target_object
 
 
 def _resolve_source_file(
@@ -83,6 +96,7 @@ def execute_stage_load(
     adapter_id: str,
     execute: bool,
     source_file_id: str | None = None,
+    slice_key: str = DEFAULT_SLICE_KEY,
 ) -> StageLoadResult:
     plan = build_adapter_plan(settings, adapter_id)
     source_file = _resolve_source_file(
@@ -94,7 +108,10 @@ def execute_stage_load(
     source_file_id = str(source_file['source_file_id'])
     source_file_path = str(source_file['local_path'])
     target_schema = 'stg'
-    target_object = _target_object_for_file(adapter_id, Path(source_file_path).name)
+    slice_target = _target_object_for_slice(adapter_id, slice_key)
+    target_object = slice_target or _target_object_for_file(
+        adapter_id, Path(source_file_path).name
+    )
     qualified_table = f'{target_schema}.{target_object}'
     pipeline_name = f'adapter.{adapter_id}.stage_load'
 

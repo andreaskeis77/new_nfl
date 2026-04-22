@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-04-22 — T2.5A Teams-Domäne + Adapter-Slice-Registry
+**Status:** draft (wartet auf Operator-Freigabe)
+
+1. **Was lief gut:**
+   - **Code-Registry statt Datenbank-Tabelle für Slices.** `SliceSpec` als eingefrorener Dataclass in [src/new_nfl/adapters/slices.py](../src/new_nfl/adapters/slices.py) — drei statische Einträge, drei Zeilen pro Slice, klar gruppiert nach `adapter_id`. Kein `meta.adapter_slice`, keine Seed-SQL, kein Runtime-CRUD. Ein Slice ist heute ein Stück Code, das mit Tests versioniert wird; erst wenn v1.1 Operator-editierbare Slices braucht, wird daraus eine Tabelle (ADR-0031 §Alternativen).
+   - **`DEFAULT_SLICE_KEY = "schedule_field_dictionary"` hält T2.0A bit-kompatibel.** Der Default-Slice schaltet im `remote_fetch`/`stage_load`/`core_load`-Pfad den Slice-Registry-Dispatch ab und lässt die alte Filename-basierte Logik durchfallen. Resultat: kein einziger bestehender T2.0A-Test musste angepasst werden (außer `test_runner_cli` für einen vermeintlich-neuen `job_key`-Suffix, der aus demselben Grund wieder entfernt wurde). Operator sieht CLI-Ausgaben für Default-Slice identisch zu vor T2.5A.
+   - **Tier-A gewinnt, Tier-B generiert Evidence.** Tier-A-Werte landen in `core.team`, Tier-B-Diskrepanzen werden pro `team_id` zu einem einzelnen `meta.quarantine_case` aggregiert (eine Case-Row mit N Field-Level-Entries in `evidence_refs_json`) — nicht pro Field. Quarantäne-Zahl bleibt operator-verdaubar (eine Entscheidung pro betroffenem Team), Evidenz bleibt vollständig. Test: KC-Farbe + SF-Name → zwei Cases, vier wäre Noise.
+   - **Mart-Builder spalten-tolerant per `DESCRIBE`.** `mart.team_overview_v1` liest Stage-Spalten dynamisch; optional fehlende Spalten werden als `NULL` materialisiert. Das vermeidet den T2.3D-Schmerz, wo die erste Version des Mart-Builders fest codierte Spalten-Listen hatte und bei schema-Drift crashte.
+   - **Ontologie-Terme `conference` + `division`** ergänzt in TOML — das Slice trägt die Fachsemantik (AFC/NFC, 8 modern divisions) vom Stage bis ins Mart, ohne hartcodierte String-Vergleiche im Core-Load.
+
+2. **Was lief nicht gut:**
+   - **Kein echter HTTP-Adapter für `official_context_web` in T2.5A.** Tier-B wird in Tests direkt in die Stage-Tabelle geseedet. Bewusst akzeptiert: das Ziel war die Cross-Check-Mechanik, nicht die HTTP-Implementierung. T2.5B trägt die erste reale HTTP-Variante nach — solange ist ADR-0031 zurecht nur `Proposed`.
+   - **`meta.adapter_slice` als Runtime-Registry noch nicht projiziert.** Slices existieren nur im Code; eine Observability-Sicht „welche Slices sind registriert" braucht heute einen Python-Interpreter. Für T2.6 Freshness-Dashboard ist das Backlog.
+   - **`_target_object_for_slice`-Fallthrough war subtil.** Erste Version der Funktion gab für den Default-Slice den `SliceSpec.stage_target_object` zurück — bricht damit die Filename-basierte T2.0A-Erwartung `stg.nflverse_bulk_payload`. Fix: `return None` für Default, Caller behält Legacy-Logik. Der Bug zeigt, dass „alles geht durch die Registry" eine verlockende-aber-falsche Generalisierung ist; Default-Slice ist bewusst als Escape-Hatch modelliert.
+   - **`CoreLoadResult | CoreTeamLoadResult` als Rückgabetyp.** `execute_core_load` hat jetzt einen Union-Return — CLI muss branch-weise auf den Typ prüfen. Das ist noch sauber in einer Dispatch-Funktion, wird aber ab Slice 3+ (Players, Rosters) unsicher. Refactor-Ziel für T2.5C: gemeinsame Basis-Klasse oder Protocol mit `qualified_table`/`row_count`/`mart_qualified_table` + slice-spezifische Zusatzfelder.
+
+3. **Root Cause:**
+   - Slice-Abstraktion vs. Legacy-Pfad: Das Default-Slice-Konstrukt ist eine Brücke, weil T2.0A ohne Slice-Konzept entstanden ist. Sauberer wäre, T2.0A nachträglich in einen expliziten `schedule_field_dictionary`-Slice zu überführen — das ist aber Refactor-Arbeit ohne Nutzen für T2.5A und widerspricht „kleine Tranchen".
+   - Tier-B in Tests fixturisiert: `official_context_web` als Adapter-Stub existiert schon seit T1.2 für den `list-sources`-Pfad, aber eine HTTP-Implementierung gehört logisch in die erste Domäne, die sie braucht (Games), nicht in die Setup-Tranche (Teams).
+
+4. **Konkrete Methodänderung:**
+   - **Neue Slices kommen ab T2.5B als `SliceSpec`-Eintrag im Registry-Modul**, nicht als `source_registry`-Row. `source_registry` bleibt eine Adapter-Liste, keine Slice-Liste. ADR-0031 §Offene Punkte hält fest, wann das umgedreht wird (frühestens v1.1, wenn Operator-Editierbarkeit zur Anforderung wird).
+   - **Jedes neue Core-Load-Modul gibt einen Result-Typ mit denselben drei Kern-Feldern zurück**: `qualified_table`, `row_count`, `mart_qualified_table`. Slice-spezifische Felder kommen als Zusatz. Motivation: der CLI-Dispatcher kann Standard-Ausgabe ohne Type-Branching drucken.
+   - **Tier-B-Cross-Check-Felder werden explizit per Konstante im Core-Load-Modul deklariert** (`_CROSS_CHECK_FIELDS` in `core/teams.py`), nicht aus SliceSpec abgeleitet — weil Field-Auswahl Fachsemantik ist (welche Werte sind publikumsrelevant genug für Quarantäne), nicht Technik.
+
+5. **Verifikation:**
+   - `pytest` grün: 141/141 (+5 in [tests/test_teams.py](../tests/test_teams.py): dry-run-profile, full execute + mart-build, Tier-B-disagreement-opens-quarantine, operator-override-resolves, core-load-dispatch-routes-teams).
+   - CLI: `python -m new_nfl.cli core-load --adapter-id nflverse_bulk --slice teams --execute` erzeugt `core.team` + `mart.team_overview_v1`, druckt `SLICE_KEY=teams`, `CONFLICT_COUNT=…`, `OPENED_QUARANTINE_CASE_IDS=…`, `CROSS_CHECK_ADAPTERS=official_context_web`.
+   - ADR-0031 [docs/adr/ADR-0031-adapter-slice-strategy.md](adr/ADR-0031-adapter-slice-strategy.md) als `Proposed` im Index aufgenommen; Acceptance wartet auf erste reale HTTP-Variante in T2.5B.
+   - `PROJECT_STATE.md` markiert T2.5A abgeschlossen, nächster Bolzen T2.5B (Games-Domäne).
+
+---
+
 ## 2026-04-16 — T2.4B Dedupe-Pipeline-Skelett
 **Status:** draft (wartet auf Operator-Freigabe)
 
