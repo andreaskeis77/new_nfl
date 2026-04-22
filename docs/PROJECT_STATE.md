@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.5B Games-Domäne** — abgeschlossen (2026-04-22). Nächster Bolt: T2.5C (Players-Domäne).
+**T2.5C Players-Domäne** — abgeschlossen (2026-04-22). Nächster Bolt: T2.5D (Rosters zeitbezogen).
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -47,6 +47,7 @@
 - T2.4B Dedupe-Pipeline-Skelett (`src/new_nfl/dedupe/` mit fünf Stufen `normalize → block → score → cluster → review` und `pipeline.py`; `meta.dedupe_run` + `meta.review_item`; `RuleBasedPlayerScorer` mit sechs Score-Stufen; `Scorer`-Protocol für spätere ML-Erweiterung; CLI `dedupe-run --domain players --demo` und `dedupe-review-list`; Demo-Set deckt Auto-Merge, Review und No-Match in einem Lauf; ADR-0027 final `Accepted`)
 - T2.5A Teams-Domäne (Adapter-Slice-Registry `src/new_nfl/adapters/slices.py`; `core.team` mit Tier-A/Tier-B-Konflikt-Erkennung und automatischem `meta.quarantine_case`-Öffnen per `reason_code='tier_b_disagreement'`; Tier-A gewinnt nach ADR-0007; Read-Modell `mart.team_overview_v1`; Ontology-Terme `conference` + `division` ergänzt; CLI `--slice`-Flag für `fetch-remote`/`stage-load`/`core-load`; ADR-0031 `Proposed`)
 - T2.5B Games-Domäne (Slices `(nflverse_bulk, games)` primär und `(official_context_web, games)` als Cross-Check; `core.game` mit `game_id`-Deduplikation via `ROW_NUMBER() OVER (PARTITION BY LOWER(TRIM(game_id)))`, Tier-A/B-Konflikt-Erkennung auf `home_score`, `away_score`, `stadium`, `roof`, `surface` und automatischem `meta.quarantine_case`-Öffnen; Read-Modell `mart.game_overview_v1` mit abgeleitetem `is_completed` und `winner_team` (`home_team`/`away_team`/`TIE`/NULL); CLI `list-slices` für Operator-Sicht über `SLICE_REGISTRY`; erste reale HTTP-Runde für `official_context_web` via stdlib-`ThreadingHTTPServer` end-to-end in `urllib.request.urlopen`-Pfad; ADR-0031 final `Accepted`)
+- T2.5C Players-Domäne + erste echte Dedupe-Anwendung (Slices `(nflverse_bulk, players)` primär und `(official_context_web, players)` als Cross-Check; `core.player` ([src/new_nfl/core/players.py](../src/new_nfl/core/players.py)) mit `UPPER(TRIM(player_id))`-Kanonicalisierung, TRY_CAST für `birth_date`, `height`, `weight`, `rookie_season`, `last_season`, `jersey_number`, `draft_year`/`round`/`pick`, UPPER für `position`/`current_team_id`/`draft_club`; Tier-A-Dominanz, Tier-B-Diskrepanzen auf `display_name`, `position`, `current_team_id`, `jersey_number` öffnen `meta.quarantine_case` mit `scope_type='player'`; Read-Modell `mart.player_overview_v1` ([src/new_nfl/mart/player_overview.py](../src/new_nfl/mart/player_overview.py)) mit abgeleitetem `full_name` (Fallback `first_name || ' ' || last_name`), `is_active = (last_season IS NULL)` und best-effort `position_is_known` aus der aktiven Ontologie-Version (`NULL` wenn keine aktive Version geladen); Brücke [src/new_nfl/dedupe/core_player_source.py](../src/new_nfl/dedupe/core_player_source.py) liest `core.player` direkt in den T2.4B-Dedupe-Pipeline-Input, CLI `dedupe-run --domain players --source core-player` als erste reale Anwendung; Protocol `CoreLoadResultLike` ([src/new_nfl/core/result.py](../src/new_nfl/core/result.py)) kapselt den gemeinsamen Result-Typ von Teams/Games/Players und ersetzt drei `isinstance`-Branches im CLI-Dispatch durch einen)
 
 ## Current runtime posture
 
@@ -68,8 +69,9 @@
 - Read-Modell-Schicht `mart.*` als einziger Lesepfad für CLI-Browse/Web-Preview (ADR-0029): `mart.schedule_field_dictionary_v1` voll rebuildbar aus `core.*`, automatisch nach `core-load --execute` aufgefrischt, separat über CLI `mart-rebuild` als Runner-Job; Direktzugriffe aus Read-Modulen auf `core.*`/`stg.*`/`raw/` werden durch einen Lint-Test blockiert
 - Ontologie-as-Code v0_1 (ADR-0026): TOML-Quellen unter `ontology/v0_1/` (Position, Game-Status, Injury-Status), Loader idempotent über `content_sha256`, Projektion in `meta.ontology_*`; CLI `ontology-load`/`ontology-list`/`ontology-show` mit Alias-Auflösung; `meta.ontology_version` markiert die aktive Version pro Quellverzeichnis
 - Dedupe-Pipeline-Skelett (ADR-0027): fünf explizite Stufen unter `src/new_nfl/dedupe/`, regel-basierter Scorer mit Pluggable-Interface, Auto-Merge ab `score >= 0.85`, Review-Queue für `0.50 <= score < 0.85`; Evidence in `meta.dedupe_run`; offene Pairs in `meta.review_item`; CLI `dedupe-run --domain players --demo` und `dedupe-review-list`
-- Adapter-Slice-Registry (ADR-0031 Accepted seit T2.5B): ein `adapter_id` kann mehrere Slices bedienen; slice-spezifische `remote_url`, `stage_target_object`, `core_table`, `mart_key` + Rolle (`primary`/`cross_check`); Registry nach T2.5B: `(nflverse_bulk, schedule_field_dictionary)`, `(nflverse_bulk, teams)`, `(nflverse_bulk, games)` als Primary plus `(official_context_web, teams)` und `(official_context_web, games)` als Cross-Check; Quarantäne-Hook auf Tier-A/B-Diskrepanz in `core.team` und `core.game`; Operator-CLI `list-slices` für Registry-Sicht
+- Adapter-Slice-Registry (ADR-0031 Accepted seit T2.5B): ein `adapter_id` kann mehrere Slices bedienen; slice-spezifische `remote_url`, `stage_target_object`, `core_table`, `mart_key` + Rolle (`primary`/`cross_check`); Registry nach T2.5C: `(nflverse_bulk, schedule_field_dictionary)`, `(nflverse_bulk, teams)`, `(nflverse_bulk, games)`, `(nflverse_bulk, players)` als Primary plus `(official_context_web, teams)`, `(official_context_web, games)`, `(official_context_web, players)` als Cross-Check; Quarantäne-Hook auf Tier-A/B-Diskrepanz in `core.team`, `core.game`, `core.player`; Operator-CLI `list-slices` für Registry-Sicht
 - `core.game` slice-zentrisch aus `(nflverse_bulk, games)` mit Tier-A-Dominanz, `mart.game_overview_v1` als Read-Projektion (abgeleitet: `is_completed`, `winner_team`), `(official_context_web, games)` als erste reale HTTP-getriebene Tier-B-Quelle
+- `core.player` slice-zentrisch aus `(nflverse_bulk, players)` mit `UPPER(TRIM(player_id))`-Kanonicalisierung, `mart.player_overview_v1` als Read-Projektion (abgeleitet: `full_name`, `is_active`, `position_is_known`) mit best-effort Ontologie-Lookup gegen die aktive `position`-Value-Set-Version, Dedupe-Pipeline (ADR-0027) liest `core.player` direkt für die erste reale Anwendung (CLI `dedupe-run --source core-player`), gemeinsamer Result-Typ `CoreLoadResultLike` (Protocol) für Teams/Games/Players
 
 ## Current release posture
 
@@ -92,7 +94,7 @@ T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nac
 
 ## Preferred next bolt
 
-**T2.5C — Players-Domäne** gemäß `T2_3_PLAN.md` §4: Slice `(nflverse_bulk, players)` mit `core.player` + `mart.player_overview_v1`; identisches Muster wie T2.5A/B (primary + optionaler Cross-Check, Quarantäne auf Diskrepanz). Ontology-Term `position` aus T2.4A wird als Controlled-Vocabulary-Projektion für `core.player.position` angehängt.
+**T2.5D — Rosters zeitbezogen** gemäß `T2_3_PLAN.md` §4: `core.roster_membership` mit `valid_from`/`valid_to`, `(nflverse_bulk, rosters)` als Primary, Trade-Erkennung durch Wochenüberschneidung. Erste Domäne mit Historisierungs-Pflicht — die drei vorhergehenden Domänen (Teams, Games, Players) sind snapshot-basiert. Ableitung der aktiven Team-Zugehörigkeit pro `player_id` wandert vom `core.player.current_team_id` (T2.5C-Snapshot) in die Roster-Sicht.
 
 ## Zielkorridor v1.0
 

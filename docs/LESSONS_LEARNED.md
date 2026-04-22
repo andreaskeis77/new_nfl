@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-04-22 — T2.5C Players-Domäne + erste reale Dedupe-Anwendung + Protocol-Refactor
+**Status:** draft (wartet auf Operator-Freigabe)
+
+1. **Was lief gut:**
+   - **Protocol-Refactor als Vorbedingung lieferte Dividende schon im selben Chat.** `CoreLoadResultLike` in [src/new_nfl/core/result.py](../src/new_nfl/core/result.py) als `@runtime_checkable`-Protocol mit elf Kern-Attributen hat die drei nahezu identischen Teams/Games/Players-Branches im CLI-Dispatch auf einen kollabiert (von ~50 auf ~20 Zeilen). Der Protocol-Ansatz beats Basisklasse, weil `frozen=True`-Dataclasses keine Inheritance-Book­keeping erzwingen — jede Core-Domäne bleibt selbsterklärend. Slice-spezifische Felder (`distinct_team_count`/`distinct_game_count`/`distinct_player_count`) bleiben per `hasattr`-Helper zugänglich. Die T2.5A-Lessons-Prophezeiung „ab Slice 3+ wird der Dispatch unsicher" ist damit abgefangen, nicht ausgesessen.
+   - **Ontology-Integration als best-effort, nicht als Vorbedingung.** `mart.player_overview_v1` liefert `position_is_known` aus `meta.ontology_value_set_member` — wenn keine aktive Ontology-Version geladen ist, fällt der Wert auf `NULL` statt den Mart-Rebuild zu blockieren. Kritisch für Umgebungen, in denen `ontology-load` noch nicht lief (fresh bootstrap, Tests ohne Ontology-Seed). Der Mart bleibt rebuildbar, die Ontology-Signatur bleibt zukunftssicher sichtbar.
+   - **Dedupe-Brücke bewusst als separate Funktion, nicht als Seiteneffekt von `execute_core_player_load`.** `run_player_dedupe_from_core(settings)` ist operator-getriggert über CLI `dedupe-run --source core-player`, nicht implizit im Core-Load. Grund: Dedupe ist eine eigene, ressourcen- und zeit-intensive Operation (T2.4B-Stufen normalize → block → score → cluster → review) — sie in den Core-Load zu verschmelzen würde die Ingest-Latenz koppeln und den Operator-Workflow unsichtbar machen. Der CLI-Flag `--source core-player` (vs `--demo`) bleibt das einzige neue Vertragselement.
+   - **Stage-Schema tolerant für Minimal-Zeilen.** Tier-A-Fixture trägt absichtlich einen Player mit leeren Strings in allen optionalen Spalten; TRY_CAST-Ketten + `NULLIF(TRIM(...), '')` machen aus leeren Strings echte `NULL`s. Keine IntegrityError-Kette, kein „accidentally 0 statt NULL"-Fehler in numerischen Spalten (Risiko bei `CAST(NULLIF(TRIM(''), '') AS INTEGER)` → `NULL`, nicht `0`).
+   - **Dedupe-Fixture nutzt denselben echten Cluster wie T2.4B-Demo.** Tier-A enthält zwei Patrick-Mahomes-Player-IDs (`00-0033873` + `00-0099999`) mit identischem Namen, Geburtsjahr und Position — der T2.4B-RuleBasedScorer erzeugt die gleiche Auto-Merge-Score wie im Demo-Set. Damit beweist der T2.5C-Integrationstest nicht nur „Dedupe läuft über `core.player`", sondern „Dedupe produziert den erwarteten Cluster-Output gegen reale Input-Struktur". Das ist die Brücke zwischen T2.4B-Skelett-Test und T2.5C-Anwendungs-Test.
+
+2. **Was lief nicht gut:**
+   - **`position_is_known` bleibt ohne Ontology-Load `NULL` — in der Realität fast immer.** Nach T2.4A existiert die Ontology-Surface, aber der Bootstrap aktiviert keine Default-Version. In einer frischen Developer-Umgebung oder einem CI-Run ohne expliziten `ontology-load` ist die Flag weder `TRUE` noch `FALSE`, sondern `NULL` — was den UI-Code später zwingt, einen dritten Zustand („Ontologie nicht geladen") zu rendern. Die Dokumentation ist im Mart-Modul klar, aber der Bootstrap-Default müsste `ontology/v0_1/` als aktive Version aktivieren, damit der Zustandsraum im Regelbetrieb nur `TRUE`/`FALSE` ist.
+   - **`_CROSS_CHECK_FIELDS` wiederholt sich zwischen Teams/Games/Players ohne gemeinsame Abstraktion.** Jedes Core-Load-Modul deklariert die Liste der Cross-Check-Felder als lokale Konstante. Bewusst — Feld-Auswahl ist Fachsemantik —, aber bei Slice 4+ (Rosters, Stats) muss man immer wieder im Modul-Kopf nachschlagen, welche Felder überhaupt verglichen werden. Kandidat für eine slice-seitige Deklaration (`SliceSpec.cross_check_fields`) in T2.5D, wenn dort die vierte Liste dazukommt.
+   - **Dedupe-Test hängt an der Demo-Threshold-Logik.** Der T2.5C-Cluster-Test verlässt sich auf den Default `lower_threshold=0.50`/`upper_threshold=0.85`. Ändert T2.4B diese Werte in einer späteren Iteration, bricht der T2.5C-Test ohne Warnung. Mitigation: Thresholds wurden in `T2_3_PLAN.md` §4 nicht als Vertrag fixiert, aber `run_player_dedupe_from_core` nimmt sie als benannte Parameter — der Test sollte die Thresholds explizit passieren statt auf Defaults zu vertrauen.
+
+3. **Root Cause:**
+   - Protocol-vs-Basisklasse ist kein Design-Zufall: `frozen=True` macht `dataclass`-Vererbung semantisch komplex (Field-Order, Keyword-Only-Defaults, `__eq__`-Kollision). Protocol mit `runtime_checkable` hält die einzelnen Dataclasses flach und erlaubt `isinstance`-Checks, ohne irgendeine Klasse zu zwingen, den Protocol-Typ explizit zu inheritieren — das passt zur Architekturphilosophie „jede Domäne ist lokal selbsterklärend".
+   - Die Dedupe-Brücke als separate Funktion ist konsistent mit der T2.4B-Entscheidung, Dedupe als explizite fünfte Ingest-Stufe zu modellieren (ADR-0027). Sie in den Core-Load zu pressen wäre ein Verstoß gegen den ADR-Geist.
+   - `position_is_known`-NULL-Fallback ist eine ADR-0026-Konsequenz: die Ontology ist Code-vor-DB, aber die DB-Projektion ist optional pro Environment. Eine globale „Ontology muss aktiv sein"-Invariante würde T2.4A retrospektiv um eine Pflicht erweitern.
+
+4. **Konkrete Methodänderung:**
+   - **Ab T2.5D deklariert jedes Core-Load-Modul seinen `CoreLoadResultLike`-Vertrag explizit**, indem es den Protocol importiert und eine Zeile `_: CoreLoadResultLike = CoreXLoadResult(...)`-kompatiblen Instantiierungs-Test mitbringt (MyPy-freundlich, ohne Runtime-Kosten). Damit bleibt die Kompatibilität bei Protocol-Erweiterungen sichtbar.
+   - **Der Bootstrap aktiviert ab T2.6A (frühester UI-Konsument) eine Default-Ontology-Version.** Konkret: `bootstrap_local_environment` prüft, ob eine aktive Version existiert, und `ontology-load`-t `ontology/v0_1/` ohne `--no-activate`, wenn nicht. Begründung: `position_is_known` und ähnliche Ontology-Ableitungen müssen im UI-Rendering binäre Wahrheitswerte liefern, nicht dreiwertige.
+   - **Reale Anwendung einer Pipeline-Stufe hat einen eigenen Integrationstest mit der ersten Domäne**, nicht als Seiteneffekt. Template für T2.5D: wenn dort ein neuer Pipeline-Schritt Domäne-übergreifend ist (z. B. Trade-Erkennung), bekommt er einen `test_rosters_drives_<feature>`-Test, der die Pipeline gegen live `core.roster_membership` fährt und die erwarteten Cluster/Events assertet.
+
+5. **Verifikation:**
+   - `pytest` grün: 157/157 (+9 in [tests/test_players.py](../tests/test_players.py): dry-run-profile, full execute + mart-build mit `full_name`/`is_active`/`position_is_known`-Ableitungen, Tier-B-disagreement-opens-quarantine, operator-override-resolves, core-load-dispatch-routes-players, dedupe-from-core-clusters-mahomes, dedupe-from-core-fails-without-core-player, real-HTTP-roundtrip, HTTP-roundtrip-feeds-Tier-B-quarantine).
+   - CLI: `python -m new_nfl.cli core-load --adapter-id nflverse_bulk --slice players --execute` druckt `SLICE_KEY=players`, `DISTINCT_PLAYER_COUNT=…`, `CONFLICT_COUNT=…`, `CROSS_CHECK_ADAPTERS=official_context_web`, `MART_QUALIFIED_TABLE=mart.player_overview_v1`; `python -m new_nfl.cli dedupe-run --domain players --source core-player` druckt `SOURCE_REF=core.player`, `INPUT_RECORD_COUNT=…`, `AUTO_MERGE_PAIR_COUNT=…`, `CLUSTER=…`.
+   - `PROJECT_STATE.md` markiert T2.5C abgeschlossen, nächster Bolzen T2.5D (Rosters zeitbezogen).
+
+---
+
 ## 2026-04-22 — T2.5B Games-Domäne + erste reale HTTP-Runde
 **Status:** draft (wartet auf Operator-Freigabe)
 
