@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-04-22 — T2.5B Games-Domäne + erste reale HTTP-Runde
+**Status:** draft (wartet auf Operator-Freigabe)
+
+1. **Was lief gut:**
+   - **Teams-Muster 1:1 portiert, ohne Copy-Schmerz.** `core/games.py` und `mart/game_overview.py` wurden nach exakt derselben Struktur wie ihre Teams-Pendants gebaut (Required-Columns-Check, `ROW_NUMBER OVER PARTITION BY LOWER(TRIM(key))`, TRY_CAST für numerische/Datum-Felder, spalten-tolerante Mart-Projektion per `DESCRIBE` + `_opt()`). Die Slice-Abstraktion aus T2.5A zahlt sich ab der zweiten Domäne aus: T2.5B kostete keine neuen Entscheidungen, nur Umsetzung — ADR-0031 kann deshalb final `Accepted`.
+   - **Abgeleitete Felder im Mart statt im Core.** `is_completed = (home_score IS NOT NULL AND away_score IS NOT NULL)` und `winner_team ∈ {home_team, away_team, 'TIE', NULL}` sind reine Sicht-Konzepte und wurden bewusst nur im `mart.game_overview_v1` materialisiert, nicht in `core.game`. Trennung ADR-0029 bleibt sauber: `core.game` trägt Fakten, `mart.*` trägt Interpretation.
+   - **Echter HTTP-Roundtrip ohne neue Testabhängigkeit.** stdlib-`ThreadingHTTPServer` in Daemon-Thread auf Port 0, Custom `BaseHTTPRequestHandler` serviert CSV-Bytes — der Test ruft `execute_remote_fetch(remote_url_override=server.url)` und `execute_stage_load` auf und beweist `urllib.request.urlopen` als produktiven Pfad end-to-end. Kein `respx`, kein `pytest-httpserver`, kein `requests-mock` — die Abhängigkeitsfläche bleibt auf der stdlib.
+   - **`list-slices` als pipe-separierter Operator-Befehl.** Acht Spalten (`adapter_id | slice_key | tier_role | stage_qualified_table | core_table | mart_key | has_url | label`), keine Tabelle mit Alignment-Padding — bleibt grepbar aus Shell-Pipes und konsistent mit den vorhandenen pipe-separierten Outputs (`list-sources`, `list-adapters`). Registry ist jetzt ohne Python-Interpreter inspizierbar.
+   - **Tie- und ungespielt-Fälle von Anfang an in Fixtures.** Vier Tier-A-Games im Happy-Test decken Auswärtssieg (DET@KC), Heimsieg (SF-NYJ), Tie (BAL-LV 23:23 mit OT=1) und ungespielt/NULL-Scores (KC-DEN Week 18) ab. Die abgeleiteten `winner_team`/`is_completed`-Werte sind damit an allen vier Ecken des Zustandsraums getestet, nicht nur am Happy-Case.
+
+2. **Was lief nicht gut:**
+   - **Union-Return-Typ wächst weiter.** `execute_core_load` liefert jetzt `CoreLoadResult | CoreTeamLoadResult | CoreGameLoadResult`. Die T2.5A-Methodnotiz („gemeinsame Basis-Klasse oder Protocol") ist bis T2.5C offen — bei Players wäre der Refactor jetzt dringlich, sonst wächst der Dispatch im CLI um einen vierten `isinstance`-Branch.
+   - **`remote_url=""` bleibt stiller Tier-B-Vertrag.** `(official_context_web, games)` hat weiterhin leeres `remote_url` per Design — Operator pinnt pro Lauf eine konkrete URL via `--remote-url`, Tests überschreiben via `remote_url_override`. Das ist dokumentiert im SliceSpec-Kommentar und in ADR-0031-Implementierungsnotizen, aber es ist kein selbst-erklärender Vertrag — ein `list-slices`-Leser könnte `has_url=no` als „defekt" fehlinterpretieren.
+   - **Kein separater Mart-Test für `winner_team='TIE'`-Fall ausserhalb der Integrationsebene.** Die Tie-Ableitung wird im vollen Execute-Test geprüft, nicht in einer isolierten Unit. Risiko gering (vier Cases nebeneinander in einem Lauf fangen die Logik ab), aber bei zukünftigen Änderungen am Mart-Builder fehlt der Feingranular-Test.
+
+3. **Root Cause:**
+   - Der Union-Return-Drift ist ein natürliches Symptom der „eine Tranche = eine Domäne"-Methodik: Refactor verzögert sich, weil jede einzelne Tranche sauber weiterläuft. Erst die Kaskade aus drei Domänen macht den Refactor zur Vorbedingung.
+   - Das Tier-B-`remote_url=""`-Muster ist eine Absicht, keine Nachlässigkeit: Tier-B-Feeds variieren pro Operator und Saison (beta-API, manuelle Snapshots), während Tier-A im nflverse-Release gepinnt ist. Ein Default-URL für Tier-B wäre irreführend. Trotzdem verdient das Muster eine lautere Dokumentation.
+
+4. **Konkrete Methodänderung:**
+   - **Ab T2.5C wird der Result-Type-Refactor Vorbedingung.** Gemeinsames Protocol `CoreLoadResultLike` mit `qualified_table`, `row_count`, `mart_qualified_table`, `ingest_run_id`, `run_status` — slice-spezifische Zusatzfelder kommen als optionale Attribute. Motivation: CLI-Dispatch ohne Type-Branching, Runner-Executor-Rückgabe einheitlich.
+   - **Jeder neue `cross_check`-Slice mit `remote_url=""` braucht eine Notiz im SliceSpec-`notes`-Feld**, die den Override-Mechanismus nennt. Template: „remote_url empty by design: operators pin a concrete URL per run via --remote-url or tests override via remote_url_override."
+   - **Reale HTTP-Flows gegen stdlib-Server sind ab jetzt die Default-Testform für neue Adapter-Slices**, solange kein optionales `respx`/`pytest-httpserver` begründet ist. Fixture-only-Pfad bleibt erlaubt für Stage-Load-Tests, nicht mehr für Fetch-Tests.
+
+5. **Verifikation:**
+   - `pytest` grün: 148/148 (+7 in [tests/test_games.py](../tests/test_games.py): dry-run-profile, full execute + mart-build mit `winner_team`-Ableitungen, Tier-B-disagreement-opens-quarantine, operator-override-resolves, core-load-dispatch-routes-games, real-HTTP-roundtrip, HTTP-roundtrip-feeds-Tier-B-quarantine).
+   - CLI: `python -m new_nfl.cli list-slices` druckt die fünf Registry-Einträge mit `tier_role`/`has_url`/`core_table`/`mart_key`; `python -m new_nfl.cli core-load --adapter-id nflverse_bulk --slice games --execute` druckt `SLICE_KEY=games`, `DISTINCT_GAME_COUNT=…`, `CONFLICT_COUNT=…`, `CROSS_CHECK_ADAPTERS=official_context_web` (sobald Tier-B-Stage gefüttert ist).
+   - ADR-0031 [docs/adr/ADR-0031-adapter-slice-strategy.md](adr/ADR-0031-adapter-slice-strategy.md) final `Accepted` mit Implementierungsnotizen; Index-Tabelle [docs/adr/README.md](adr/README.md) zeigt `Accepted (2026-04-22) | T2.5A / T2.5B`.
+   - `PROJECT_STATE.md` markiert T2.5B abgeschlossen, nächster Bolzen T2.5C (Players-Domäne).
+
+---
+
 ## 2026-04-22 — T2.5A Teams-Domäne + Adapter-Slice-Registry
 **Status:** draft (wartet auf Operator-Freigabe)
 

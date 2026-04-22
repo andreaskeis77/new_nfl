@@ -201,6 +201,7 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
     the build as a ``meta.job_run`` so operators can audit freshness.
     """
     from new_nfl.mart import (
+        build_game_overview_v1,
         build_schedule_field_dictionary_v1,
         build_team_overview_v1,
     )
@@ -210,6 +211,8 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
         result = build_schedule_field_dictionary_v1(settings)
     elif mart_key == "team_overview_v1":
         result = build_team_overview_v1(settings)
+    elif mart_key == "game_overview_v1":
+        result = build_game_overview_v1(settings)
     else:
         raise ValueError(f"unknown mart_key={mart_key!r}")
 

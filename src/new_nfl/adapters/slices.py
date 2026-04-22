@@ -83,6 +83,39 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "implementation in T2.5B+. Drives quarantine on Tier-A vs Tier-B disagreement."
         ),
     ),
+    SliceSpec(
+        adapter_id="nflverse_bulk",
+        slice_key="games",
+        label="NFL games (schedule + final scores)",
+        remote_url=(
+            "https://github.com/nflverse/nflverse-data/releases/download/"
+            "schedules/games.csv"
+        ),
+        stage_target_object="nflverse_bulk_games",
+        core_table="core.game",
+        mart_key="game_overview_v1",
+        tier_role="primary",
+        notes=(
+            "T2.5B primary games slice; Tier-A source of truth for game_id, "
+            "schedule, final scores and venue metadata."
+        ),
+    ),
+    SliceSpec(
+        adapter_id="official_context_web",
+        slice_key="games",
+        label="Official context games cross-check",
+        remote_url="",
+        stage_target_object="official_context_web_games",
+        core_table="",
+        mart_key="",
+        tier_role="cross_check",
+        notes=(
+            "T2.5B Tier-B cross-check feed for games. remote_url empty by design: "
+            "operators pin a concrete URL per run via --remote-url or the SliceSpec "
+            "is overridden in tests via remote_url_override. Triggers quarantine on "
+            "score / venue drift against Tier-A."
+        ),
+    ),
 )
 
 

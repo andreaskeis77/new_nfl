@@ -1,7 +1,7 @@
 # ADR-0031: Adapter Slice Strategy — Ein Adapter, N Slices via Python-Registry
 
 ## Status
-Proposed (2026-04-22, Treiber: T2.5A Teams-Domain)
+Accepted (2026-04-22, Treiber: T2.5A Teams-Domain, bestätigt in T2.5B Games-Domain)
 
 ## Kontext
 
@@ -80,6 +80,13 @@ SLICE_REGISTRY: dict[tuple[str, str], SliceSpec] = { ... }
 
 ## Offene Punkte
 
-- **Konvention `core_table` leer-string**: Noch nicht endgültig — für Slices, die rein in `stg.*` leben sollen (z. B. reine Cross-Checks, die erst bei Core-Promotion des primären Slices gelesen werden), ist `core_table=""` vorgesehen. Beispiel in T2.5A: `(official_context_web, teams)` hat `core_table=""` — seine Daten fließen nicht direkt nach `core.team`, sondern werden beim Promoten des primären Slices als Cross-Check konsultiert.
+- **Konvention `core_table` leer-string**: Noch nicht endgültig — für Slices, die rein in `stg.*` leben sollen (z. B. reine Cross-Checks, die erst bei Core-Promotion des primären Slices gelesen werden), ist `core_table=""` vorgesehen. Beispiel in T2.5A/T2.5B: `(official_context_web, teams)` und `(official_context_web, games)` haben `core_table=""` — ihre Daten fließen nicht direkt nach `core.team`/`core.game`, sondern werden beim Promoten des primären Slices als Cross-Check konsultiert.
 - **Versionierung der Slice-Registry**: aktuell implizit durch Code-Stand. Bei `_v2`-Schema-Bumps ist der Slice-Key (`schedule_field_dictionary_v1` → `_v2`) der Freiheitsgrad; die Entscheidung, ob Slice-Versionierung eigenes Attribut wird, fällt in T2.6.
-- **Operator-Sicht**: Ein `list-slices`-CLI-Kommando ist sinnvoll, Scope aber T2.5B (nach-Trocken).
+
+## Implementierungsnotizen (2026-04-22, T2.5B)
+
+- **CLI `list-slices` geliefert** (T2.5B): pipe-separierte Operator-Sicht über `SLICE_REGISTRY`; Spalten `adapter_id | slice_key | tier_role | stage_qualified_table | core_table | mart_key | has_url | label`.
+- **Registry nach T2.5B**: 5 Einträge — `(nflverse_bulk, schedule_field_dictionary)`, `(nflverse_bulk, teams)`, `(nflverse_bulk, games)`, `(official_context_web, teams)`, `(official_context_web, games)`.
+- **Erste produktive HTTP-Runde**: `(official_context_web, games)` wird in T2.5B mit einem stdlib-`ThreadingHTTPServer` in den Tests echt über `urllib.request.urlopen` in `execute_remote_fetch` geladen — bestätigt, dass `remote_url=""` zusammen mit `--remote-url`/`remote_url_override` der korrekte Einsprungspunkt für Tier-B-Fixtures bleibt.
+- **Tier-B-Quarantäne belastbar**: Score-/Venue-Diskrepanzen zwischen Tier-A (`nflverse_bulk`) und Tier-B (`official_context_web`) öffnen `meta.quarantine_case` mit `scope_type='game'`, `reason_code='tier_b_disagreement'`; Tier-A-Werte gewinnen in `core.game` (ADR-0007).
+- **`core.*` slice-zentrisch bestätigt**: `execute_core_game_load` liest alle Slices mit `core_table='core.game'` aus der Registry, promoviert Tier-A und vergleicht Tier-B Feld für Feld — identisches Muster wie `execute_core_team_load`; Skalierung auf T2.5C–T2.5F ohne Strukturbruch.

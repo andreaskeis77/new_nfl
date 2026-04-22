@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.5A Teams-Domäne** — abgeschlossen (2026-04-22). Nächster Bolt: T2.5B (Games-Domäne).
+**T2.5B Games-Domäne** — abgeschlossen (2026-04-22). Nächster Bolt: T2.5C (Players-Domäne).
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -11,7 +11,7 @@
 - `UI_STYLE_GUIDE_v0_1.md` — verbindliche UI-Regeln
 - `T2_3_PLAN.md` — aktiver Tranche-Plan zum v1.0-Ziel (Ende Juni 2026)
 - `USE_CASE_VALIDATION_v0_1.md` — abgenommene Use Cases
-- ADR-0025, ADR-0026, ADR-0027, ADR-0028, ADR-0029 — `Accepted`; ADR-0030 (UI Stack) bleibt `Proposed` bis T2.6A; ADR-0031 (Adapter-Slice-Strategie) `Proposed` seit T2.5A
+- ADR-0025, ADR-0026, ADR-0027, ADR-0028, ADR-0029, ADR-0031 — `Accepted`; ADR-0030 (UI Stack) bleibt `Proposed` bis T2.6A
 - `CHAT_HANDOFF_PROTOCOL.md`, `LESSONS_LEARNED_PROTOCOL.md` — Methode
 - Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260416-1900_t24-ontology-runtime-done.md`
 
@@ -46,6 +46,7 @@
 - T2.4A Ontology-as-Code-Skelett (`ontology/v0_1/term_*.toml`, `src/new_nfl/ontology/loader.py` mit `content_sha256`-Idempotenz; `meta.ontology_version`/`ontology_term`/`ontology_alias`/`ontology_value_set`/`ontology_value_set_member`/`ontology_mapping`; CLI `ontology-load`, `ontology-list`, `ontology-show --term-key <key|alias>`; Pydantic-Service `load_ontology_directory`/`list_terms`/`describe_term`; ADR-0026 final `Accepted`, TOML-Format statt YAML)
 - T2.4B Dedupe-Pipeline-Skelett (`src/new_nfl/dedupe/` mit fünf Stufen `normalize → block → score → cluster → review` und `pipeline.py`; `meta.dedupe_run` + `meta.review_item`; `RuleBasedPlayerScorer` mit sechs Score-Stufen; `Scorer`-Protocol für spätere ML-Erweiterung; CLI `dedupe-run --domain players --demo` und `dedupe-review-list`; Demo-Set deckt Auto-Merge, Review und No-Match in einem Lauf; ADR-0027 final `Accepted`)
 - T2.5A Teams-Domäne (Adapter-Slice-Registry `src/new_nfl/adapters/slices.py`; `core.team` mit Tier-A/Tier-B-Konflikt-Erkennung und automatischem `meta.quarantine_case`-Öffnen per `reason_code='tier_b_disagreement'`; Tier-A gewinnt nach ADR-0007; Read-Modell `mart.team_overview_v1`; Ontology-Terme `conference` + `division` ergänzt; CLI `--slice`-Flag für `fetch-remote`/`stage-load`/`core-load`; ADR-0031 `Proposed`)
+- T2.5B Games-Domäne (Slices `(nflverse_bulk, games)` primär und `(official_context_web, games)` als Cross-Check; `core.game` mit `game_id`-Deduplikation via `ROW_NUMBER() OVER (PARTITION BY LOWER(TRIM(game_id)))`, Tier-A/B-Konflikt-Erkennung auf `home_score`, `away_score`, `stadium`, `roof`, `surface` und automatischem `meta.quarantine_case`-Öffnen; Read-Modell `mart.game_overview_v1` mit abgeleitetem `is_completed` und `winner_team` (`home_team`/`away_team`/`TIE`/NULL); CLI `list-slices` für Operator-Sicht über `SLICE_REGISTRY`; erste reale HTTP-Runde für `official_context_web` via stdlib-`ThreadingHTTPServer` end-to-end in `urllib.request.urlopen`-Pfad; ADR-0031 final `Accepted`)
 
 ## Current runtime posture
 
@@ -67,7 +68,8 @@
 - Read-Modell-Schicht `mart.*` als einziger Lesepfad für CLI-Browse/Web-Preview (ADR-0029): `mart.schedule_field_dictionary_v1` voll rebuildbar aus `core.*`, automatisch nach `core-load --execute` aufgefrischt, separat über CLI `mart-rebuild` als Runner-Job; Direktzugriffe aus Read-Modulen auf `core.*`/`stg.*`/`raw/` werden durch einen Lint-Test blockiert
 - Ontologie-as-Code v0_1 (ADR-0026): TOML-Quellen unter `ontology/v0_1/` (Position, Game-Status, Injury-Status), Loader idempotent über `content_sha256`, Projektion in `meta.ontology_*`; CLI `ontology-load`/`ontology-list`/`ontology-show` mit Alias-Auflösung; `meta.ontology_version` markiert die aktive Version pro Quellverzeichnis
 - Dedupe-Pipeline-Skelett (ADR-0027): fünf explizite Stufen unter `src/new_nfl/dedupe/`, regel-basierter Scorer mit Pluggable-Interface, Auto-Merge ab `score >= 0.85`, Review-Queue für `0.50 <= score < 0.85`; Evidence in `meta.dedupe_run`; offene Pairs in `meta.review_item`; CLI `dedupe-run --domain players --demo` und `dedupe-review-list`
-- Adapter-Slice-Registry (ADR-0031 Proposed): ein `adapter_id` kann mehrere Slices bedienen; slice-spezifische `remote_url`, `stage_target_object`, `core_table`, `mart_key` + Rolle (`primary`/`cross_check`); T2.5A liefert `(nflverse_bulk, teams)` als Primary und `(official_context_web, teams)` als Cross-Check mit Quarantäne-Hook auf Tier-A/B-Diskrepanz
+- Adapter-Slice-Registry (ADR-0031 Accepted seit T2.5B): ein `adapter_id` kann mehrere Slices bedienen; slice-spezifische `remote_url`, `stage_target_object`, `core_table`, `mart_key` + Rolle (`primary`/`cross_check`); Registry nach T2.5B: `(nflverse_bulk, schedule_field_dictionary)`, `(nflverse_bulk, teams)`, `(nflverse_bulk, games)` als Primary plus `(official_context_web, teams)` und `(official_context_web, games)` als Cross-Check; Quarantäne-Hook auf Tier-A/B-Diskrepanz in `core.team` und `core.game`; Operator-CLI `list-slices` für Registry-Sicht
+- `core.game` slice-zentrisch aus `(nflverse_bulk, games)` mit Tier-A-Dominanz, `mart.game_overview_v1` als Read-Projektion (abgeleitet: `is_completed`, `winner_team`), `(official_context_web, games)` als erste reale HTTP-getriebene Tier-B-Quelle
 
 ## Current release posture
 
@@ -90,7 +92,7 @@ T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nac
 
 ## Preferred next bolt
 
-**T2.5B — Games-Domäne** gemäß `T2_3_PLAN.md` §4: Slice `(nflverse_bulk, games)` mit `core.game` + `mart.game_overview_v1`; identisches Muster wie T2.5A (primary + Cross-Check, Quarantäne auf Diskrepanz). Erste reale HTTP-Implementierung des `official_context_web`-Adapters inklusive Tier-B-Stage-Load wird ebenfalls in T2.5B erwartet, damit der Quarantäne-Flow nicht länger fixture-getrieben ist.
+**T2.5C — Players-Domäne** gemäß `T2_3_PLAN.md` §4: Slice `(nflverse_bulk, players)` mit `core.player` + `mart.player_overview_v1`; identisches Muster wie T2.5A/B (primary + optionaler Cross-Check, Quarantäne auf Diskrepanz). Ontology-Term `position` aus T2.4A wird als Controlled-Vocabulary-Projektion für `core.player.position` angehängt.
 
 ## Zielkorridor v1.0
 

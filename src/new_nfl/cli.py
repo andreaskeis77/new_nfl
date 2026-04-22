@@ -149,6 +149,28 @@ def _cmd_list_adapters() -> int:
     return 0
 
 
+def _cmd_list_slices() -> int:
+    from new_nfl.adapters.slices import list_slices
+    slices = list_slices()
+    print(f'SLICE_COUNT={len(slices)}')
+    for spec in slices:
+        print(
+            '|'.join(
+                [
+                    spec.adapter_id,
+                    spec.slice_key,
+                    spec.tier_role,
+                    spec.stage_qualified_table,
+                    spec.core_table or '-',
+                    spec.mart_key or '-',
+                    'yes' if spec.remote_url else 'no',
+                    spec.label,
+                ]
+            )
+        )
+    return 0
+
+
 def _cmd_describe_adapter(adapter_id: str) -> int:
     settings = load_settings()
     descriptor = get_adapter_descriptor(adapter_id)
@@ -327,6 +349,7 @@ def _cmd_stage_load(
 
 
 def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
+    from new_nfl.core.games import CoreGameLoadResult
     from new_nfl.core.teams import CoreTeamLoadResult
     settings = load_settings()
     result = execute_core_load(
@@ -346,6 +369,31 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
         print(f'SOURCE_ROW_COUNT={result.source_row_count}')
         print(f'ROW_COUNT={result.row_count}')
         print(f'DISTINCT_TEAM_COUNT={result.distinct_team_count}')
+        print(f'INVALID_ROW_COUNT={result.invalid_row_count}')
+        print(f'CONFLICT_COUNT={result.conflict_count}')
+        print(
+            f'OPENED_QUARANTINE_CASE_IDS='
+            f'{",".join(result.opened_quarantine_case_ids)}'
+        )
+        print(
+            f'CROSS_CHECK_ADAPTERS='
+            f'{",".join(result.cross_check_slice_keys)}'
+        )
+        print(f'LOAD_EVENT_ID={result.load_event_id}')
+        print(f'MART_QUALIFIED_TABLE={result.mart_qualified_table}')
+        print(f'MART_ROW_COUNT={result.mart_row_count}')
+        return 0
+    if isinstance(result, CoreGameLoadResult):
+        print(f'ADAPTER_ID={result.primary_slice.adapter_id}')
+        print(f'SLICE_KEY={result.primary_slice.slice_key}')
+        print(f'PIPELINE_NAME={result.pipeline_name}')
+        print(f'RUN_MODE={result.run_mode}')
+        print(f'RUN_STATUS={result.run_status}')
+        print(f'INGEST_RUN_ID={result.ingest_run_id}')
+        print(f'QUALIFIED_TABLE={result.qualified_table}')
+        print(f'SOURCE_ROW_COUNT={result.source_row_count}')
+        print(f'ROW_COUNT={result.row_count}')
+        print(f'DISTINCT_GAME_COUNT={result.distinct_game_count}')
         print(f'INVALID_ROW_COUNT={result.invalid_row_count}')
         print(f'CONFLICT_COUNT={result.conflict_count}')
         print(
@@ -1035,8 +1083,14 @@ def build_parser() -> argparse.ArgumentParser:
         default='schedule_field_dictionary_v1',
         help=(
             'Projection key. Supported: schedule_field_dictionary_v1, '
-            'team_overview_v1 (default: schedule_field_dictionary_v1)'
+            'team_overview_v1, game_overview_v1 '
+            '(default: schedule_field_dictionary_v1)'
         ),
+    )
+
+    sub.add_parser(
+        'list-slices',
+        help='List registered adapter slices from the slice registry (ADR-0031)',
     )
 
     dedupe_run_parser = sub.add_parser(
@@ -1238,6 +1292,8 @@ def main() -> int:
         return _cmd_list_sources()
     if args.command == 'list-adapters':
         return _cmd_list_adapters()
+    if args.command == 'list-slices':
+        return _cmd_list_slices()
     if args.command == 'describe-adapter':
         return _cmd_describe_adapter(args.adapter_id)
     if args.command == 'run-adapter':
