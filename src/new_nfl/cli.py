@@ -354,6 +354,7 @@ def _cmd_stage_load(
 
 def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
     from new_nfl.core.games import CoreGameLoadResult
+    from new_nfl.core.player_stats import CorePlayerStatsLoadResult
     from new_nfl.core.players import CorePlayerLoadResult
     from new_nfl.core.rosters import CoreRosterLoadResult
     from new_nfl.core.team_stats import CoreTeamStatsLoadResult
@@ -373,6 +374,7 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
             CorePlayerLoadResult,
             CoreRosterLoadResult,
             CoreTeamStatsLoadResult,
+            CorePlayerStatsLoadResult,
         ),
     ):
         distinct_label, distinct_value = _core_load_distinct_field(result)
@@ -409,6 +411,11 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
         if isinstance(result, CoreTeamStatsLoadResult):
             print(f'SEASON_MART_QUALIFIED_TABLE={result.season_mart_qualified_table}')
             print(f'SEASON_MART_ROW_COUNT={result.season_mart_row_count}')
+        if isinstance(result, CorePlayerStatsLoadResult):
+            print(f'SEASON_MART_QUALIFIED_TABLE={result.season_mart_qualified_table}')
+            print(f'SEASON_MART_ROW_COUNT={result.season_mart_row_count}')
+            print(f'CAREER_MART_QUALIFIED_TABLE={result.career_mart_qualified_table}')
+            print(f'CAREER_MART_ROW_COUNT={result.career_mart_row_count}')
         return 0
     print(f'ADAPTER_ID={result.adapter_id}')
     print(f'SLICE_KEY={slice_key}')
@@ -444,6 +451,11 @@ def _core_load_distinct_field(result) -> tuple[str, int]:
         return 'DISTINCT_PLAYER_COUNT', result.distinct_player_count
     if hasattr(result, 'distinct_team_season_week_count'):
         return 'DISTINCT_TEAM_SEASON_WEEK_COUNT', result.distinct_team_season_week_count
+    if hasattr(result, 'distinct_player_season_week_count'):
+        return (
+            'DISTINCT_PLAYER_SEASON_WEEK_COUNT',
+            result.distinct_player_season_week_count,
+        )
     return 'DISTINCT_KEY_COUNT', 0
 
 
@@ -1115,7 +1127,9 @@ def build_parser() -> argparse.ArgumentParser:
             'Projection key. Supported: schedule_field_dictionary_v1, '
             'team_overview_v1, game_overview_v1, player_overview_v1, '
             'roster_current_v1, roster_history_v1, team_stats_weekly_v1, '
-            'team_stats_season_v1 (default: schedule_field_dictionary_v1)'
+            'team_stats_season_v1, player_stats_weekly_v1, '
+            'player_stats_season_v1, player_stats_career_v1 '
+            '(default: schedule_field_dictionary_v1)'
         ),
     )
 

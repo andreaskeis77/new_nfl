@@ -7,6 +7,10 @@ import duckdb
 from new_nfl.adapters.catalog import build_adapter_plan
 from new_nfl.adapters.slices import DEFAULT_SLICE_KEY, get_slice
 from new_nfl.core.games import CoreGameLoadResult, execute_core_game_load
+from new_nfl.core.player_stats import (
+    CorePlayerStatsLoadResult,
+    execute_core_player_stats_load,
+)
 from new_nfl.core.players import CorePlayerLoadResult, execute_core_player_load
 from new_nfl.core.rosters import CoreRosterLoadResult, execute_core_roster_load
 from new_nfl.core.team_stats import (
@@ -154,6 +158,7 @@ def execute_core_load(
     | CorePlayerLoadResult
     | CoreRosterLoadResult
     | CoreTeamStatsLoadResult
+    | CorePlayerStatsLoadResult
 ):
     if slice_key != DEFAULT_SLICE_KEY:
         spec = get_slice(adapter_id, slice_key)
@@ -167,6 +172,8 @@ def execute_core_load(
             return execute_core_roster_load(settings, execute=execute)
         if spec.core_table == 'core.team_stats_weekly':
             return execute_core_team_stats_load(settings, execute=execute)
+        if spec.core_table == 'core.player_stats_weekly':
+            return execute_core_player_stats_load(settings, execute=execute)
         raise ValueError(
             f"No core-load promoter registered for slice "
             f"adapter_id={adapter_id} slice_key={slice_key}"

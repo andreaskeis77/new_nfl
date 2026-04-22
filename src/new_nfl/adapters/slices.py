@@ -223,6 +223,45 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "Tier-A at the (season, week, team_id) grain."
         ),
     ),
+    SliceSpec(
+        adapter_id="nflverse_bulk",
+        slice_key="player_stats_weekly",
+        label="NFL player statistics per (season, week, player)",
+        remote_url=(
+            "https://github.com/nflverse/nflverse-data/releases/download/"
+            "stats_player/stats_player_week.csv"
+        ),
+        stage_target_object="nflverse_bulk_player_stats_weekly",
+        core_table="core.player_stats_weekly",
+        mart_key="player_stats_weekly_v1",
+        tier_role="primary",
+        notes=(
+            "T2.5F primary player-stats slice. Second aggregating domain: "
+            "mart_key points at the weekly projection; the season aggregate "
+            "player_stats_season_v1 and the career aggregate "
+            "player_stats_career_v1 are rebuilt alongside via the same "
+            "promoter. Tier-A source of truth at the (season, week, player_id) "
+            "grain; multi-position players (e.g. Taysom Hill) keep one row "
+            "per week with the rostered position pinned."
+        ),
+    ),
+    SliceSpec(
+        adapter_id="official_context_web",
+        slice_key="player_stats_weekly",
+        label="Official context player-stats cross-check",
+        remote_url="",
+        stage_target_object="official_context_web_player_stats_weekly",
+        core_table="",
+        mart_key="",
+        tier_role="cross_check",
+        notes=(
+            "T2.5F Tier-B cross-check feed for weekly player stats. remote_url "
+            "empty by design; operators pin a URL per run via --remote-url or "
+            "tests override via remote_url_override. Triggers quarantine on "
+            "passing_yards / rushing_yards / receiving_yards / touchdowns drift "
+            "against Tier-A at the (season, week, player_id) grain."
+        ),
+    ),
 )
 
 
