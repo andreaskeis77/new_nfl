@@ -150,6 +150,43 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "display_name / position / jersey_number drift against Tier-A."
         ),
     ),
+    SliceSpec(
+        adapter_id="nflverse_bulk",
+        slice_key="rosters",
+        label="NFL weekly roster snapshots (bitemporal source, ADR-0032)",
+        remote_url=(
+            "https://github.com/nflverse/nflverse-data/releases/download/"
+            "weekly_rosters/roster_weekly.csv"
+        ),
+        stage_target_object="nflverse_bulk_rosters",
+        core_table="core.roster_membership",
+        mart_key="roster_current_v1",
+        tier_role="primary",
+        notes=(
+            "T2.5D primary rosters slice; first bitemporal domain (ADR-0032). "
+            "Weekly snapshots collapsed into (player, team, season, from_week, "
+            "to_week) intervals; open intervals have valid_to_week IS NULL. "
+            "mart_key points at the current-roster projection; the full history "
+            "mart roster_history_v1 is rebuilt alongside via the same promoter."
+        ),
+    ),
+    SliceSpec(
+        adapter_id="official_context_web",
+        slice_key="rosters",
+        label="Official context rosters cross-check",
+        remote_url="",
+        stage_target_object="official_context_web_rosters",
+        core_table="",
+        mart_key="",
+        tier_role="cross_check",
+        notes=(
+            "T2.5D Tier-B cross-check feed for weekly rosters. remote_url empty "
+            "by design: operators pin a concrete URL per run via --remote-url or "
+            "the SliceSpec is overridden in tests via remote_url_override. "
+            "Triggers quarantine on position / jersey_number / status drift "
+            "against Tier-A at the (player, team, season, week) grain."
+        ),
+    ),
 )
 
 

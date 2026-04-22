@@ -8,6 +8,7 @@ from new_nfl.adapters.catalog import build_adapter_plan
 from new_nfl.adapters.slices import DEFAULT_SLICE_KEY, get_slice
 from new_nfl.core.games import CoreGameLoadResult, execute_core_game_load
 from new_nfl.core.players import CorePlayerLoadResult, execute_core_player_load
+from new_nfl.core.rosters import CoreRosterLoadResult, execute_core_roster_load
 from new_nfl.core.teams import CoreTeamLoadResult, execute_core_team_load
 from new_nfl.mart import build_schedule_field_dictionary_v1
 from new_nfl.metadata import create_ingest_run, record_load_event
@@ -142,7 +143,13 @@ def execute_core_load(
     adapter_id: str,
     execute: bool,
     slice_key: str = DEFAULT_SLICE_KEY,
-) -> CoreLoadResult | CoreTeamLoadResult | CoreGameLoadResult | CorePlayerLoadResult:
+) -> (
+    CoreLoadResult
+    | CoreTeamLoadResult
+    | CoreGameLoadResult
+    | CorePlayerLoadResult
+    | CoreRosterLoadResult
+):
     if slice_key != DEFAULT_SLICE_KEY:
         spec = get_slice(adapter_id, slice_key)
         if spec.core_table == 'core.team':
@@ -151,6 +158,8 @@ def execute_core_load(
             return execute_core_game_load(settings, execute=execute)
         if spec.core_table == 'core.player':
             return execute_core_player_load(settings, execute=execute)
+        if spec.core_table == 'core.roster_membership':
+            return execute_core_roster_load(settings, execute=execute)
         raise ValueError(
             f"No core-load promoter registered for slice "
             f"adapter_id={adapter_id} slice_key={slice_key}"

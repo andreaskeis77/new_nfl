@@ -203,6 +203,8 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
     from new_nfl.mart import (
         build_game_overview_v1,
         build_player_overview_v1,
+        build_roster_current_v1,
+        build_roster_history_v1,
         build_schedule_field_dictionary_v1,
         build_team_overview_v1,
     )
@@ -216,6 +218,10 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
         result = build_game_overview_v1(settings)
     elif mart_key == "player_overview_v1":
         result = build_player_overview_v1(settings)
+    elif mart_key == "roster_current_v1":
+        result = build_roster_current_v1(settings)
+    elif mart_key == "roster_history_v1":
+        result = build_roster_history_v1(settings)
     else:
         raise ValueError(f"unknown mart_key={mart_key!r}")
 

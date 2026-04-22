@@ -355,6 +355,7 @@ def _cmd_stage_load(
 def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
     from new_nfl.core.games import CoreGameLoadResult
     from new_nfl.core.players import CorePlayerLoadResult
+    from new_nfl.core.rosters import CoreRosterLoadResult
     from new_nfl.core.teams import CoreTeamLoadResult
     settings = load_settings()
     result = execute_core_load(
@@ -363,7 +364,15 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
         execute=execute,
         slice_key=slice_key,
     )
-    if isinstance(result, (CoreTeamLoadResult, CoreGameLoadResult, CorePlayerLoadResult)):
+    if isinstance(
+        result,
+        (
+            CoreTeamLoadResult,
+            CoreGameLoadResult,
+            CorePlayerLoadResult,
+            CoreRosterLoadResult,
+        ),
+    ):
         distinct_label, distinct_value = _core_load_distinct_field(result)
         print(f'ADAPTER_ID={result.primary_slice.adapter_id}')
         print(f'SLICE_KEY={result.primary_slice.slice_key}')
@@ -388,6 +397,13 @@ def _cmd_core_load(adapter_id: str, execute: bool, slice_key: str) -> int:
         print(f'LOAD_EVENT_ID={result.load_event_id}')
         print(f'MART_QUALIFIED_TABLE={result.mart_qualified_table}')
         print(f'MART_ROW_COUNT={result.mart_row_count}')
+        if isinstance(result, CoreRosterLoadResult):
+            print(f'INTERVAL_COUNT={result.interval_count}')
+            print(f'OPEN_INTERVAL_COUNT={result.open_interval_count}')
+            print(f'EVENT_COUNT={result.event_count}')
+            print(f'TRADE_EVENT_COUNT={result.trade_event_count}')
+            print(f'HISTORY_QUALIFIED_TABLE={result.history_qualified_table}')
+            print(f'HISTORY_ROW_COUNT={result.history_row_count}')
         return 0
     print(f'ADAPTER_ID={result.adapter_id}')
     print(f'SLICE_KEY={slice_key}')
@@ -1090,7 +1106,8 @@ def build_parser() -> argparse.ArgumentParser:
         default='schedule_field_dictionary_v1',
         help=(
             'Projection key. Supported: schedule_field_dictionary_v1, '
-            'team_overview_v1, game_overview_v1, player_overview_v1 '
+            'team_overview_v1, game_overview_v1, player_overview_v1, '
+            'roster_current_v1, roster_history_v1 '
             '(default: schedule_field_dictionary_v1)'
         ),
     )
