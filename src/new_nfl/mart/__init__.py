@@ -35,6 +35,16 @@ from new_nfl.mart.team_overview import (
     MartTeamOverviewResult,
     build_team_overview_v1,
 )
+from new_nfl.mart.team_stats_season import (
+    MART_TEAM_STATS_SEASON_V1,
+    MartTeamStatsSeasonResult,
+    build_team_stats_season_v1,
+)
+from new_nfl.mart.team_stats_weekly import (
+    MART_TEAM_STATS_WEEKLY_V1,
+    MartTeamStatsWeeklyResult,
+    build_team_stats_weekly_v1,
+)
 
 __all__ = [
     "MART_GAME_OVERVIEW_V1",
@@ -43,16 +53,22 @@ __all__ = [
     "MART_ROSTER_HISTORY_V1",
     "MART_SCHEDULE_FIELD_DICTIONARY_V1",
     "MART_TEAM_OVERVIEW_V1",
+    "MART_TEAM_STATS_SEASON_V1",
+    "MART_TEAM_STATS_WEEKLY_V1",
     "MartBuildResult",
     "MartGameOverviewResult",
     "MartPlayerOverviewResult",
     "MartRosterCurrentResult",
     "MartRosterHistoryResult",
     "MartTeamOverviewResult",
+    "MartTeamStatsSeasonResult",
+    "MartTeamStatsWeeklyResult",
     "build_game_overview_v1",
     "build_player_overview_v1",
     "build_roster_current_v1",
     "build_roster_history_v1",
     "build_schedule_field_dictionary_v1",
     "build_team_overview_v1",
+    "build_team_stats_season_v1",
+    "build_team_stats_weekly_v1",
 ]

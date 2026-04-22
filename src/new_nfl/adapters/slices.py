@@ -187,6 +187,42 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "against Tier-A at the (player, team, season, week) grain."
         ),
     ),
+    SliceSpec(
+        adapter_id="nflverse_bulk",
+        slice_key="team_stats_weekly",
+        label="NFL team statistics per (season, week, team)",
+        remote_url=(
+            "https://github.com/nflverse/nflverse-data/releases/download/"
+            "stats_team/stats_team_week.csv"
+        ),
+        stage_target_object="nflverse_bulk_team_stats_weekly",
+        core_table="core.team_stats_weekly",
+        mart_key="team_stats_weekly_v1",
+        tier_role="primary",
+        notes=(
+            "T2.5E primary team-stats slice. First aggregating domain: "
+            "mart_key points at the weekly projection; the season aggregate "
+            "mart team_stats_season_v1 is rebuilt alongside via the same "
+            "promoter. Tier-A source of truth at the (season, week, team_id) grain."
+        ),
+    ),
+    SliceSpec(
+        adapter_id="official_context_web",
+        slice_key="team_stats_weekly",
+        label="Official context team-stats cross-check",
+        remote_url="",
+        stage_target_object="official_context_web_team_stats_weekly",
+        core_table="",
+        mart_key="",
+        tier_role="cross_check",
+        notes=(
+            "T2.5E Tier-B cross-check feed for weekly team stats. remote_url "
+            "empty by design; operators pin a URL per run via --remote-url or "
+            "tests override via remote_url_override. Triggers quarantine on "
+            "points_for / points_against / yards_for / turnovers drift against "
+            "Tier-A at the (season, week, team_id) grain."
+        ),
+    ),
 )
 
 
