@@ -52,6 +52,22 @@ class Settings:
     def temp_root(self) -> Path:
         return self.data_root / "temp"
 
+    @property
+    def log_level(self) -> str:
+        """Structured-logger verbosity (T2.7B). ``NEW_NFL_LOG_LEVEL`` env override."""
+        return os.environ.get("NEW_NFL_LOG_LEVEL", "INFO").strip() or "INFO"
+
+    @property
+    def log_destination(self) -> str:
+        """Structured-logger destination (T2.7B).
+
+        ``"stdout"`` (default) streams JSON lines to stdout; ``"file:<path>"``
+        appends to ``<path>/events_YYYYMMDD.jsonl`` with one file per UTC day.
+        The prefix (``file:``) is parsed by
+        :mod:`new_nfl.observability.logging`.
+        """
+        return os.environ.get("NEW_NFL_LOG_DESTINATION", "stdout").strip() or "stdout"
+
 
 def load_settings() -> Settings:
     repo_root = _resolve_repo_root()
