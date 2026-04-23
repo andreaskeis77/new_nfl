@@ -29,6 +29,12 @@ from new_nfl.web.games_view import (
     list_seasons,
     list_weeks,
 )
+from new_nfl.web.player_view import (
+    PlayerListPage,
+    PlayerProfile,
+    get_player_profile,
+    list_players,
+)
 from new_nfl.web.team_view import (
     TeamCard,
     TeamProfile,
@@ -332,6 +338,67 @@ def render_team_profile_page(
         context={"profile": profile, "requested_key": team_key},
         theme=theme,
         active_nav="teams",
+        breadcrumb=breadcrumb,
+        page_title=page_title,
+    )
+
+
+def render_players_page(
+    settings: Settings,
+    *,
+    offset: int = 0,
+    limit: int = 50,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    page: PlayerListPage | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    data = page if page is not None else list_players(
+        settings, offset=offset, limit=limit
+    )
+    return r.render(
+        "players.html",
+        context={"page": data},
+        theme=theme,
+        active_nav="players",
+        breadcrumb=(
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Players", href=None),
+        ),
+        page_title="NEW NFL — Players",
+    )
+
+
+def render_player_profile_page(
+    settings: Settings,
+    player_id: str,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    profile: PlayerProfile | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    if profile is None:
+        profile = get_player_profile(settings, player_id)
+    if profile is None:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Players", href="/players"),
+            BreadcrumbItem(label=player_id, href=None),
+        )
+        page_title = f"NEW NFL — Player {player_id}"
+    else:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Players", href="/players"),
+            BreadcrumbItem(label=profile.meta.display_label, href=None),
+        )
+        page_title = f"NEW NFL — {profile.meta.display_label}"
+    return r.render(
+        "player_profile.html",
+        context={"profile": profile, "requested_key": player_id},
+        theme=theme,
+        active_nav="players",
         breadcrumb=breadcrumb,
         page_title=page_title,
     )

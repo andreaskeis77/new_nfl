@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  {% if profile is none %}
+    <header class="mb-8">
+      <p class="text-xs uppercase tracking-wide text-secondary">Spieler-Profil</p>
+      <h1 class="text-3xl font-semibold tracking-tight">Spieler nicht gefunden</h1>
+    </header>
+    <section aria-label="Spieler fehlt" class="mb-10">
+      {% call card('Unbekannter Player-Key') %}
+        {{ empty_state(
+              title='Spieler nicht in mart.player_overview_v1',
+              body='Der Player-Key "' ~ requested_key ~ '" ist im Mart nicht vorhanden.',
+              hint='Prüfe die verfügbaren Spieler unter /players.') }}
+      {% endcall %}
+    </section>
+  {% else %}
+    {% set meta = profile.meta %}
+    <header class="mb-8" data-testid="player-header" data-player-id="{{ meta.player_id }}">
+      <p class="text-xs uppercase tracking-wide text-secondary">{{ meta.position or 'Spieler' }}</p>
+      <h1 class="text-3xl font-semibold tracking-tight">{{ meta.display_label }}</h1>
+      {% if meta.current_team_abbr or meta.current_team_name %}
+        <p class="mt-1 text-sm text-secondary">
+          <span class="font-mono">{{ meta.current_team_abbr or meta.current_team_id or '—' }}</span>
+          {% if meta.current_team_name %}· {{ meta.current_team_name }}{% endif %}
+          {% if meta.jersey_number is not none %}· {{ meta.jersey_label }}{% endif %}
+        </p>
+      {% endif %}
+    </header>
+
+    <section aria-label="Stammdaten" class="mb-10">
+      {% call card('Stammdaten') %}
+        <table class="data-table">
+          <tbody>
+            <tr>
+              <td class="text-secondary">Player-ID</td>
+              <td class="font-mono">{{ meta.player_id }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Anzeigename</td>
+              <td>{{ meta.display_name or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Vollständiger Name</td>
+              <td>{{ meta.full_name or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Position</td>
+              <td class="font-mono">{{ meta.position or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Geburtstag</td>
+              <td class="tnum">{{ meta.birth_label }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Größe</td>
+              <td class="tnum">{{ meta.height_label }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Gewicht</td>
+              <td class="tnum">{{ meta.weight_label }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">College</td>
+              <td>{{ meta.college_name or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Draft</td>
+              <td>{{ meta.draft_label }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Saisons</td>
+              <td class="tnum">{{ meta.seasons_label }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Status</td>
+              <td>
+                {% if meta.is_active %}
+                  <span class="badge status-success"><span class="badge-label">aktiv</span></span>
+                {% else %}
+                  <span class="badge status-neutral"><span class="badge-label">inaktiv</span></span>
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      {% endcall %}
+    </section>
+
+    <section aria-label="Karriere" class="mb-10">
+      {% call card('Karriere-Totale') %}
+        {% if profile.career is not none %}
+          {% set c = profile.career %}
+          <table class="data-table" data-testid="career-snapshot">
+            <tbody>
+              <tr>
+                <td class="text-secondary">Zeitraum</td>
+                <td class="font-mono tnum">{{ c.span_label }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Saisons gespielt</td>
+                <td class="tnum">{{ c.seasons_played | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Spiele gespielt</td>
+                <td class="tnum">{{ c.games_played | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Pass-Yards · TDs · INTs</td>
+                <td class="tnum">{{ c.passing_yards | fmt_number }} · {{ c.passing_tds | fmt_number }} · {{ c.interceptions | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Rush-Yards · TDs</td>
+                <td class="tnum">{{ c.rushing_yards | fmt_number }} · {{ c.rushing_tds | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Receptions · Yards · TDs</td>
+                <td class="tnum">{{ c.receptions | fmt_number }} · {{ c.receiving_yards | fmt_number }} · {{ c.receiving_tds | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Total Yards</td>
+                <td class="tnum">{{ c.total_yards | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Total Touchdowns</td>
+                <td class="tnum">{{ c.total_touchdowns | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Fumbles Lost</td>
+                <td class="tnum">{{ c.fumbles_lost | fmt_number }}</td>
+              </tr>
+            </tbody>
+          </table>
+        {% else %}
+          {{ empty_state(
+                title='Keine Karriere-Totale',
+                body='Für diesen Spieler sind keine aggregierten Karriere-Stats im Mart.',
+                hint='cli core-load --adapter nflverse_bulk --slice player_stats_weekly --execute') }}
+        {% endif %}
+      {% endcall %}
+    </section>
+
+    <section aria-label="Saison-Historie" class="mb-10">
+      {% call card('Saison-Historie · ' ~ profile.season_count ~ ' Saisons') %}
+        {% if profile.season_stats %}
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="text-left">Saison</th>
+                <th class="text-left">Pos</th>
+                <th class="text-right tnum">GP</th>
+                <th class="text-right tnum">PassY</th>
+                <th class="text-right tnum">PassTD</th>
+                <th class="text-right tnum">RushY</th>
+                <th class="text-right tnum">RushTD</th>
+                <th class="text-right tnum">Rec</th>
+                <th class="text-right tnum">RecY</th>
+                <th class="text-right tnum">RecTD</th>
+                <th class="text-right tnum">TotalY</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in profile.season_stats %}
+                <tr data-testid="player-season-row" data-season="{{ s.season }}">
+                  <td class="text-left font-mono tnum">{{ s.season }}</td>
+                  <td class="text-left font-mono">{{ s.primary_position or '—' }}</td>
+                  <td class="text-right tnum">{{ s.games_played | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.passing_yards | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.passing_tds | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.rushing_yards | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.rushing_tds | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.receptions | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.receiving_yards | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.receiving_tds | fmt_number }}</td>
+                  <td class="text-right tnum">{{ s.total_yards | fmt_number }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          {{ empty_state(
+                title='Keine Saison-Stats',
+                body='Für diesen Spieler sind keine Saison-Aggregate im Mart.',
+                hint='cli core-load --adapter nflverse_bulk --slice player_stats_weekly --execute') }}
+        {% endif %}
+      {% endcall %}
+    </section>
+
+    <section aria-label="Roster-Historie" class="mb-10">
+      {% call card('Roster-Historie · ' ~ profile.team_count ~ ' Teams') %}
+        {% if profile.roster_history %}
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="text-left">Saison</th>
+                <th class="text-left">Team</th>
+                <th class="text-left">Position</th>
+                <th class="text-left">Nr.</th>
+                <th class="text-left">Wochen</th>
+                <th class="text-left">Status</th>
+                <th class="text-left">Offen?</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in profile.roster_history %}
+                <tr data-testid="player-roster-interval" data-season="{{ r.season }}" data-team-id="{{ r.team_id }}">
+                  <td class="text-left font-mono tnum">{{ r.season }}</td>
+                  <td class="text-left font-mono">{{ r.team_label }}</td>
+                  <td class="text-left font-mono">{{ r.position or '—' }}</td>
+                  <td class="text-left font-mono tnum">{{ r.jersey_label }}</td>
+                  <td class="text-left font-mono tnum">{{ r.week_range_label }}</td>
+                  <td class="text-left">{{ r.status or '—' }}</td>
+                  <td class="text-left">
+                    {% if r.is_open %}
+                      <span class="badge status-success"><span class="badge-label">offen</span></span>
+                    {% else %}
+                      <span class="badge status-neutral"><span class="badge-label">geschlossen</span></span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          {{ empty_state(
+                title='Keine Roster-Historie',
+                body='Für diesen Spieler sind keine Roster-Intervalle im Mart.',
+                hint='cli core-load --adapter nflverse_bulk --slice rosters --execute') }}
+        {% endif %}
+      {% endcall %}
+    </section>
+  {% endif %}
+{% endblock %}

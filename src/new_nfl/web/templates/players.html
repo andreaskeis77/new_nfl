@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  <header class="mb-8">
+    <p class="text-xs uppercase tracking-wide text-secondary">Spieler-Übersicht</p>
+    <h1 class="text-3xl font-semibold tracking-tight">Players</h1>
+  </header>
+
+  <section aria-label="Players" class="mb-10">
+    {% call card('Spielerliste · ' ~ page.page_range_label) %}
+      {% if page.players %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Nr.</th>
+              <th class="text-left">Position</th>
+              <th class="text-left">Spieler</th>
+              <th class="text-left">Team</th>
+              <th class="text-left">Saisons</th>
+              <th class="text-left">Status</th>
+              <th class="text-left">Profil</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in page.players %}
+              <tr data-testid="player-row" data-player-id="{{ p.player_id }}">
+                <td class="text-left font-mono tnum">{{ p.jersey_label }}</td>
+                <td class="text-left font-mono">{{ p.position or '—' }}</td>
+                <td class="text-left">{{ p.display_label }}</td>
+                <td class="text-left font-mono">{{ p.current_team_abbr or p.current_team_id or '—' }}</td>
+                <td class="text-left tnum">{{ p.seasons_label }}</td>
+                <td class="text-left">
+                  {% if p.is_active %}
+                    <span class="badge status-success"><span class="badge-label">aktiv</span></span>
+                  {% else %}
+                    <span class="badge status-neutral"><span class="badge-label">inaktiv</span></span>
+                  {% endif %}
+                </td>
+                <td class="text-left">
+                  <a class="hover:text-primary" href="/players/{{ p.player_id }}">Profil öffnen</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if page.has_prev or page.has_next %}
+          <p class="mt-4 text-xs text-secondary" data-testid="player-pagination">
+            {% if page.has_prev %}
+              <a class="hover:text-primary" href="/players?offset={{ page.prev_offset }}&amp;limit={{ page.limit }}">← vorherige</a>
+            {% else %}
+              <span class="text-muted">← vorherige</span>
+            {% endif %}
+            <span class="mx-2">·</span>
+            {% if page.has_next %}
+              <a class="hover:text-primary" href="/players?offset={{ page.next_offset }}&amp;limit={{ page.limit }}">nächste →</a>
+            {% else %}
+              <span class="text-muted">nächste →</span>
+            {% endif %}
+          </p>
+        {% endif %}
+      {% else %}
+        {{ empty_state(
+              title='Noch keine Spieler geladen',
+              body='Lade den Players-Slice, um diese Seite zu befüllen.',
+              hint='cli core-load --adapter nflverse_bulk --slice players --execute') }}
+      {% endif %}
+    {% endcall %}
+  </section>
+{% endblock %}
