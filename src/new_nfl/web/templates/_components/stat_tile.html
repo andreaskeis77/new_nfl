@@ -1,0 +1,9 @@
+{% macro stat_tile(label, value, delta=None, delta_status=None) %}
+<article class="stat-tile">
+  <p class="text-xs uppercase tracking-wide text-secondary">{{ label }}</p>
+  <p class="text-3xl font-bold font-mono tnum mt-2">{{ value | fmt_number }}</p>
+  {% if delta %}
+    <p class="text-sm mt-2 status-{{ delta_status or 'info' }}">{{ delta }}</p>
+  {% endif %}
+</article>
+{% endmacro %}

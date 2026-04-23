@@ -1,0 +1,7 @@
+{% macro freshness_badge(domain, updated_at, status='success') %}
+<span class="badge status-{{ status }}">
+  <span class="badge-dot" aria-hidden="true"></span>
+  <span class="badge-label">{{ domain }}</span>
+  <span class="badge-meta">{{ updated_at | relative_time }}</span>
+</span>
+{% endmacro %}

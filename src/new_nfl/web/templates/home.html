@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/stat_tile.html' import stat_tile %}
+{% from '_components/data_table.html' import data_table %}
+{% from '_components/freshness_badge.html' import freshness_badge %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  <header class="mb-8">
+    <p class="text-xs uppercase tracking-wide text-secondary">{{ hero.subtitle }}</p>
+    <h1 class="text-3xl font-semibold tracking-tight">{{ hero.title }}</h1>
+  </header>
+
+  <section aria-label="Kennzahlen" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+    {% for tile in stat_tiles %}
+      {{ stat_tile(tile.label, tile.value, tile.delta, tile.delta_status) }}
+    {% endfor %}
+  </section>
+
+  <section aria-label="Freshness" class="mb-10">
+    {% call card('Freshness') %}
+      <ul class="flex flex-wrap gap-3">
+        {% for row in freshness_sample %}
+          <li>{{ freshness_badge(row.domain, row.updated_at, row.status) }}</li>
+        {% endfor %}
+      </ul>
+    {% endcall %}
+  </section>
+
+  <section aria-label="Vorschau" class="mb-10">
+    {% call card('Vorschau Season 2024 · Woche 1') %}
+      {% if preview_rows %}
+        {{ data_table(
+              columns=[
+                {'key': 'season', 'label': 'Season', 'align': 'right', 'mono': True},
+                {'key': 'week', 'label': 'Week', 'align': 'right', 'mono': True},
+                {'key': 'label', 'label': 'Spiel', 'align': 'left'},
+                {'key': 'status', 'label': 'Status', 'align': 'left'},
+              ],
+              rows=preview_rows) }}
+      {% else %}
+        {{ empty_state(
+              title='Noch keine Spiele',
+              body='Lade einen Games-Slice via CLI core-load --slice games --execute.',
+              hint='cli core-load --adapter nflverse_bulk --slice games --execute') }}
+      {% endif %}
+    {% endcall %}
+  </section>
+{% endblock %}

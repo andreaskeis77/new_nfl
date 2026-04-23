@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
   "duckdb>=1.1",
+  "jinja2>=3.1",
   "pydantic>=2.7",
 ]
 
@@ -24,9 +25,13 @@ new-nfl = "new_nfl.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"new_nfl.web" = ["templates/**/*.html", "static/css/*.css", "static/js/*.js", "static/icons/*.svg", "static/fonts/*.woff2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

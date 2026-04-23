@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>{{ page_title }}</title>
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('new-nfl-theme');
+        if (stored === 'dark' || stored === 'light') {
+          document.documentElement.setAttribute('data-theme', stored);
+          return;
+        }
+        var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        document.documentElement.setAttribute('data-theme', prefersLight ? 'light' : 'dark');
+      } catch (e) { /* noop */ }
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ assets.css('app.css') }}">
+</head>
+<body class="bg-canvas text-primary font-sans antialiased">
+  {% from '_components/navbar.html' import navbar %}
+  {% from '_components/breadcrumb.html' import breadcrumb as render_breadcrumb %}
+  {{ navbar(nav_items, active_nav) }}
+  <main class="mx-auto max-w-7xl px-6 md:px-12 py-8">
+    {% if breadcrumb %}
+      {{ render_breadcrumb(breadcrumb) }}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="mx-auto max-w-7xl px-6 md:px-12 py-6 text-xs text-muted">
+    NEW NFL · Server-rendered · ADR-0029 · ADR-0030
+  </footer>
+  <script src="{{ assets.js('theme.js') }}" defer></script>
+</body>
+</html>

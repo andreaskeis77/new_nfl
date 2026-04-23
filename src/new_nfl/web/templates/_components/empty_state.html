@@ -1,0 +1,7 @@
+{% macro empty_state(title, body='', hint='') %}
+<div class="empty-state" role="status">
+  <p class="empty-state-title text-lg font-medium">{{ title }}</p>
+  {% if body %}<p class="empty-state-body text-sm text-secondary mt-2">{{ body }}</p>{% endif %}
+  {% if hint %}<pre class="empty-state-hint mono text-xs mt-4"><code>{{ hint }}</code></pre>{% endif %}
+</div>
+{% endmacro %}

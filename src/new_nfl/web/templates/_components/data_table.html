@@ -1,0 +1,31 @@
+{% macro data_table(columns, rows) %}
+<div class="data-table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        {% for col in columns %}
+          <th scope="col"
+              class="align-{{ col.align or 'left' }}{% if col.mono %} mono{% endif %}">
+            {{ col.label }}
+          </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          {% for col in columns %}
+            <td class="align-{{ col.align or 'left' }}{% if col.mono %} mono tnum{% endif %}">
+              {% if col.mono %}
+                {{ row[col.key] | fmt_number }}
+              {% else %}
+                {{ row[col.key] if row[col.key] is not none else '—' }}
+              {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}

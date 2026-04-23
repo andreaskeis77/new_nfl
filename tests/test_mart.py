@@ -22,6 +22,9 @@ READ_MODULES = (
     'src/new_nfl/core_summary.py',
     'src/new_nfl/web_preview.py',
     'src/new_nfl/web_server.py',
+    'src/new_nfl/web/__init__.py',
+    'src/new_nfl/web/assets.py',
+    'src/new_nfl/web/renderer.py',
 )
 
 

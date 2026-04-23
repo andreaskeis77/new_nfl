@@ -1,0 +1,27 @@
+{% macro navbar(items, active_key) %}
+<nav class="border-b border-border-subtle bg-surface" aria-label="Hauptnavigation">
+  <div class="mx-auto max-w-7xl px-6 md:px-12 h-14 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-3 text-primary font-semibold tracking-tight">
+      <span class="inline-block w-2 h-2 rounded-full bg-accent" aria-hidden="true"></span>
+      NEW NFL
+    </a>
+    <ul class="flex items-center gap-6 text-sm">
+      {% for item in items %}
+        <li>
+          <a href="{{ item.href }}"
+             class="nav-link{% if item.key == active_key %} nav-link-active{% endif %}"
+             {% if item.key == active_key %}aria-current="page"{% endif %}>
+            {{ item.label }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    <button type="button"
+            class="theme-toggle text-xs uppercase tracking-wide text-secondary hover:text-primary"
+            data-theme-toggle
+            aria-label="Theme umschalten">
+      Theme
+    </button>
+  </div>
+</nav>
+{% endmacro %}
