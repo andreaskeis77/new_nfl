@@ -2,7 +2,9 @@
 
 **Zweck:** Drei parallele Claude-Code-Sessions arbeiten auf drei Feature-Branches (`feature/t27-observability`, `feature/t27-resilience`, `feature/t27-hardening`) je mit eigenem `git worktree`. Eine vierte Session integriert die Streams sequenziell zurück in `main`. Jeder Stream läuft autonom mit einem eigenen Master-Prompt; alle drei Streams bleiben strukturell entkoppelt, weil T2.7P vorher die drei Konflikt-Zonen (Mart-Registry, CLI-Plugin-Registry, Web-Route-Registry) aufgelöst hat (siehe ADR-0033).
 
-**Status:** Entwurf, wartet auf Operator-Freigabe vor T2.7P-Start.
+**Status:** Referenz-Dokument — T2.7 abgeschlossen 2026-04-23 (Integration `50d2652`).
+
+> **Retro nach T2.7 (2026-04-23):** Die Worktree-Strategie in Abschnitt 2 wurde in der T2.7-Tranche **nicht umgesetzt** — alle drei Streams haben de facto im geteilten Haupt-Checkout `c:\projekte\newnfl\` gearbeitet. Folgen waren Branch-Flips unter laufenden Edits, mehrfach überschriebene `plugins/__init__.py`-Änderungen und Commits auf falscher Branch. Die Stream-Scope-Trennung (disjoint Namespaces) hat trotzdem gehalten, aber die Integrations-Session hat jeden Stream mehrfach als Git-Ebene-Fallback reparieren müssen (SHA-Refspec-Push, `git update-ref`-Branch-Pointer-Korrekturen). **Für die nächste parallele Tranche ist die Worktree-Strategie aus Abschnitt 2 Pflicht, nicht Empfehlung.** Siehe konsolidierte Lesson in [LESSONS_LEARNED.md](LESSONS_LEARNED.md) § „2026-04-23 — T2.7A-E Parallel-Streams + T2.7F Integration".
 
 ## 1. Voraussetzungen
 
