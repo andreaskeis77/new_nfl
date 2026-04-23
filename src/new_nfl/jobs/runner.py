@@ -25,6 +25,7 @@ from new_nfl.jobs.model import (
     RetryPolicy,
 )
 from new_nfl.metadata import ensure_metadata_surface
+from new_nfl.observability.logging import get_logger
 from new_nfl.settings import Settings
 
 # ---------------------------------------------------------------------------
@@ -65,6 +66,12 @@ def _executor_fetch_remote(settings: Settings, params: dict[str, Any]) -> Execut
     remote_url = params.get("remote_url") or None
     slice_key = params.get("slice_key") or DEFAULT_SLICE_KEY
 
+    get_logger(settings).event(
+        "INFO",
+        "executor_start",
+        details={"job_type": "fetch_remote", "slice_key": slice_key, "execute": execute_flag},
+        adapter_id=adapter_id,
+    )
     result = execute_remote_fetch(
         settings,
         adapter_id=adapter_id,
@@ -108,6 +115,12 @@ def _executor_fetch_remote(settings: Settings, params: dict[str, Any]) -> Execut
                 detail={"sha256_hex": result.sha256_hex},
             )
         )
+    get_logger(settings).event(
+        "INFO",
+        "executor_complete",
+        details=detail,
+        adapter_id=adapter_id,
+    )
     return ExecutionResult(
         success=True,
         message=f"remote_fetch adapter_id={adapter_id} run_status={result.run_status}",
@@ -125,6 +138,13 @@ def _executor_stage_load(settings: Settings, params: dict[str, Any]) -> Executio
     source_file_id = params.get("source_file_id") or None
     slice_key = params.get("slice_key") or DEFAULT_SLICE_KEY
 
+    get_logger(settings).event(
+        "INFO",
+        "executor_start",
+        details={"job_type": "stage_load", "slice_key": slice_key, "execute": execute_flag},
+        adapter_id=adapter_id,
+        source_file_id=source_file_id,
+    )
     result = execute_stage_load(
         settings,
         adapter_id=adapter_id,
@@ -160,6 +180,13 @@ def _executor_stage_load(settings: Settings, params: dict[str, Any]) -> Executio
             detail={"row_count": result.row_count},
         ),
     ]
+    get_logger(settings).event(
+        "INFO",
+        "executor_complete",
+        details=detail,
+        adapter_id=adapter_id,
+        source_file_id=result.source_file_id,
+    )
     return ExecutionResult(
         success=True,
         message=f"stage_load adapter_id={adapter_id} rows={result.row_count}",
@@ -179,6 +206,16 @@ def _executor_custom(settings: Settings, params: dict[str, Any]) -> ExecutionRes
 
     payload = json.dumps(params, sort_keys=True, ensure_ascii=False)
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+    get_logger(settings).event(
+        "INFO",
+        "executor_start",
+        details={"job_type": "custom", "digest": digest},
+    )
+    get_logger(settings).event(
+        "INFO",
+        "executor_complete",
+        details={"job_type": "custom", "digest": digest},
+    )
     return ExecutionResult(
         success=True,
         message=f"custom digest={digest}",
@@ -207,8 +244,23 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
 
     mart_key = params.get("mart_key", "schedule_field_dictionary_v1")
     builder = get_mart_builder(mart_key)
+    get_logger(settings).event(
+        "INFO",
+        "executor_start",
+        details={"job_type": "mart_build", "mart_key": mart_key},
+    )
     result = builder(settings)
 
+    get_logger(settings).event(
+        "INFO",
+        "executor_complete",
+        details={
+            "job_type": "mart_build",
+            "mart_key": mart_key,
+            "qualified_table": result.qualified_table,
+            "row_count": result.row_count,
+        },
+    )
     return ExecutionResult(
         success=True,
         message=(
