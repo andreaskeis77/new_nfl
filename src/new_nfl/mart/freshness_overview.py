@@ -17,6 +17,7 @@ from datetime import datetime
 
 import duckdb
 
+from new_nfl.mart._registry import register_mart_builder
 from new_nfl.settings import Settings
 
 MART_FRESHNESS_OVERVIEW_V1 = "mart.freshness_overview_v1"
@@ -84,6 +85,7 @@ def _expected_domains_values_clause() -> str:
     return f"(VALUES {rows}) AS d(target_schema, target_object, display_label, display_order)"
 
 
+@register_mart_builder("freshness_overview_v1")
 def build_freshness_overview_v1(settings: Settings) -> MartFreshnessOverviewResult:
     con = duckdb.connect(str(settings.db_path))
     try:

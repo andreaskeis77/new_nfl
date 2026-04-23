@@ -22,6 +22,7 @@ from datetime import datetime
 
 import duckdb
 
+from new_nfl.mart._registry import register_mart_builder
 from new_nfl.settings import Settings
 
 MART_PLAYER_STATS_CAREER_V1 = "mart.player_stats_career_v1"
@@ -57,6 +58,7 @@ def _has_table(con: duckdb.DuckDBPyConnection, qualified_table: str) -> bool:
     return True
 
 
+@register_mart_builder("player_stats_career_v1")
 def build_player_stats_career_v1(settings: Settings) -> MartPlayerStatsCareerResult:
     con = duckdb.connect(str(settings.db_path))
     try:

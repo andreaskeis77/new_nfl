@@ -9,6 +9,7 @@ from new_nfl.adapters import (
     list_adapter_descriptors,
 )
 from new_nfl.bootstrap import bootstrap_local_environment
+from new_nfl.cli_plugins import attach_plugins_to_parser, get_cli_plugin
 from new_nfl.core_browse import browse_core_dictionary
 from new_nfl.core_load import execute_core_load
 from new_nfl.core_lookup import lookup_core_dictionary_field
@@ -1050,6 +1051,11 @@ def _cmd_register_retry_policy(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    # Importing the plugins package triggers every @register_cli_plugin call
+    # (ADR-0033). Keeps the plugin surface decoupled from this function so
+    # parallel streams can add subcommands without touching build_parser().
+    import new_nfl.plugins  # noqa: F401
+
     parser = argparse.ArgumentParser(
         prog='new-nfl',
         description='NEW NFL local tooling',
@@ -1329,6 +1335,7 @@ def build_parser() -> argparse.ArgumentParser:
     register_policy_parser.add_argument('--jitter-ratio', type=float, default=0.0)
     register_policy_parser.add_argument('--notes', default='')
 
+    attach_plugins_to_parser(sub)
     return parser
 
 
@@ -1452,6 +1459,10 @@ def main() -> int:
             args.jitter_ratio,
             args.notes,
         )
+
+    plugin = get_cli_plugin(args.command)
+    if plugin is not None:
+        return plugin.dispatch(args)
 
     parser.error('Unknown command')
     return 2

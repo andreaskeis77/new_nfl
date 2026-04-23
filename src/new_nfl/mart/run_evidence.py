@@ -28,6 +28,7 @@ from datetime import datetime
 
 import duckdb
 
+from new_nfl.mart._registry import register_mart_builder
 from new_nfl.settings import Settings
 
 MART_RUN_OVERVIEW_V1 = "mart.run_overview_v1"
@@ -114,6 +115,7 @@ def _ensure_metadata_tables(con: duckdb.DuckDBPyConnection) -> None:
     )
 
 
+@register_mart_builder("run_evidence_v1")
 def build_run_evidence_v1(settings: Settings) -> MartRunEvidenceResult:
     con = duckdb.connect(str(settings.db_path))
     try:

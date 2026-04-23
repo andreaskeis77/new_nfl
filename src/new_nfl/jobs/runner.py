@@ -194,60 +194,20 @@ def _executor_custom(settings: Settings, params: dict[str, Any]) -> ExecutionRes
 
 
 def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> ExecutionResult:
-    """Rebuild a versioned ``mart.*`` read projection (ADR-0029).
+    """Rebuild a versioned ``mart.*`` read projection (ADR-0029, ADR-0033).
 
-    ``params['mart_key']`` selects the projection. Each projection is a full
-    rebuild (``CREATE OR REPLACE TABLE``) over ``core.*``; the runner records
-    the build as a ``meta.job_run`` so operators can audit freshness.
+    ``params['mart_key']`` selects the projection. Dispatch is via the
+    mart-builder registry (ADR-0033) — importing ``new_nfl.mart`` triggers
+    the decorator registration for every known mart_key. Each projection is
+    a full rebuild (``CREATE OR REPLACE TABLE``) over ``core.*``; the runner
+    records the build as a ``meta.job_run`` so operators can audit freshness.
     """
-    from new_nfl.mart import (
-        build_freshness_overview_v1,
-        build_game_overview_v1,
-        build_player_overview_v1,
-        build_player_stats_career_v1,
-        build_player_stats_season_v1,
-        build_player_stats_weekly_v1,
-        build_provenance_v1,
-        build_roster_current_v1,
-        build_roster_history_v1,
-        build_run_evidence_v1,
-        build_schedule_field_dictionary_v1,
-        build_team_overview_v1,
-        build_team_stats_season_v1,
-        build_team_stats_weekly_v1,
-    )
+    import new_nfl.mart  # noqa: F401  # side-effect: register all mart builders
+    from new_nfl.mart._registry import get_mart_builder
 
     mart_key = params.get("mart_key", "schedule_field_dictionary_v1")
-    if mart_key == "schedule_field_dictionary_v1":
-        result = build_schedule_field_dictionary_v1(settings)
-    elif mart_key == "team_overview_v1":
-        result = build_team_overview_v1(settings)
-    elif mart_key == "game_overview_v1":
-        result = build_game_overview_v1(settings)
-    elif mart_key == "player_overview_v1":
-        result = build_player_overview_v1(settings)
-    elif mart_key == "roster_current_v1":
-        result = build_roster_current_v1(settings)
-    elif mart_key == "roster_history_v1":
-        result = build_roster_history_v1(settings)
-    elif mart_key == "team_stats_weekly_v1":
-        result = build_team_stats_weekly_v1(settings)
-    elif mart_key == "team_stats_season_v1":
-        result = build_team_stats_season_v1(settings)
-    elif mart_key == "player_stats_weekly_v1":
-        result = build_player_stats_weekly_v1(settings)
-    elif mart_key == "player_stats_season_v1":
-        result = build_player_stats_season_v1(settings)
-    elif mart_key == "player_stats_career_v1":
-        result = build_player_stats_career_v1(settings)
-    elif mart_key == "freshness_overview_v1":
-        result = build_freshness_overview_v1(settings)
-    elif mart_key == "provenance_v1":
-        result = build_provenance_v1(settings)
-    elif mart_key == "run_evidence_v1":
-        result = build_run_evidence_v1(settings)
-    else:
-        raise ValueError(f"unknown mart_key={mart_key!r}")
+    builder = get_mart_builder(mart_key)
+    result = builder(settings)
 
     return ExecutionResult(
         success=True,

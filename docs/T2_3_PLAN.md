@@ -251,19 +251,19 @@ Stammdaten, aktuelle Team-Zugehörigkeit, Karriere-Totale, Saison-Historie und R
 
 Nach Abschluss von T2.6 hat das Projekt einen Umfang erreicht, bei dem sequenzielle Einzel-Session-Entwicklung teurer ist als parallele Streams mit klarer Scope-Trennung. T2.7 wird daher in **einen Vorbereitungs-Bolzen plus drei parallele Feature-Streams plus eine Integrations-Session** zerlegt. Details zur Stream-Architektur, Branch-Strategie und Risiko-Matrix stehen in [PARALLEL_DEVELOPMENT.md](PARALLEL_DEVELOPMENT.md).
 
-### T2.7P — Parallelisierungs-Prep (KW 25, sequenziell, vor den Streams)
+### T2.7P — Parallelisierungs-Prep (KW 25, sequenziell, vor den Streams) — abgeschlossen (2026-04-23)
 
 **Ziel:** Die drei Konflikt-Zonen aus dem Code-Review (Mart-Builder if/elif in `jobs/runner.py`, 50+ Subcommands in monolithischem `cli.py`, Re-Export-Hubs in `web/__init__.py` und `mart/__init__.py`) auflösen, damit die drei Feature-Streams additiv arbeiten können, ohne an zentralen Files zu mergen.
 
-**Scope (siehe [ADR-0033](adr/ADR-0033-registry-pattern-for-parallel-development.md)):**
-- `src/new_nfl/mart/_registry.py` mit `@register_mart_builder(mart_key)`-Decorator; alle 16 Mart-Builder migriert; `_executor_mart_build` in runner.py wird 2-Zeilen-Lookup.
-- `src/new_nfl/cli/_plugins.py` mit `register_cli_plugin`-Decorator; Unterordner `cli/plugins/` mit mindestens zwei Plugin-Gruppen (Mart + Jobs) als Referenz.
-- `src/new_nfl/web/_routes.py` mit `register_route`-Aufruf; alle 10 Routes registriert; `web_server.py` liest Routes aus Registry statt hardcodiert.
-- `tests/test_registry.py` als Regressions-Safety-Net (Smoke: alle erwarteten Keys/Routes/Plugins nach Top-Level-Import da).
+**Umgesetzter Scope (siehe [ADR-0033](adr/ADR-0033-registry-pattern-for-parallel-development.md) Accepted 2026-04-23):**
+- [src/new_nfl/mart/_registry.py](../src/new_nfl/mart/_registry.py) mit `@register_mart_builder(mart_key)`-Decorator; alle **14 Mart-Builder** (für 16 Mart-Tabellen — `run_evidence_v1` bündelt `run_overview_v1`/`run_event_v1`/`run_artifact_v1` unter einem Builder) tragen den Decorator; `_executor_mart_build` in [src/new_nfl/jobs/runner.py](../src/new_nfl/jobs/runner.py) auf 3-Zeilen-Registry-Lookup reduziert (Side-Effect-Import `import new_nfl.mart` + `get_mart_builder(mart_key)(settings)`).
+- [src/new_nfl/cli_plugins.py](../src/new_nfl/cli_plugins.py) mit `CliPlugin`-Dataclass (`name`, `register_parser`, `dispatch`) und `register_cli_plugin`; neuer Namespace [src/new_nfl/plugins/](../src/new_nfl/plugins/) als Side-Effect-Heimat; Referenz-Plugin [src/new_nfl/plugins/registry_inspect.py](../src/new_nfl/plugins/registry_inspect.py) bindet `new-nfl registry-list --kind mart`. Strangler-Fig-Migration: die 1461-zeilige monolithische `cli.py` bleibt unverändert — neue Subcommands gehen über die Plugin-Registry, bestehende 50+ bleiben im Monolith.
+- **Web-Route-Registry deferred**: Scope-Reality-Check während der Umsetzung hat ergeben, dass `web_server.py` eine lokale Core-Dictionary-Preview ist, die Jinja-`render_*_page`-Funktionen reine Library-API ohne HTTP-Mount sind — es existiert schlicht kein Router, den man registry-fähig machen könnte. Deferral in ADR-0033 dokumentiert (wird bei nächstem echten Router-Landing — voraussichtlich T2.6I oder T2.9 — nachgeholt).
+- [tests/test_registry.py](../tests/test_registry.py) mit 9 Smoke-Tests (alle 14 erwarteten mart_keys via frozenset-Vergleich; unknown-key→`ValueError`; duplicate-registration→`ValueError`; idempotent-self-reregistration→returns existing; CLI-Plugin-Listing; CLI-Plugin-Duplicate; CLI-Plugin-Idempotenz; argparse-Round-Trip; end-to-end-dispatch mit stdout-Capture).
 
-**DoD:** Full-Suite grün, ADR-0033 Status `Accepted`, Push nach `main`, drei `feature/t27-*`-Branches vom neuen `main`-HEAD angelegt.
+**DoD:** Erfüllt — Full-Suite **332/332 grün** (323 Baseline + 9 neu, 656.48s); Ruff sauber auf allen T2.7P-scope Files; ADR-0033 Status `Accepted (2026-04-23)`; Push nach `main` mit drei `feature/t27-*`-Branches vom neuen HEAD angelegt.
 
-**Estimiert:** 1 Claude-Code-Session, ca. 1–2 Tage.
+**Tatsächlich:** 1 Claude-Code-Session, 1 Tag (davon ~60% Dekorator-Batch-Edit + Ruff-Cleanup, ~20% CLI-Strangler-Fig-Design, ~20% Scope-Reality-Check auf Web-Router-Registry).
 
 ### T2.7A — Health-Endpunkte (KW 25, Stream A)
 
@@ -338,7 +338,7 @@ Abarbeitung der fünf dokumentierten Backlog-Punkte aus T2.5C/F und T2.6H Lesson
 | ADR-0030 | UI tech stack: Jinja + Tailwind + htmx + Plot | T2.6A |
 | ADR-0031 | Adapter-Slice-Strategie (ein Adapter, N Slices via Code-Registry) | T2.5A / T2.5B (Accepted) |
 | ADR-0032 | Bitemporale Roster-Modellierung (valid_from_week / valid_to_week + System-Time) | T2.5D (Proposed) |
-| ADR-0033 | Registry-Pattern für Mart-Builder, CLI-Subcommands, Web-Routen | T2.7P (Proposed) |
+| ADR-0033 | Registry-Pattern für Mart-Builder + CLI-Subcommands (Web-Routen deferred) | T2.7P (Accepted 2026-04-23) |
 
 ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Abschluss der jeweils gekoppelten Tranche gesetzt.
 

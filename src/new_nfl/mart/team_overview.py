@@ -12,6 +12,7 @@ from datetime import datetime
 
 import duckdb
 
+from new_nfl.mart._registry import register_mart_builder
 from new_nfl.settings import Settings
 
 MART_TEAM_OVERVIEW_V1 = "mart.team_overview_v1"
@@ -42,6 +43,7 @@ def _opt(name: str, present: set[str]) -> str:
     return name if name in present else "NULL"
 
 
+@register_mart_builder("team_overview_v1")
 def build_team_overview_v1(settings: Settings) -> MartTeamOverviewResult:
     con = duckdb.connect(str(settings.db_path))
     try:

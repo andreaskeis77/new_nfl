@@ -12,6 +12,7 @@ from datetime import datetime
 
 import duckdb
 
+from new_nfl.mart._registry import register_mart_builder
 from new_nfl.settings import Settings
 
 MART_SCHEDULE_FIELD_DICTIONARY_V1 = "mart.schedule_field_dictionary_v1"
@@ -44,6 +45,7 @@ def _opt_col(name: str, present: set[str], cast: str = "") -> str:
     return f"NULL{cast}"
 
 
+@register_mart_builder("schedule_field_dictionary_v1")
 def build_schedule_field_dictionary_v1(settings: Settings) -> MartBuildResult:
     """Rebuild ``mart.schedule_field_dictionary_v1`` from ``core.*``.
 

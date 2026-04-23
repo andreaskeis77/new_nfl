@@ -32,6 +32,7 @@ from datetime import datetime
 
 import duckdb
 
+from new_nfl.mart._registry import register_mart_builder
 from new_nfl.settings import Settings
 
 MART_PROVENANCE_V1 = "mart.provenance_v1"
@@ -133,6 +134,7 @@ def _build_source_union(con: duckdb.DuckDBPyConnection) -> str:
     return " UNION ALL ".join(branches)
 
 
+@register_mart_builder("provenance_v1")
 def build_provenance_v1(settings: Settings) -> MartProvenanceResult:
     con = duckdb.connect(str(settings.db_path))
     try:
