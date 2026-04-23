@@ -149,8 +149,16 @@ mart.player_stats_season_v1
   - Neuer Test-Satz [tests/test_freshness.py](../tests/test_freshness.py) mit 19 Tests: Empty-Cold-Start (alle sechs Domänen `stale`), Latest-Event-Dedupe via `ARG_MAX`, Warn-Auf-Quarantäne, Fail-auf-`event_status='failed'`, Resolved-Cases ignoriert, Non-Core-Schemas ignoriert, Service-Fallback, Overview-Aggregation, End-to-End `render_home_from_settings`, Runner-Executor-Akzeptanz für den neuen `mart_key`, Read-Surface-Invariante.
 - **DoD:** Erfüllt — Suite grün (218/218); Mart liefert sechs Zeilen auf leerer DB; `freshness_status='warn'` bei offener Quarantäne; `freshness_status='fail'` bei `event_status='failed'`; Resolved Cases erzeugen keine Warnung; Non-Core-Schemas werden ignoriert; Service gibt synthetische `stale`-Zeilen zurück wenn Mart fehlt; `render_home_from_settings` rendert alle sechs Domänen-Labels; Q-Badge taucht nur bei `open_quarantine_count > 0` auf; Runner akzeptiert `mart_key='freshness_overview_v1'`; ruff clean auf allen T2.6B-scoped Files.
 
-### T2.6C — Season → Week → Game-Liste (KW 24)
-Drilldown-Navigation, Breadcrumb.
+### T2.6C — Season → Week → Game-Liste (KW 24) ✅ (2026-04-23)
+- **Ziel:** Drilldown-Navigation `Seasons → Week → Games` als erste navigatorische View, Breadcrumb inkrementell, Empty-States je Ebene.
+- **Ergebnis:**
+  - Read-Service [src/new_nfl/web/games_view.py](../src/new_nfl/web/games_view.py) mit drei Funktionen `list_seasons`/`list_weeks`/`list_games`, alle Plain-Selects gegen `mart.game_overview_v1`. `SeasonSummary`/`WeekSummary`/`GameRow` als frozen Dataclasses mit abgeleiteten Properties (`is_complete`, `GameRow.label`, `GameRow.score_label` mit `—` für Unplayed, `GameRow.status` → `'final'`/`'scheduled'`).
+  - Drei neue Templates [src/new_nfl/web/templates/seasons.html](../src/new_nfl/web/templates/seasons.html), [season_weeks.html](../src/new_nfl/web/templates/season_weeks.html), [week_games.html](../src/new_nfl/web/templates/week_games.html), alle extend `base.html`, konsumieren `card`+`empty_state` aus T2.6A.
+  - Drei Renderer-Entrypoints `render_seasons_page`/`render_season_weeks_page`/`render_week_games_page` in [src/new_nfl/web/renderer.py](../src/new_nfl/web/renderer.py) mit inkrementell aufgebautem Breadcrumb-Tuple (`Home`, `Seasons`, `Season N`, `Woche W`), `active_nav='seasons'` markiert die Navbar.
+  - `GameRow` macht im Template `data-testid="game-row"` + `data-game-id=…` verfügbar — liest sich sauber in zukünftigen htmx-Partial-Responses (T2.6F) und erlaubt Tests deterministisches Matching.
+  - AST-Lint-Schutz erweitert: `tests/test_mart.py::READ_MODULES` kennt den neuen Service, `tests/test_web_fundament.py`-`rglob('*.py')` findet ihn automatisch.
+  - Neuer Test-Satz [tests/test_games_view.py](../tests/test_games_view.py) mit 15 Tests: Cold-Start (leeres Tuple), Season-Ordering DESC, Counts+min/max_week, Week-Filter per Saison, Game-Ordering (gameday NULLS LAST → gametime → home_team), Score-Dash für Null-Scores, Drei-Render-Pfade, Breadcrumb-Chain, Empty-States je Ebene, Nav-Active-Marker.
+- **DoD:** Erfüllt — Suite grün (233/233); `list_seasons` sortiert DESC; `list_weeks` filtert per `season`-Param und sortiert ASC; `list_games` ordnet `gameday → gametime → home_team`; `render_seasons_page` zeigt Empty-State wenn Mart fehlt; Week-Ansicht zeigt `—` statt Score bei Unplayed; Breadcrumb-Chain hat `href="/"`, `href="/seasons"`, `href="/seasons/2024"` und `aria-current="page"` an der Endstation; ruff clean auf allen T2.6C-scoped Files.
 
 ### T2.6D — Team-Profil (KW 24)
 Stammdaten, aktuelles Roster (top-25), Saisonstats, Spielhistorie.
