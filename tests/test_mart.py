@@ -27,6 +27,7 @@ READ_MODULES = (
     'src/new_nfl/web/freshness.py',
     'src/new_nfl/web/games_view.py',
     'src/new_nfl/web/renderer.py',
+    'src/new_nfl/web/team_view.py',
 )
 
 

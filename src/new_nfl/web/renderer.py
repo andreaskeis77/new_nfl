@@ -29,6 +29,12 @@ from new_nfl.web.games_view import (
     list_seasons,
     list_weeks,
 )
+from new_nfl.web.team_view import (
+    TeamCard,
+    TeamProfile,
+    get_team_profile,
+    list_teams,
+)
 
 _SUPPORTED_THEMES = ("dark", "light")
 
@@ -270,4 +276,62 @@ def render_week_games_page(
             BreadcrumbItem(label=f"Woche {week}", href=None),
         ),
         page_title=f"NEW NFL — Season {season} · Woche {week}",
+    )
+
+
+def render_teams_page(
+    settings: Settings,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    teams: tuple[TeamCard, ...] | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    rows = teams if teams is not None else list_teams(settings)
+    return r.render(
+        "teams.html",
+        context={"teams": rows},
+        theme=theme,
+        active_nav="teams",
+        breadcrumb=(
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Teams", href=None),
+        ),
+        page_title="NEW NFL — Teams",
+    )
+
+
+def render_team_profile_page(
+    settings: Settings,
+    team_key: str,
+    *,
+    season: int | None = None,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    profile: TeamProfile | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    if profile is None:
+        profile = get_team_profile(settings, team_key, season=season)
+    if profile is None:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Teams", href="/teams"),
+            BreadcrumbItem(label=team_key, href=None),
+        )
+        page_title = f"NEW NFL — Team {team_key}"
+    else:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Teams", href="/teams"),
+            BreadcrumbItem(label=profile.meta.team_name, href=None),
+        )
+        page_title = f"NEW NFL — {profile.meta.team_name}"
+    return r.render(
+        "team_profile.html",
+        context={"profile": profile, "requested_key": team_key},
+        theme=theme,
+        active_nav="teams",
+        breadcrumb=breadcrumb,
+        page_title=page_title,
     )
