@@ -21,6 +21,14 @@ from new_nfl.web.freshness import (
     build_home_overview,
     overview_to_template_context,
 )
+from new_nfl.web.games_view import (
+    GameRow,
+    SeasonSummary,
+    WeekSummary,
+    list_games,
+    list_seasons,
+    list_weeks,
+)
 
 _SUPPORTED_THEMES = ("dark", "light")
 
@@ -191,3 +199,75 @@ def render_home_from_settings(
 ) -> str:
     overview = build_home_overview(settings)
     return render_home(renderer=renderer, theme=theme, overview=overview)
+
+
+def render_seasons_page(
+    settings: Settings,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    seasons: tuple[SeasonSummary, ...] | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    rows = seasons if seasons is not None else list_seasons(settings)
+    return r.render(
+        "seasons.html",
+        context={"seasons": rows},
+        theme=theme,
+        active_nav="seasons",
+        breadcrumb=(
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Seasons", href=None),
+        ),
+        page_title="NEW NFL — Seasons",
+    )
+
+
+def render_season_weeks_page(
+    settings: Settings,
+    season: int,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    weeks: tuple[WeekSummary, ...] | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    rows = weeks if weeks is not None else list_weeks(settings, season)
+    return r.render(
+        "season_weeks.html",
+        context={"season": season, "weeks": rows},
+        theme=theme,
+        active_nav="seasons",
+        breadcrumb=(
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Seasons", href="/seasons"),
+            BreadcrumbItem(label=f"Season {season}", href=None),
+        ),
+        page_title=f"NEW NFL — Season {season}",
+    )
+
+
+def render_week_games_page(
+    settings: Settings,
+    season: int,
+    week: int,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    games: tuple[GameRow, ...] | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    rows = games if games is not None else list_games(settings, season, week)
+    return r.render(
+        "week_games.html",
+        context={"season": season, "week": week, "games": rows},
+        theme=theme,
+        active_nav="seasons",
+        breadcrumb=(
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Seasons", href="/seasons"),
+            BreadcrumbItem(label=f"Season {season}", href=f"/seasons/{season}"),
+            BreadcrumbItem(label=f"Woche {week}", href=None),
+        ),
+        page_title=f"NEW NFL — Season {season} · Woche {week}",
+    )

@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  <header class="mb-8">
+    <p class="text-xs uppercase tracking-wide text-secondary">Season {{ season }} · Woche {{ '%02d' | format(week) }}</p>
+    <h1 class="text-3xl font-semibold tracking-tight">Games</h1>
+  </header>
+
+  <section aria-label="Games" class="mb-10">
+    {% call card('Spiele Woche ' ~ week) %}
+      {% if games %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Datum</th>
+              <th class="text-left">Zeit</th>
+              <th class="text-left">Auswärts</th>
+              <th class="text-left">Heim</th>
+              <th class="text-right tnum">Score</th>
+              <th class="text-left">Status</th>
+              <th class="text-left">Venue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in games %}
+              <tr data-testid="game-row" data-game-id="{{ g.game_id }}">
+                <td class="text-left">
+                  {% if g.gameday is not none %}
+                    {{ g.gameday.isoformat() }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="text-left">{{ g.gametime or '—' }}</td>
+                <td class="text-left font-mono">{{ g.away_team }}</td>
+                <td class="text-left font-mono">{{ g.home_team }}</td>
+                <td class="text-right font-mono tnum">{{ g.score_label }}</td>
+                <td class="text-left">
+                  {% if g.is_completed %}
+                    <span class="badge status-success">
+                      <span class="badge-label">Final</span>
+                      {% if g.winner_team and g.winner_team != 'TIE' %}
+                        <span class="badge-meta">{{ g.winner_team }}</span>
+                      {% elif g.winner_team == 'TIE' %}
+                        <span class="badge-meta">Tie</span>
+                      {% endif %}
+                    </span>
+                  {% else %}
+                    <span class="badge status-neutral"><span class="badge-label">geplant</span></span>
+                  {% endif %}
+                </td>
+                <td class="text-left">{{ g.stadium or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        {{ empty_state(
+              title='Keine Spiele in dieser Woche',
+              body='Für die gewählte Woche sind noch keine Spiele im Mart.',
+              hint='cli core-load --adapter nflverse_bulk --slice games --execute') }}
+      {% endif %}
+    {% endcall %}
+  </section>
+{% endblock %}

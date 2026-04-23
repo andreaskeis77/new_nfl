@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  <header class="mb-8">
+    <p class="text-xs uppercase tracking-wide text-secondary">Season-Übersicht</p>
+    <h1 class="text-3xl font-semibold tracking-tight">Seasons</h1>
+  </header>
+
+  <section aria-label="Seasons" class="mb-10">
+    {% call card('Vorhandene Saisons') %}
+      {% if seasons %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Season</th>
+              <th class="text-right tnum">Games</th>
+              <th class="text-right tnum">Abgeschlossen</th>
+              <th class="text-right tnum">Wochen</th>
+              <th class="text-left">Status</th>
+              <th class="text-left">Links</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in seasons %}
+              <tr>
+                <td class="text-left font-mono tnum">{{ s.season }}</td>
+                <td class="text-right tnum">{{ s.game_count | fmt_number }}</td>
+                <td class="text-right tnum">{{ s.completed_count | fmt_number }}</td>
+                <td class="text-right tnum">
+                  {% if s.min_week is not none and s.max_week is not none %}
+                    {{ s.min_week }}–{{ s.max_week }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="text-left">
+                  {% if s.is_complete %}
+                    <span class="badge status-success"><span class="badge-label">komplett</span></span>
+                  {% else %}
+                    <span class="badge status-warn"><span class="badge-label">in Arbeit</span></span>
+                  {% endif %}
+                </td>
+                <td class="text-left">
+                  <a class="hover:text-primary" href="/seasons/{{ s.season }}">Wochen öffnen</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        {{ empty_state(
+              title='Noch keine Seasons geladen',
+              body='Lade einen Games-Slice, um diese Seite zu befüllen.',
+              hint='cli core-load --adapter nflverse_bulk --slice games --execute') }}
+      {% endif %}
+    {% endcall %}
+  </section>
+{% endblock %}
