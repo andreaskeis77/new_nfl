@@ -8,6 +8,7 @@ and importing it here.
 from new_nfl.plugins import (
     health,  # noqa: F401  # registers plugin (T2.7A)
     registry_inspect,  # noqa: F401  # registers plugin
+    resilience,  # noqa: F401  # registers plugins (T2.7C/T2.7D)
 )
 
 __all__: list[str] = []

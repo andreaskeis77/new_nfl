@@ -68,6 +68,17 @@ class Settings:
         """
         return os.environ.get("NEW_NFL_LOG_DESTINATION", "stdout").strip() or "stdout"
 
+    @property
+    def backup_destination_dir(self) -> Path:
+        """Default target directory for resilience snapshot archives (T2.7C).
+
+        Snapshot ZIPs land under ``<data_root>/backups/`` unless the
+        operator passes an explicit ``--target`` on ``new-nfl
+        backup-snapshot``. Additive — no existing caller reads this
+        property, so it cannot break callers wired before T2.7C.
+        """
+        return self.data_root / "backups"
+
 
 def load_settings() -> Settings:
     repo_root = _resolve_repo_root()
