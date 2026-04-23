@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.6H Run-Evidence-Browser** — abgeschlossen (2026-04-23). Nächster Bolt: Final-Handoff + Starter-Prompt T2.7 (Rückweg der Phase-1-Domänen in Produktion).
+**T2.6H Run-Evidence-Browser** — abgeschlossen (2026-04-23). Deep-Review + Parallelisierungs-Konzept verabschiedet (2026-04-23): T2.7 wird in einen Vorbereitungs-Bolzen (T2.7P — Registry-Pattern, ADR-0033) plus drei parallele Streams (A Observability, B Resilience, C Hardening) plus eine Integrations-Session (T2.7F) zerlegt. Details in [PARALLEL_DEVELOPMENT.md](PARALLEL_DEVELOPMENT.md). Nächster Bolt: **T2.7P — Registry-Pattern** (sequenziell, vor den Parallel-Streams).
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -11,7 +11,7 @@
 - `UI_STYLE_GUIDE_v0_1.md` — verbindliche UI-Regeln
 - `T2_3_PLAN.md` — aktiver Tranche-Plan zum v1.0-Ziel (Ende Juni 2026)
 - `USE_CASE_VALIDATION_v0_1.md` — abgenommene Use Cases
-- ADR-0025, ADR-0026, ADR-0027, ADR-0028, ADR-0029, ADR-0030, ADR-0031 — `Accepted`; ADR-0032 (bitemporale Roster-Modellierung) `Proposed` seit T2.5D
+- ADR-0025, ADR-0026, ADR-0027, ADR-0028, ADR-0029, ADR-0031 — `Accepted`; ADR-0030 (UI Tech Stack) `Proposed` (Implementierung seit T2.6A live, Status-Update überfällig — wird in T2.7F auf `Accepted`); ADR-0032 (bitemporale Roster-Modellierung) `Proposed` seit T2.5D (wartet auf Operator-Validierung mit echten Daten); ADR-0033 (Registry-Pattern) `Proposed` seit T2.7P-Plan (wird in T2.7F auf `Accepted`)
 - `CHAT_HANDOFF_PROTOCOL.md`, `LESSONS_LEARNED_PROTOCOL.md` — Methode
 - Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260423-2200_t26-ui-views-complete.md`
 
@@ -116,10 +116,42 @@ T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nac
 
 ## Preferred next bolt
 
-**Final-Handoff + Starter-Prompt T2.7** — alle fünf UI-Pflicht-Views aus T2.6 sind abgeschlossen (T2.6A–H). Nächster Schritt: Rückweg der Phase-1-Domänen in Produktion planen (T2.7). Vorarbeit: Review des aktuellen Standes mit Operator, Definition der T2.7-Scope (VPS-Deploy nach v1.0 vs. interne Automatisierungs-/Replay-Schleifen), neue Lessons-Learned-Einträge sichten und in die T2.7-Scope einarbeiten.
+**T2.7P — Parallelisierungs-Prep (Registry-Pattern)** gemäß [ADR-0033](adr/ADR-0033-registry-pattern-for-parallel-development.md) und [PARALLEL_DEVELOPMENT.md](PARALLEL_DEVELOPMENT.md). Ziel: die drei Konflikt-Zonen im Code (hardcodierter `_executor_mart_build`-Dispatch mit 16 Mart-Keys, 50+ Subcommands in monolithischem `build_parser()`, Re-Export-Hubs in `web/__init__.py`/`mart/__init__.py`) auflösen, damit T2.7A–E in drei parallelen Feature-Streams (`feature/t27-observability`, `feature/t27-resilience`, `feature/t27-hardening`) additiv ohne Merge-Konflikte arbeiten können. Sequenziell, vor den Parallel-Streams. DoD: alle 16 Marts per `@register_mart_builder`-Decorator registriert, Registry-Smoke-Tests grün, Full-Suite grün, ADR-0033 Status `Accepted`, drei Feature-Branches vom neuen `main`-HEAD angelegt.
+
+Danach: **T2.7A-E parallel** in drei Claude-Code-Sessions (Master-Prompts in `PARALLEL_DEVELOPMENT.md §4`), abgeschlossen durch **T2.7F Integrations-Session** (Merge A→B→C, Konsolidierung, Handoff T2.8).
 
 ## Zielkorridor v1.0
 
 - feature-complete: Ende Juni 2026
 - Testphase: Juli 2026
 - produktiv (auf Windows-VPS): vor Preseason-Start Anfang August 2026
+
+## Deep-Review 2026-04-23 — Zahlen, Befund, Konsequenzen
+
+**Kennzahlen:**
+- ~17.800 LoC Quellcode + ~10.600 LoC Tests = 28.400 aktive Zeilen
+- 323 Tests grün, Full-Suite-Laufzeit ~9:42
+- 16 Marts unter 15 Builder-Modulen (T2.6H klammert drei Marts unter einem Builder)
+- 50+ CLI-Subcommands in monolithischem `build_parser()` (cli.py = 1.461 Zeilen)
+- 10 UI-Views mit Jinja-Templates
+- 6 kanonische Core-Domänen (Teams, Games, Players, Rosters-bitemporal, Team-Stats aggregiert, Player-Stats aggregiert) mit Tier-A/B-Cross-Check-Semantik
+- 32 ADRs, davon 2 `Proposed` (0030, 0032), der Rest `Accepted`
+- 4 Lessons-Learned-Drafts aus T2.6E/F/G/H offen zur Operator-Freigabe
+
+**Strukturelle Schwachstellen identifiziert:**
+- Drei Konflikt-Zonen in zentralen Dateien (`runner.py::_executor_mart_build`, `cli.py::build_parser`, Re-Export-Hubs) wurden bis T2.6 durch sequenzielle Einzel-Session-Entwicklung toleriert. Für T2.7 mit paralleler Arbeit sind sie blockierend — gelöst durch T2.7P + ADR-0033.
+- `settings.py` hat 39-fachen Fan-In — jede Struktur-Änderung berührt 40+ Dateien. Konsequenz: die drei parallelen Streams dürfen nur je eine additive Property ergänzen, keine Struktur-Änderung.
+- ~10 Mart-Module rufen pro Rebuild DESCRIBE auf `core.team`/`core.player` — O(n) pro UI-Request. Adressiert durch T2.7E-2 Schema-Cache.
+- `meta.run_event` wächst linear, keine Retention — adressiert durch T2.7E-1.
+
+**Entscheidung Parallel-Entwicklung:**
+- Ziel: Entwicklungsgeschwindigkeit skalieren durch drei gleichzeitig laufende Claude-Code-Sessions
+- Bedingung: T2.7P muss vor den Streams abgeschlossen sein, sonst sind Konflikte garantiert
+- Architektur-Ergänzung: ADR-0033 Registry-Pattern
+- Stream-Design: A (Observability), B (Resilience), C (Hardening) — scope-disjunkt, jeweils neuer Namespace `src/new_nfl/observability|resilience|meta`
+- Integration: sequenzielle vierte Session, Merge-Reihenfolge nach Risiko aufsteigend
+
+**Erfolgskriterium T2.7:**
+- Full-Suite nach Integration grün (erwartet ~380–400 Tests)
+- ADR-0030/0032/0033 finaler Status geklärt
+- Registry-Pattern für T3.0 (parallele Bug-Fix-Streams) wiederverwendbar

@@ -4,6 +4,7 @@ Architectural Decision Records, neueste oben. Status-Quelle ist immer das ADR-Do
 
 | ADR | Titel | Status | Tranche / Anker |
 |---|---|---|---|
+| [ADR-0033](ADR-0033-registry-pattern-for-parallel-development.md) | Registry-Pattern für Mart-Builder, CLI-Subcommands, Web-Routen | Proposed | T2.7P |
 | [ADR-0032](ADR-0032-bitemporal-roster-membership.md) | Bitemporale Modellierung von Roster-Mitgliedschaften | Proposed | T2.5D |
 | [ADR-0031](ADR-0031-adapter-slice-strategy.md) | Adapter-Slice-Strategie (ein Adapter, N Slices via Code-Registry) | Accepted (2026-04-22) | T2.5A / T2.5B |
 | [ADR-0030](ADR-0030-ui-tech-stack.md) | UI tech stack: Jinja + Tailwind + htmx + Plot | Proposed | T2.6A |

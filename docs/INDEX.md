@@ -7,6 +7,7 @@
 - `USE_CASE_VALIDATION_v0_1.md`
 - `UI_STYLE_GUIDE_v0_1.md`
 - `T2_3_PLAN.md`
+- `PARALLEL_DEVELOPMENT.md` (T2.7 Stream-Guide mit Master-Prompts)
 - `CHAT_HANDOFF_PROTOCOL.md`
 - `LESSONS_LEARNED_PROTOCOL.md`
 - `LESSONS_LEARNED.md`

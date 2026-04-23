@@ -247,19 +247,75 @@ Stammdaten, aktuelle Team-Zugehörigkeit, Karriere-Totale, Saison-Historie und R
 
 **Pflichtpfade nach T2.6:** alle 7 Pflicht-Views aus `USE_CASE_VALIDATION_v0_1.md` §5.4 sichtbar und gegen `mart.*` validiert. — **Mit T2.6H vollständig erfüllt.**
 
-## 6. T2.7 — Resilienz und Observability (KW 26)
+## 6. T2.7 — Resilienz und Observability (KW 25–26, parallelisiert)
 
-### T2.7A — Health-Endpunkte
-`/livez`, `/readyz`, `/health/deps`, `/health/freshness` mit JSON-Responses.
+Nach Abschluss von T2.6 hat das Projekt einen Umfang erreicht, bei dem sequenzielle Einzel-Session-Entwicklung teurer ist als parallele Streams mit klarer Scope-Trennung. T2.7 wird daher in **einen Vorbereitungs-Bolzen plus drei parallele Feature-Streams plus eine Integrations-Session** zerlegt. Details zur Stream-Architektur, Branch-Strategie und Risiko-Matrix stehen in [PARALLEL_DEVELOPMENT.md](PARALLEL_DEVELOPMENT.md).
 
-### T2.7B — Strukturiertes Logging
-Pflichtfelder gemäß `OBSERVABILITY.md` und Manifest. Logs nach `data/logs/`.
+### T2.7P — Parallelisierungs-Prep (KW 25, sequenziell, vor den Streams)
 
-### T2.7C — Backup-Drill
-Lokal: DuckDB-File + `data/raw/` als ZIP exportieren, Restore-Befehl, Smoke nach Restore.
+**Ziel:** Die drei Konflikt-Zonen aus dem Code-Review (Mart-Builder if/elif in `jobs/runner.py`, 50+ Subcommands in monolithischem `cli.py`, Re-Export-Hubs in `web/__init__.py` und `mart/__init__.py`) auflösen, damit die drei Feature-Streams additiv arbeiten können, ohne an zentralen Files zu mergen.
 
-### T2.7D — Replay-Drill
-Existierenden Run löschen aus `core.*`, von Raw-Artefakt replayen, Vergleich Pre/Post identisch.
+**Scope (siehe [ADR-0033](adr/ADR-0033-registry-pattern-for-parallel-development.md)):**
+- `src/new_nfl/mart/_registry.py` mit `@register_mart_builder(mart_key)`-Decorator; alle 16 Mart-Builder migriert; `_executor_mart_build` in runner.py wird 2-Zeilen-Lookup.
+- `src/new_nfl/cli/_plugins.py` mit `register_cli_plugin`-Decorator; Unterordner `cli/plugins/` mit mindestens zwei Plugin-Gruppen (Mart + Jobs) als Referenz.
+- `src/new_nfl/web/_routes.py` mit `register_route`-Aufruf; alle 10 Routes registriert; `web_server.py` liest Routes aus Registry statt hardcodiert.
+- `tests/test_registry.py` als Regressions-Safety-Net (Smoke: alle erwarteten Keys/Routes/Plugins nach Top-Level-Import da).
+
+**DoD:** Full-Suite grün, ADR-0033 Status `Accepted`, Push nach `main`, drei `feature/t27-*`-Branches vom neuen `main`-HEAD angelegt.
+
+**Estimiert:** 1 Claude-Code-Session, ca. 1–2 Tage.
+
+### T2.7A — Health-Endpunkte (KW 25, Stream A)
+
+`/livez` (Prozess-Check), `/readyz` (DB-Connect + Mart-Presence), `/health/freshness` (JSON-Spiegel von `mart.freshness_overview_v1`), `/health/deps` (Adapter-Slice-Registry + letzter `meta.load_events`-Timestamp pro Adapter). JSON mit `schema_version`, `checked_at`, `status`.
+
+**Scope-Beschränkung:** nur `src/new_nfl/observability/`, `cli/plugins/health.py`, `tests/test_health.py` — keine Edits an bestehenden Domain-Modulen. Read-Pfad bleibt `mart.*`-only.
+
+### T2.7B — Strukturiertes Logging (KW 25, Stream A)
+
+Logger-Factory mit Pflichtfeldern `event_id`, `adapter_id`, `source_file_id`, `job_run_id`, `ts`, `level`, `msg`, `details`. Destination konfigurierbar (stdout default, File-Ziel `data/logs/` optional). Hook-Einbau in jeden `_executor_*` in runner.py als 2-Zeilen-Injection (Entry/Exit/Exception).
+
+**Scope-Beschränkung:** `src/new_nfl/observability/logging.py`, `tests/test_logging.py`, plus die Hook-Zeilen in runner.py.
+
+### T2.7C — Backup-Drill (KW 25, Stream B)
+
+CLI `backup-snapshot --target PATH.zip`, `restore-snapshot --source PATH.zip --target DIR`, `verify-snapshot --source PATH.zip`. ZIP enthält DuckDB-File + `data/raw/`. Deterministisch (gleiche Input-Daten → gleicher Payload-Hash). Restore-Smoke: Subset der Test-Suite läuft gegen Restore-Dir.
+
+**Scope-Beschränkung:** `src/new_nfl/resilience/backup.py` + `restore.py`, `cli/plugins/resilience.py`, Tests.
+
+### T2.7D — Replay-Drill (KW 25, Stream B)
+
+CLI `replay-domain --domain DOMAIN --source-file-id ID`. Löscht domain-spezifische `core.*`-Rows, ruft Core-Load neu auf, vergleicht mit Pre-State-Snapshot. Diff-Tool `diff_tables(db_a, db_b, table, key_cols, exclude_cols=['_canonicalized_at', '_loaded_at'])`.
+
+**Scope-Beschränkung:** `src/new_nfl/resilience/replay.py` + `diff.py`, Tests.
+
+### T2.7E — Hardening-Backlog (KW 26, Stream C)
+
+Abarbeitung der fünf dokumentierten Backlog-Punkte aus T2.5C/F und T2.6H Lessons Learned:
+
+- **T2.7E-1 Event-Retention:** CLI `trim-run-events --older-than 30d [--dry-run]` löscht abgeschlossene alte Runs mit zugehörigen Events und Artefakt-Referenzen.
+- **T2.7E-2 Schema-DESCRIBE-Cache:** Settings-Level-Cache mit TTL für DESCRIBE auf `core.team`/`core.player`. Integration in ~10 bestehende Marts als Wrapper, Logik bit-identisch.
+- **T2.7E-3 Ontology-Auto-Aktivierung:** `bootstrap_local_environment` aktiviert automatisch die neueste geladene Ontologie-Version, wenn keine aktive existiert — behebt den dreiwertigen `position_is_known`-Bug in `mart.player_overview_v1` auf Fresh-DB.
+- **T2.7E-4 `meta.adapter_slice`-Runtime-Projektion:** `SLICE_REGISTRY` wird beim Bootstrap in eine DB-Tabelle projiziert; UI/CLI können Slice-Metadaten ohne Python-Import lesen.
+- **T2.7E-5 `dedupe-review-resolve`:** CLI zum Auflösen offener Review-Items mit Aktionen `merge`/`reject`/`defer`.
+
+**Scope-Beschränkung:** `src/new_nfl/meta/` (neuer Namespace), `cli/plugins/hardening.py`, `bootstrap.py` (additiv), `dedupe/review.py` (Erweiterung `resolve()`), Tests. Schema-Cache-Integration in Marts ist zusätzlicher Commit mit Bulk-Edit an bestehenden mart-Modulen — erlaubt, weil andere Streams dort nicht schreiben.
+
+### T2.7F — Integrations-Session (KW 26, sequenziell, zum Abschluss)
+
+**Ziel:** drei Feature-Streams zurück in `main` mergen, Gesamt-Konsistenz validieren.
+
+**Protokoll (siehe PARALLEL_DEVELOPMENT.md §3 „Integrations-Session"):**
+- Merge-Reihenfolge: A (Observability) → B (Resilience) → C (Hardening) — nach Risiko aufsteigend
+- Pro Merge: `pytest` grün, `ruff` clean, AST-Lint grün
+- Konflikt-Erwartung: null oder minimal (Registry-Files sind append-only; andere Files sind Stream-scoped)
+- ADR-0030 auf `Accepted`, ADR-0032 auf Operator-Validation-Check, ADR-0033 auf `Accepted`
+- Konsolidierung der drei Stream-Lessons-Drafts (`docs/_handoff/lessons_t27{a,b,c}.md`) in ein einheitliches T2.7-Lessons-Learned-Kapitel
+- Chat-Handoff T2.7 → T2.8
+
+**Estimiert:** 1 Claude-Code-Session, ca. 0,5–1 Tag.
+
+**Pflichtpfade nach T2.7:** Health + Logging + Backup + Replay + alle fünf Hardening-Punkte abgeschlossen; drei neue ADRs (0030 Accepted, 0032 Validation, 0033 Accepted); Registry-Pattern etabliert und für T3.0 wiederverwendbar.
 
 ## 7. T2.8 — v1.0 Cut auf DEV-LAPTOP (Ende KW 26)
 
@@ -282,6 +338,7 @@ Existierenden Run löschen aus `core.*`, von Raw-Artefakt replayen, Vergleich Pr
 | ADR-0030 | UI tech stack: Jinja + Tailwind + htmx + Plot | T2.6A |
 | ADR-0031 | Adapter-Slice-Strategie (ein Adapter, N Slices via Code-Registry) | T2.5A / T2.5B (Accepted) |
 | ADR-0032 | Bitemporale Roster-Modellierung (valid_from_week / valid_to_week + System-Time) | T2.5D (Proposed) |
+| ADR-0033 | Registry-Pattern für Mart-Builder, CLI-Subcommands, Web-Routen | T2.7P (Proposed) |
 
 ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Abschluss der jeweils gekoppelten Tranche gesetzt.
 
