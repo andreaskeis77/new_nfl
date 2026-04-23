@@ -18,18 +18,33 @@
   </section>
 
   <section aria-label="Freshness" class="mb-10">
-    {% call card('Freshness') %}
-      <ul class="flex flex-wrap gap-3">
-        {% for row in freshness_sample %}
-          <li>{{ freshness_badge(row.domain, row.updated_at, row.status) }}</li>
-        {% endfor %}
-      </ul>
+    {% call card('Freshness je Domäne') %}
+      {% if freshness_sample %}
+        <ul class="flex flex-wrap gap-3" data-testid="freshness-list">
+          {% for row in freshness_sample %}
+            <li>
+              {{ freshness_badge(row.domain, row.updated_at, row.status) }}
+              {% if row.open_quarantine_count %}
+                <span class="badge status-warn" title="Offene Quarantäne-Fälle">
+                  <span class="badge-label">Q</span>
+                  <span class="badge-meta">{{ row.open_quarantine_count | fmt_number }}</span>
+                </span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {{ empty_state(
+              title='Noch keine Freshness-Daten',
+              body='Baue mart.freshness_overview_v1 einmal auf: mart-build --key freshness_overview_v1.',
+              hint='cli mart-build --key freshness_overview_v1') }}
+      {% endif %}
     {% endcall %}
   </section>
 
-  <section aria-label="Vorschau" class="mb-10">
-    {% call card('Vorschau Season 2024 · Woche 1') %}
-      {% if preview_rows %}
+  {% if preview_rows is defined and preview_rows %}
+    <section aria-label="Vorschau" class="mb-10">
+      {% call card('Vorschau Season 2024 · Woche 1') %}
         {{ data_table(
               columns=[
                 {'key': 'season', 'label': 'Season', 'align': 'right', 'mono': True},
@@ -38,12 +53,16 @@
                 {'key': 'status', 'label': 'Status', 'align': 'left'},
               ],
               rows=preview_rows) }}
-      {% else %}
+      {% endcall %}
+    </section>
+  {% elif preview_rows is defined %}
+    <section aria-label="Vorschau" class="mb-10">
+      {% call card('Vorschau Season 2024 · Woche 1') %}
         {{ empty_state(
               title='Noch keine Spiele',
               body='Lade einen Games-Slice via CLI core-load --slice games --execute.',
               hint='cli core-load --adapter nflverse_bulk --slice games --execute') }}
-      {% endif %}
-    {% endcall %}
-  </section>
+      {% endcall %}
+    </section>
+  {% endif %}
 {% endblock %}

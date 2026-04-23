@@ -14,7 +14,13 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from new_nfl.settings import Settings
 from new_nfl.web.assets import StaticAssetResolver, templates_dir
+from new_nfl.web.freshness import (
+    HomeOverview,
+    build_home_overview,
+    overview_to_template_context,
+)
 
 _SUPPORTED_THEMES = ("dark", "light")
 
@@ -129,13 +135,8 @@ def build_renderer(
     return WebRenderer(environment=env, assets=resolver, default_theme=default_theme)
 
 
-def render_home(
-    *,
-    renderer: WebRenderer | None = None,
-    theme: str = "dark",
-) -> str:
-    r = renderer or build_renderer()
-    context = {
+def _demo_overview_context() -> dict[str, Any]:
+    return {
         "hero": {
             "title": "NEW NFL",
             "subtitle": "Private Analytics Platform",
@@ -158,6 +159,20 @@ def render_home(
             {"season": 2024, "week": 1, "label": "PIT @ ATL", "status": "final"},
         ),
     }
+
+
+def render_home(
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    overview: HomeOverview | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    if overview is not None:
+        context = overview_to_template_context(overview)
+        context.setdefault("preview_rows", ())
+    else:
+        context = _demo_overview_context()
     return r.render(
         "home.html",
         context=context,
@@ -166,3 +181,13 @@ def render_home(
         breadcrumb=(BreadcrumbItem(label="Home", href=None),),
         page_title="NEW NFL — Home",
     )
+
+
+def render_home_from_settings(
+    settings: Settings,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+) -> str:
+    overview = build_home_overview(settings)
+    return render_home(renderer=renderer, theme=theme, overview=overview)

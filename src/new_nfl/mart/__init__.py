@@ -5,6 +5,12 @@ is the only schema that UI / API / CLI-read paths are allowed to touch.
 Mart tables are versioned with a ``_v<N>`` suffix so the read surface can
 evolve without disturbing the canonical kernel.
 """
+from new_nfl.mart.freshness_overview import (
+    EXPECTED_CORE_DOMAINS,
+    MART_FRESHNESS_OVERVIEW_V1,
+    MartFreshnessOverviewResult,
+    build_freshness_overview_v1,
+)
 from new_nfl.mart.game_overview import (
     MART_GAME_OVERVIEW_V1,
     MartGameOverviewResult,
@@ -62,6 +68,8 @@ from new_nfl.mart.team_stats_weekly import (
 )
 
 __all__ = [
+    "EXPECTED_CORE_DOMAINS",
+    "MART_FRESHNESS_OVERVIEW_V1",
     "MART_GAME_OVERVIEW_V1",
     "MART_PLAYER_OVERVIEW_V1",
     "MART_PLAYER_STATS_CAREER_V1",
@@ -74,6 +82,7 @@ __all__ = [
     "MART_TEAM_STATS_SEASON_V1",
     "MART_TEAM_STATS_WEEKLY_V1",
     "MartBuildResult",
+    "MartFreshnessOverviewResult",
     "MartGameOverviewResult",
     "MartPlayerOverviewResult",
     "MartPlayerStatsCareerResult",
@@ -84,6 +93,7 @@ __all__ = [
     "MartTeamOverviewResult",
     "MartTeamStatsSeasonResult",
     "MartTeamStatsWeeklyResult",
+    "build_freshness_overview_v1",
     "build_game_overview_v1",
     "build_player_overview_v1",
     "build_player_stats_career_v1",
