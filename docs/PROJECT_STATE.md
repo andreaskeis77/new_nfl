@@ -13,7 +13,7 @@
 - `USE_CASE_VALIDATION_v0_1.md` — abgenommene Use Cases
 - ADR-0025, ADR-0026, ADR-0027, ADR-0028, ADR-0029, ADR-0030, ADR-0031 — `Accepted`; ADR-0032 (bitemporale Roster-Modellierung) `Proposed` seit T2.5D
 - `CHAT_HANDOFF_PROTOCOL.md`, `LESSONS_LEARNED_PROTOCOL.md` — Methode
-- Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260422-1500_t25c-players-and-first-real-dedupe-done.md`
+- Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260423-2200_t26-ui-views-complete.md`
 
 ## Completed
 
