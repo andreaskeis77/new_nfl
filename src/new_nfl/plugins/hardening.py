@@ -119,4 +119,84 @@ register_cli_plugin(
 )
 
 
+# ---------------------------------------------------------------------------
+# dedupe-review-resolve  (T2.7E-5)
+# ---------------------------------------------------------------------------
+
+
+def _register_dedupe_review_resolve(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(
+        "dedupe-review-resolve",
+        help=(
+            "Resolve a single meta.review_item via merge/reject/defer "
+            "(T2.7E-5)"
+        ),
+    )
+    parser.add_argument(
+        "--review-id",
+        required=True,
+        help="review_item_id to resolve",
+    )
+    parser.add_argument(
+        "--action",
+        required=True,
+        choices=("merge", "reject", "defer"),
+        help="Resolution action",
+    )
+    parser.add_argument(
+        "--notes",
+        default=None,
+        help="Optional operator note stored on meta.review_item.note",
+    )
+    return parser
+
+
+def _dispatch_dedupe_review_resolve(args: argparse.Namespace) -> int:
+    from new_nfl.bootstrap import bootstrap_local_environment
+    from new_nfl.dedupe.review import (
+        InvalidReviewActionError,
+        ReviewItemAlreadyResolvedError,
+        ReviewItemNotFoundError,
+        resolve_review_item,
+    )
+    from new_nfl.settings import load_settings
+
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    try:
+        result = resolve_review_item(
+            settings,
+            review_item_id=args.review_id,
+            action=args.action,
+            notes=args.notes,
+        )
+    except ReviewItemNotFoundError as exc:
+        print(f"ERROR=not_found:{exc}")
+        return 2
+    except ReviewItemAlreadyResolvedError as exc:
+        print(f"ERROR=already_resolved:{exc}")
+        return 3
+    except InvalidReviewActionError as exc:
+        print(f"ERROR=invalid_action:{exc}")
+        return 2
+
+    print(f"REVIEW_ITEM_ID={result.review_item_id}")
+    print(f"PREVIOUS_STATUS={result.previous_status}")
+    print(f"NEW_STATUS={result.new_status}")
+    print(f"RESOLUTION={result.resolution}")
+    print(f"NOTES={result.notes or ''}")
+    return 0
+
+
+register_cli_plugin(
+    CliPlugin(
+        name="dedupe-review-resolve",
+        register_parser=_register_dedupe_review_resolve,
+        dispatch=_dispatch_dedupe_review_resolve,
+    )
+)
+
+
 __all__: list[str] = []
