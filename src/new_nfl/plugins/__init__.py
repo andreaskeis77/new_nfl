@@ -6,6 +6,7 @@ their CLI surface by dropping a new module under :mod:`new_nfl.plugins`
 and importing it here.
 """
 from new_nfl.plugins import (
+    hardening,  # noqa: F401  # registers plugins (T2.7E)
     health,  # noqa: F401  # registers plugin (T2.7A)
     registry_inspect,  # noqa: F401  # registers plugin
     resilience,  # noqa: F401  # registers plugins (T2.7C/T2.7D)

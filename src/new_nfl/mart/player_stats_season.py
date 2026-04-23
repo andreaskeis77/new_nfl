@@ -22,6 +22,7 @@ from datetime import datetime
 import duckdb
 
 from new_nfl.mart._registry import register_mart_builder
+from new_nfl.meta import schema_cache
 from new_nfl.settings import Settings
 
 MART_PLAYER_STATS_SEASON_V1 = "mart.player_stats_season_v1"
@@ -38,9 +39,11 @@ class MartPlayerStatsSeasonResult:
     built_at: datetime
 
 
-def _source_columns(con: duckdb.DuckDBPyConnection) -> set[str]:
+def _source_columns(
+    settings: Settings, con: duckdb.DuckDBPyConnection
+) -> set[str]:
     try:
-        rows = con.execute(f"DESCRIBE {_SOURCE_TABLE}").fetchall()
+        rows = schema_cache.describe(settings, _SOURCE_TABLE, con=con)
     except duckdb.Error as exc:
         raise ValueError(
             f"{_SOURCE_TABLE} does not exist; run core-load --slice "
@@ -61,7 +64,7 @@ def _has_table(con: duckdb.DuckDBPyConnection, qualified_table: str) -> bool:
 def build_player_stats_season_v1(settings: Settings) -> MartPlayerStatsSeasonResult:
     con = duckdb.connect(str(settings.db_path))
     try:
-        cols = _source_columns(con)
+        cols = _source_columns(settings, con)
         required = {"season", "week", "player_id"}
         missing = sorted(required - cols)
         if missing:

@@ -13,6 +13,7 @@ from datetime import datetime
 import duckdb
 
 from new_nfl.mart._registry import register_mart_builder
+from new_nfl.meta import schema_cache
 from new_nfl.settings import Settings
 
 MART_TEAM_OVERVIEW_V1 = "mart.team_overview_v1"
@@ -28,9 +29,11 @@ class MartTeamOverviewResult:
     built_at: datetime
 
 
-def _source_columns(con: duckdb.DuckDBPyConnection) -> set[str]:
+def _source_columns(
+    settings: Settings, con: duckdb.DuckDBPyConnection
+) -> set[str]:
     try:
-        rows = con.execute(f"DESCRIBE {_SOURCE_TABLE}").fetchall()
+        rows = schema_cache.describe(settings, _SOURCE_TABLE, con=con)
     except duckdb.Error as exc:
         raise ValueError(
             f"{_SOURCE_TABLE} does not exist; run core-load --slice teams "
@@ -47,7 +50,7 @@ def _opt(name: str, present: set[str]) -> str:
 def build_team_overview_v1(settings: Settings) -> MartTeamOverviewResult:
     con = duckdb.connect(str(settings.db_path))
     try:
-        cols = _source_columns(con)
+        cols = _source_columns(settings, con)
         required = {"team_id", "team_abbr", "team_name"}
         missing = sorted(required - cols)
         if missing:
