@@ -327,6 +327,22 @@ TABLE_SPECS: dict[str, dict[str, Any]] = {
             "created_at": "TIMESTAMP DEFAULT current_timestamp",
         },
     },
+    "adapter_slice": {
+        "primary_key": "adapter_slice_id",
+        "columns": {
+            "adapter_slice_id": "VARCHAR",
+            "adapter_id": "VARCHAR NOT NULL",
+            "slice_key": "VARCHAR NOT NULL",
+            "label": "VARCHAR",
+            "remote_url": "VARCHAR",
+            "stage_target_object": "VARCHAR",
+            "core_table": "VARCHAR",
+            "mart_key": "VARCHAR",
+            "tier_role": "VARCHAR",
+            "notes": "VARCHAR",
+            "synced_at": "TIMESTAMP DEFAULT current_timestamp",
+        },
+    },
     "dedupe_run": {
         "primary_key": "dedupe_run_id",
         "columns": {

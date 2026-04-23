@@ -78,4 +78,45 @@ register_cli_plugin(
 )
 
 
+# ---------------------------------------------------------------------------
+# adapter-slice-sync  (T2.7E-4)
+# ---------------------------------------------------------------------------
+
+
+def _register_adapter_slice_sync(
+    subparsers: argparse._SubParsersAction,
+) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(
+        "adapter-slice-sync",
+        help=(
+            "Project the code-level SLICE_REGISTRY into meta.adapter_slice "
+            "(T2.7E-4)"
+        ),
+    )
+    return parser
+
+
+def _dispatch_adapter_slice_sync(args: argparse.Namespace) -> int:
+    from new_nfl.bootstrap import bootstrap_local_environment
+    from new_nfl.meta.adapter_slice_registry import sync_adapter_slices
+    from new_nfl.settings import load_settings
+
+    settings = load_settings()
+    bootstrap_local_environment(settings)
+    result = sync_adapter_slices(settings)
+    print(f"REGISTRY_SLICE_COUNT={result.registry_slice_count}")
+    print(f"UPSERTED_COUNT={result.upserted_count}")
+    print(f"DELETED_ORPHAN_COUNT={result.deleted_orphan_count}")
+    return 0
+
+
+register_cli_plugin(
+    CliPlugin(
+        name="adapter-slice-sync",
+        register_parser=_register_adapter_slice_sync,
+        dispatch=_dispatch_adapter_slice_sync,
+    )
+)
+
+
 __all__: list[str] = []

@@ -59,9 +59,19 @@ def _auto_activate_default_ontology(settings: Settings) -> None:
         return
 
 
+def _sync_adapter_slice_registry(settings: Settings) -> None:
+    try:
+        from new_nfl.meta.adapter_slice_registry import try_sync_adapter_slices
+
+        try_sync_adapter_slices(settings)
+    except Exception:
+        return
+
+
 def bootstrap_local_environment(settings: Settings) -> Path:
     _ensure_dirs(settings)
     _ensure_db_parent(settings.db_path)
     ensure_metadata_surface(settings)
     _auto_activate_default_ontology(settings)
+    _sync_adapter_slice_registry(settings)
     return settings.db_path
