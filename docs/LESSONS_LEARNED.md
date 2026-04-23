@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-04-23 — T2.6F Game-Detail Pre/Post: ein Datentyp mit optionalen Slots schlägt zwei parallele Service-Funktionen
+**Status:** draft (wartet auf Operator-Freigabe)
+
+1. **Was lief gut:**
+   - **Ein `GameDetail`-Bundle mit Pre/Post-Slots statt zwei separate Funktionen (`get_pre_game_detail` / `get_post_game_detail`).** Die naheliegende Idee wäre gewesen: Pre und Post sind zwei verschiedene UX-Zustände, also zwei Service-Calls mit unterschiedlichen Rückgabetypen. Tatsächlich ist es *ein* logischer Abruf („alles, was ich über dieses Spiel anzeigen will"), und nur die Slot-Befüllung unterscheidet sich. `GameDetail` hat `home_form`/`away_form` (immer vorhanden, auch im Post-Game als Kontext für das Matchup) und `home_week`/`away_week`/`home_boxscore`/`away_boxscore` (nur Post-Game). Das Template verzweigt über `detail.is_pre_game` — ein einziges Property auf einer einzigen Dataclass. Das hätte als zwei Typen, zwei Services, zwei Templates (oder zwei if-Branches im Template über `GameDetailPre` vs. `GameDetailPost`) nie so klar gelesen. Regel bestätigt: *Ein Dataclass mit Optional-Slots ist besser als zwei parallele Datatypes, wenn die Unterscheidung ein Zustand derselben Entität ist, nicht zwei getrennte Entitäten.*
+   - **Drei unabhängige Cold-Start-per-Mart-Tests von Anfang an.** `test_get_game_detail_without_team_overview`, `test_get_game_detail_without_team_week_mart`, `test_get_game_detail_without_player_week_mart` — jeder fehlt _genau eine_ Mart-Dependency und prüft den Degradationspfad dieser Seam. Kein Regressions-Bugfund, aber das Gerüst fängt jeden zukünftigen „LEFT JOIN ist keine Defensive gegen fehlende Tabelle"-Fehler an der richtigen Stelle. Die T2.6D-Lektion ist jetzt Routine.
+   - **Join-Key aus dem Vorgänger-Modul übernehmen, nicht neu erfinden.** `team_id_lower` (nicht `team_abbr_lower`) ist der kanonische Join von `game_overview_v1.home_team_lower` nach `team_overview_v1`. Ich hatte zunächst `team_abbr_lower` geschrieben — ein 30-Sekunden-Grep in [src/new_nfl/web/player_view.py](../src/new_nfl/web/player_view.py) hat die Abweichung gefunden, bevor Tests auch nur gelaufen sind. Regel: *bevor ein Mart-Join in neuem Code geschrieben wird, erst `grep "team_id_lower\|team_abbr_lower"` über die existierenden View-Module laufen lassen — die Antwort ist fast immer schon da.*
+
+2. **Was lief nicht gut:**
+   - **Ich habe im ersten Wurf von `game_view.py` den Join-Key geraten und `team_abbr_lower` geschrieben, obwohl `team_overview_v1.team_id_lower` der richtige Join ist.** Die Entscheidung „welcher `_lower`-Key ist hier der kanonische?" ist keine, die intuitiv beantwortbar ist — beide Columns existieren, beide wären für diesen einen Fall funktional äquivalent (weil Team-ID = Team-Abbr bei NFL), aber nur einer ist der projekt-weit-gewählte Join. Ohne den Grep-Check auf bestehende View-Module wäre der Fehler erst im Rebuild-Test einer zukünftigen historischen Saison aufgefallen, wo Team-ID ≠ Team-Abbr (z. B. Franchise-Relocations wie OAK→LV). Lektion: *wenn zwei Columns funktional äquivalent aussehen, ist die Wahl meistens eine Konvention, kein Zufall — die Konvention steht im existierenden Code.*
+   - **Ruff fand `F841 Local variable 'rec' is assigned to but never used` in der `_seed_player_week`-Helper-Zerlegung.** Ich habe `rec, recy, rect = row[10], row[11], row[12]` geschrieben, aber `rec` nicht mehr verwendet, weil `total_yards` nur aus Yards-Feldern summiert. Das ist derselbe Fixture-Spalten-Disziplin-Fehler wie in T2.6E: wenn man ein Tuple auspackt, um Feldnamen sichtbar zu machen, muss man auch alle gepackten Namen gebrauchen oder `_` setzen. Lektion: *Zerlegung-von-Rohreihen nur dort, wo sie zur Lesbarkeit der nächsten Zeile beiträgt; sonst direkt per Index.* 30 Sekunden Korrektur, aber ein präventiver Ruff-Lauf vor dem ersten Test-Lauf hätte es sofort gezeigt.
+
+3. **Root Cause:**
+   - Die Pre/Post-Dualität ist ein Spezialfall der Wieder-kehrenden „Bundle-oder-split?"-Frage. Pre und Post sind _derselbe Datensatz in zwei Zuständen_ (nicht zwei getrennte Datensätze). Die Unterscheidung lässt sich als Zustandsattribut (`is_pre_game`) modellieren statt als Typsplit. Der Typsplit wäre richtig, wenn Pre und Post _strukturell unterschiedlich_ wären — aber das sind sie nicht, sie teilen Meta und Form.
+   - Der Join-Key-Fehler zeigt: projektweite Konventionen sind unsichtbar, solange man sie nicht aktiv sucht. Die Projekt-Dokumente nennen sie nicht, ADR-0029 nennt sie nicht, einzig der bestehende Code enthält sie. Das ist okay — aber der Reflex muss sein, vor jedem neuen Mart-Join in den bestehenden View-Code zu grep'en.
+
+4. **Konkrete Methodänderung:**
+   - **Ab T2.6F: Ein Datentyp mit Optional-Slots schlägt zwei parallele Datatypes, wenn die Unterscheidung ein Zustand derselben Entität ist.** Regel: wenn zwei UX-Zustände (Pre/Post, Draft/Published, Open/Closed) dieselbe Identität aber unterschiedliche Daten-Slots haben, ist *ein* Dataclass mit Optional-Feldern + ein Status-Property der richtige Schnitt. Typsplit nur bei strukturell disjunkten Entitäten.
+   - **Vor jedem Mart-Join in neuem Read-Service-Code: `grep "<column>_lower"` über `src/new_nfl/web/*_view.py`.** Regel: die Antwort auf „welcher `_lower`-Key ist der kanonische?" steht im existierenden Code — immer erst dort nachsehen, dann schreiben.
+   - **Ruff-Lauf auf scoped Files bevor der erste Test-Lauf.** Regel: sobald ein neues Python-Modul + ein neues Test-Modul liegen, `ruff check` _vor_ `pytest`. Ruff findet Tippfehler und Dead-Variables in Millisekunden, Pytest braucht 12 Sekunden für einen Test-Lauf — die Reihenfolge spart im Zweifel eine Iteration.
+
+---
+
 ## 2026-04-23 — T2.6E Player-Profil: UX-Labels gehören in den Service-Datentyp, nicht ins Template
 **Status:** draft (wartet auf Operator-Freigabe)
 
