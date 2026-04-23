@@ -265,57 +265,49 @@ Nach Abschluss von T2.6 hat das Projekt einen Umfang erreicht, bei dem sequenzie
 
 **Tatsächlich:** 1 Claude-Code-Session, 1 Tag (davon ~60% Dekorator-Batch-Edit + Ruff-Cleanup, ~20% CLI-Strangler-Fig-Design, ~20% Scope-Reality-Check auf Web-Router-Registry).
 
-### T2.7A — Health-Endpunkte (KW 25, Stream A)
+### T2.7A — Health-Endpunkte (KW 25, Stream A) ✅ (2026-04-23)
 
-`/livez` (Prozess-Check), `/readyz` (DB-Connect + Mart-Presence), `/health/freshness` (JSON-Spiegel von `mart.freshness_overview_v1`), `/health/deps` (Adapter-Slice-Registry + letzter `meta.load_events`-Timestamp pro Adapter). JSON mit `schema_version`, `checked_at`, `status`.
+CLI `new-nfl health-probe --kind <live|ready|freshness|deps>` mit kanonischem JSON-Envelope `{schema_version:"1.0", checked_at, status, details}` und Shell-Exit-Codes `0=ok / 1=warn / 2=fail`. Kinds: `live` (PID, ohne DB, immer ok), `ready` (DB-Connect + `mart.freshness_overview_v1`-Presence), `freshness` (JSON-Spiegel von `build_home_overview()`, ADR-0029), `deps` (pro Primary-Slice letzte `meta.load_events`-Zeit). Aggregations-Policy: Severity-Ladder `ok=0<stale=1<warn=2<fail=3`, `stale` kollabiert zu `warn` (verhindert falsches Grün beim Cold-Start). HTTP-Mirror Phase 2 deferred bis echter Web-Router landet.
 
-**Scope-Beschränkung:** nur `src/new_nfl/observability/`, `cli/plugins/health.py`, `tests/test_health.py` — keine Edits an bestehenden Domain-Modulen. Read-Pfad bleibt `mart.*`-only.
+**Artefakte:** [src/new_nfl/plugins/health.py](../src/new_nfl/plugins/health.py), [tests/test_health.py](../tests/test_health.py) (16 Tests). Merge-Commit: `1eee163`.
 
-### T2.7B — Strukturiertes Logging (KW 25, Stream A)
+### T2.7B — Strukturiertes Logging (KW 25, Stream A) ✅ (2026-04-23)
 
-Logger-Factory mit Pflichtfeldern `event_id`, `adapter_id`, `source_file_id`, `job_run_id`, `ts`, `level`, `msg`, `details`. Destination konfigurierbar (stdout default, File-Ziel `data/logs/` optional). Hook-Einbau in jeden `_executor_*` in runner.py als 2-Zeilen-Injection (Entry/Exit/Exception).
+JSON-Line-Logger `new_nfl.observability.logging.get_logger(settings)` mit Pflicht-Envelope `{event_id(uuid4), ts(ISO-8601 UTC ms), level, msg, details}` und optionalen Kontext-Feldern `adapter_id`, `source_file_id`, `job_run_id`. Konfiguration nur über Settings-Properties `log_level` (Env `NEW_NFL_LOG_LEVEL`, default `INFO`) und `log_destination` (Env `NEW_NFL_LOG_DESTINATION`, `stdout`|`file:<dir>`; file-Destination schreibt `events_YYYYMMDD.jsonl`). Runner-Hook: je `_executor_*` (fetch_remote, stage_load, custom, mart_build) genau ein `executor_start` + `executor_complete`-Event.
 
-**Scope-Beschränkung:** `src/new_nfl/observability/logging.py`, `tests/test_logging.py`, plus die Hook-Zeilen in runner.py.
+**Artefakte:** [src/new_nfl/observability/logging.py](../src/new_nfl/observability/logging.py), Runner-Hooks in [src/new_nfl/jobs/runner.py](../src/new_nfl/jobs/runner.py), [tests/test_logging.py](../tests/test_logging.py) (12 Tests). Merge-Commit: `1eee163`.
 
-### T2.7C — Backup-Drill (KW 25, Stream B)
+### T2.7C — Backup-Drill (KW 25, Stream B) ✅ (2026-04-23)
 
-CLI `backup-snapshot --target PATH.zip`, `restore-snapshot --source PATH.zip --target DIR`, `verify-snapshot --source PATH.zip`. ZIP enthält DuckDB-File + `data/raw/`. Deterministisch (gleiche Input-Daten → gleicher Payload-Hash). Restore-Smoke: Subset der Test-Suite läuft gegen Restore-Dir.
+CLI `new-nfl backup-snapshot|restore-snapshot|verify-snapshot`. `backup_snapshot(settings, target_zip)` baut verifizierbares ZIP aus DuckDB (CHECKPOINT) + `data/raw/`-Baum + `manifest.json`. `restore_snapshot(source_zip, target_dir)` extrahiert mit SHA-256-Verify und blockt Pfad-Traversal. `verify_snapshot(source_zip)` macht on-the-fly-Hash ohne Extract. `manifest.payload_hash` hasht nur `schema_version` + `db_filename` + `file_hashes(sorted)` + `row_counts(sorted)` — explizit ohne `created_at`/`duckdb_version`, damit identische Eingaben deterministisch denselben Hash produzieren. Additive Settings-Property `backup_destination_dir = data_root/"backups"` als Vorbereitung für Scheduler-Jobs.
 
-**Scope-Beschränkung:** `src/new_nfl/resilience/backup.py` + `restore.py`, `cli/plugins/resilience.py`, Tests.
+**Artefakte:** [src/new_nfl/resilience/backup.py](../src/new_nfl/resilience/backup.py), `restore.py`, `verify.py`, [src/new_nfl/plugins/resilience.py](../src/new_nfl/plugins/resilience.py), Tests `test_backup.py` (14) + `test_restore.py` (8). Merge-Commit: `a7575dc`.
 
-### T2.7D — Replay-Drill (KW 25, Stream B)
+### T2.7D — Replay-Drill (KW 25, Stream B) ✅ (2026-04-23)
 
-CLI `replay-domain --domain DOMAIN --source-file-id ID`. Löscht domain-spezifische `core.*`-Rows, ruft Core-Load neu auf, vergleicht mit Pre-State-Snapshot. Diff-Tool `diff_tables(db_a, db_b, table, key_cols, exclude_cols=['_canonicalized_at', '_loaded_at'])`.
+CLI `new-nfl replay-domain --domain <d> [--source-file-id ID] [--dry-run]`. `diff_tables(con_a, con_b, table, key_cols, exclude_cols=...)` liefert `TableDiff(only_in_a, only_in_b, changed)`. `replay_domain(settings, domain, source_file_id=None, dry_run=False)` macht snapshot+rerun+diff für sechs Kerndomains (team/game/player/roster_membership/team_stats_weekly/player_stats_weekly). pytz-frei gelöst: `_copy_table_to_snapshot` nutzt pure-SQL `ATTACH live_db AS src (READ_ONLY); CREATE TABLE … AS SELECT * FROM src.…; DETACH src` statt Python-Fetch; `_fetch_rows` castet TIMESTAMPTZ-Spalten on-the-fly zu VARCHAR. `test_replay_on_unchanged_raw_has_empty_diff` ist das Kern-Gate — wenn je failed, ist es ein Determinismus-Bug im Core-Load.
 
-**Scope-Beschränkung:** `src/new_nfl/resilience/replay.py` + `diff.py`, Tests.
+**Artefakte:** [src/new_nfl/resilience/replay.py](../src/new_nfl/resilience/replay.py), `diff.py`, Tests `test_diff.py` (9) + `test_replay.py` (6). Merge-Commit: `a7575dc`.
 
-### T2.7E — Hardening-Backlog (KW 26, Stream C)
+### T2.7E — Hardening-Backlog (KW 26, Stream C) ✅ (2026-04-23)
 
 Abarbeitung der fünf dokumentierten Backlog-Punkte aus T2.5C/F und T2.6H Lessons Learned:
 
-- **T2.7E-1 Event-Retention:** CLI `trim-run-events --older-than 30d [--dry-run]` löscht abgeschlossene alte Runs mit zugehörigen Events und Artefakt-Referenzen.
-- **T2.7E-2 Schema-DESCRIBE-Cache:** Settings-Level-Cache mit TTL für DESCRIBE auf `core.team`/`core.player`. Integration in ~10 bestehende Marts als Wrapper, Logik bit-identisch.
-- **T2.7E-3 Ontology-Auto-Aktivierung:** `bootstrap_local_environment` aktiviert automatisch die neueste geladene Ontologie-Version, wenn keine aktive existiert — behebt den dreiwertigen `position_is_known`-Bug in `mart.player_overview_v1` auf Fresh-DB.
-- **T2.7E-4 `meta.adapter_slice`-Runtime-Projektion:** `SLICE_REGISTRY` wird beim Bootstrap in eine DB-Tabelle projiziert; UI/CLI können Slice-Metadaten ohne Python-Import lesen.
-- **T2.7E-5 `dedupe-review-resolve`:** CLI zum Auflösen offener Review-Items mit Aktionen `merge`/`reject`/`defer`.
+- **T2.7E-1 Event-Retention:** CLI `new-nfl trim-run-events --older-than 30d [--dry-run]` + `meta.retention` Backend, löscht abgeschlossene alte Runs mit zugehörigen Events und Artefakt-Referenzen (16 Tests).
+- **T2.7E-2 Schema-DESCRIBE-Cache:** [src/new_nfl/meta/schema_cache.py](../src/new_nfl/meta/schema_cache.py) als TTL-Cache über `id(settings)`-Key, API `.describe(con, qualified_table) / .column_names(...)` als drop-in-Ersatz. 9 Mart-Module per reinem Textersatz auf den Cache migriert; `CREATE OR REPLACE TABLE` + Column-Set-Semantik sichert bit-identischen Rebuild. Additive Settings-Property `schema_cache_ttl_seconds` (Env `NEW_NFL_SCHEMA_CACHE_TTL_SECONDS`, default 300s, `0` deaktiviert Caching). (11 Tests.)
+- **T2.7E-3 Ontology-Auto-Aktivierung:** `bootstrap_local_environment` lädt automatisch `ontology/v0_1` + aktiviert, wenn keine aktive Version existiert; Opt-out via `NEW_NFL_SKIP_ONTOLOGY_AUTOLOAD=1`. Behebt den dreiwertigen `position_is_known`-Bug in `mart.player_overview_v1` auf Fresh-DB. (6 Tests.)
+- **T2.7E-4 `meta.adapter_slice`-Runtime-Projektion:** `SLICE_REGISTRY` wird beim Bootstrap in `meta.adapter_slice`-Tabelle projiziert; CLI `new-nfl adapter-slice-sync` für manuelles Resync; UI/CLI können Slice-Metadaten ohne Python-Import lesen. (6 Tests.)
+- **T2.7E-5 `dedupe-review-resolve`:** CLI `new-nfl dedupe-review-resolve --review-id … --action {merge,reject,defer}` + `review.resolve_…()`-Service zum Auflösen offener Review-Items. (9 Tests.)
 
-**Scope-Beschränkung:** `src/new_nfl/meta/` (neuer Namespace), `cli/plugins/hardening.py`, `bootstrap.py` (additiv), `dedupe/review.py` (Erweiterung `resolve()`), Tests. Schema-Cache-Integration in Marts ist zusätzlicher Commit mit Bulk-Edit an bestehenden mart-Modulen — erlaubt, weil andere Streams dort nicht schreiben.
+**Artefakte:** neuer Namespace [src/new_nfl/meta/](../src/new_nfl/meta/), [src/new_nfl/plugins/hardening.py](../src/new_nfl/plugins/hardening.py), Bootstrap-Hooks in [src/new_nfl/bootstrap.py](../src/new_nfl/bootstrap.py), `resolve()`-Extension in [src/new_nfl/dedupe/review.py](../src/new_nfl/dedupe/review.py). Merge-Commit: `1cada42`.
 
-### T2.7F — Integrations-Session (KW 26, sequenziell, zum Abschluss)
+### T2.7F — Integrations-Session (KW 26, sequenziell, zum Abschluss) ✅ (2026-04-23)
 
-**Ziel:** drei Feature-Streams zurück in `main` mergen, Gesamt-Konsistenz validieren.
+**Ergebnis:** drei Feature-Streams (A Observability, B Resilience, C Hardening) in `main` integriert, Merge-Reihenfolge A → B → C nach aufsteigendem Risiko. Merge-Commits `1eee163` (A) → `a7575dc` (B) → `1cada42` (C). Gates pro Merge: Tests hart (332 → 360 → 397 → 445), Ruff-Delta 0 gegenüber pre-existing Baseline-45 (UP035/UP037/E501/I001/B905/UP012/E741 — rule-drift aus Ruff 0.15.10, keine neue Regression aus den Merges). Konflikt-Erwartung war erfüllt: pro Merge genau zwei triviale Union-Konflikte in [src/new_nfl/plugins/__init__.py](../src/new_nfl/plugins/__init__.py) (Registry-Import-Liste) und [src/new_nfl/settings.py](../src/new_nfl/settings.py) (additive `@property`-Block), beide alphabetisch resolved. Finale Suite: **445 passed in 551.69s (9:11)** — exakt Baseline 332 + Stream A 28 + Stream B 37 + Stream C 48.
 
-**Protokoll (siehe PARALLEL_DEVELOPMENT.md §3 „Integrations-Session"):**
-- Merge-Reihenfolge: A (Observability) → B (Resilience) → C (Hardening) — nach Risiko aufsteigend
-- Pro Merge: `pytest` grün, `ruff` clean, AST-Lint grün
-- Konflikt-Erwartung: null oder minimal (Registry-Files sind append-only; andere Files sind Stream-scoped)
-- ADR-0030 auf `Accepted`, ADR-0032 auf Operator-Validation-Check, ADR-0033 auf `Accepted`
-- Konsolidierung der drei Stream-Lessons-Drafts (`docs/_handoff/lessons_t27{a,b,c}.md`) in ein einheitliches T2.7-Lessons-Learned-Kapitel
-- Chat-Handoff T2.7 → T2.8
+**Lessons-Konsolidierung:** Drei Stream-Drafts (`docs/_handoff/lessons_t27a.md`, `lessons_t27b.md`, `lessons_t27c.md`) zu einem kanonischen Eintrag in [docs/LESSONS_LEARNED.md](LESSONS_LEARNED.md) verschmolzen; Kern-Lesson: Registry-Pattern hält unter echter Parallelität, Shared-Workdir ist die eigentliche Kostenstelle — künftige parallele Tranchen starten mit `git worktree add`, nicht Branch-Flips.
 
-**Estimiert:** 1 Claude-Code-Session, ca. 0,5–1 Tag.
-
-**Pflichtpfade nach T2.7:** Health + Logging + Backup + Replay + alle fünf Hardening-Punkte abgeschlossen; drei neue ADRs (0030 Accepted, 0032 Validation, 0033 Accepted); Registry-Pattern etabliert und für T3.0 wiederverwendbar.
+**Pflichtpfade nach T2.7:** Health + Logging + Backup + Replay + alle fünf Hardening-Punkte live in `main`. ADR-0033 `Accepted` seit T2.7P; ADR-0030 (UI-Stack) weiterhin `Proposed` — Status-Flip auf T2.8-Handoff verschoben, weil T2.7F den UI-Stack nicht berührt hat. ADR-0032 (bitemporale Rosters) weiterhin `Proposed` bis Operator-Validation mit echten Daten (T2.5D-Folge-Bolt). Registry-Pattern etabliert und für T3.0 wiederverwendbar.
 
 ## 7. T2.8 — v1.0 Cut auf DEV-LAPTOP (Ende KW 26)
 
