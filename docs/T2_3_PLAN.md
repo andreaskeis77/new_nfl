@@ -342,13 +342,55 @@ Abarbeitung der fünf dokumentierten Backlog-Punkte aus T2.5C/F und T2.6H Lesson
 
 ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Abschluss der jeweils gekoppelten Tranche gesetzt.
 
-## 9. T3.0 — Testphase auf DEV-LAPTOP (Juli 2026)
+## 9. T3.0 — Testphase auf DEV-LAPTOP (ab Juli 2026, Laufzeit ~4 Wochen)
 
-- echte tägliche Scheduler-Ticks über mehrere Wochen.
-- bewusste Quell-Ausfälle simulieren (Designed Degradation).
-- Lasttest mit Backfill ~15 Saisons.
-- Bugfix-Tranchen T3.0A, T3.0B, … nach Bedarf.
-- DoD: 4 Wochen ununterbrochener Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation.
+**Zweck:** v1.0-Infrastruktur unter echter Operator-Last validieren. Ziel ist, die drei noch offenen Punkte aus dem v1.0-Cut zu schließen (ADR-0030-Flip, ADR-0032-Flip, 5. Definition-Kriterium Backup/Restore-Operator-Validation) und vier Wochen ununterbrochenen Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation nachzuweisen.
+
+**Vorbedingung:** Tag `v1.0.0-laptop` auf `main` (erfüllt seit 2026-04-24). Release-Evidence unter [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md).
+
+### T3.0A — Tägliche Scheduler-Automation auf DEV-LAPTOP (Woche 1)
+- **Ziel:** `new-nfl run-worker --serve` läuft als Windows-Task-Scheduler-Eintrag oder als Windows-Service-Shim mit Auto-Restart.
+- **Artefakte:** Windows-Task-Definition (`schtasks.exe /create …`) dokumentiert unter `docs/RUNBOOK.md` oder neuem `docs/_ops/scheduler_laptop.md`; Register-Job-Einträge für alle sieben Primary-Slices mit Daily-Trigger; `backup-snapshot` als eigene Daily-Task; Log-Destination auf `file:<data_root>/logs` (T2.7B).
+- **DoD:** Task läuft drei Tage stabil mit sichtbarem `executor_complete`-Event-Stream im JSONL-Log und `last_event_at`-Ticks im Home-Freshness-Dashboard.
+
+### T3.0B — ADR-0032 Operator-Validation (Woche 1–2, parallel)
+- **Ziel:** Bitemporale Roster-Modellierung gegen echte NFL-Saison (z. B. 2023 oder 2024 mit bekannten Trades/Releases) durchspielen.
+- **Artefakte:** Test-Lauf-Protokoll: erwartete vs. beobachtete Events (`signed`/`released`/`trade`/`promoted`/`demoted`), insbesondere für bekannte Mid-Season-Trades; Operator-Befund zu Trade-Heuristik (konservativ: zusammenhängende Woche mit Team-Wechsel → `trade`, Lücke → `released`+`signed`); ADR-0032-Update auf `Accepted` mit Nachweis-Log.
+- **DoD:** Mindestens fünf reale Mid-Season-Trades werden korrekt als `trade`-Event erkannt, keine falschen `released`+`signed`-Paare; `mart.roster_history_v1` zeigt lückenlose Intervalle.
+
+### T3.0C — ADR-0030 Re-Review (Woche 2, parallel)
+- **Ziel:** UI-Stack (Jinja + Tailwind-Subset + htmx + Plot) gegen realen Lasttest-Eindruck bewerten.
+- **Artefakte:** Operator-Befund zu Render-Latenzen bei gewachsener DB, Theme-Toggle-Stabilität, Pagination-Verhalten auf Listenseiten mit echten Row-Counts; Entscheidung Flip `Accepted` oder gezielte Nachbesserung (z. B. Cache-Header, Static-Asset-Kompression, Pagination-Defaults).
+- **DoD:** Entweder ADR-0030 auf `Accepted` geflippt, oder konkrete T3.0-Folge-Arbeitspakete benannt.
+
+### T3.0D — Designed Degradation (Woche 2–3)
+- **Ziel:** Resilience-Infrastruktur (Retry-Policy, Quarantäne-Auto-Hook) gegen bewusste Quell-Ausfälle testen.
+- **Szenarien:** HTTP 5xx für 30 Minuten, HTTP-Timeout, leeres ZIP im `nflverse_bulk`-Endpoint, Schema-Drift (eine Spalte fehlt in einer Parquet-Datei), DuckDB-Connect-Fehler während `core-load`.
+- **DoD:** Pro Szenario: Quarantäne-Case öffnet mit passendem `reason_code`, Replay nach manueller Auflösung reproduziert deterministisch, `mart.run_overview_v1` zeigt `retrying`-Status und abschließendes `failed`/`success`.
+
+### T3.0E — Backfill-Lasttest ~15 Saisons (Woche 3)
+- **Ziel:** System-Performance unter 15 Saisons × 32 Teams × 22 Wochen Rohdaten messen.
+- **Artefakte:** Zeitmessung pro `core-load` über alle Primary-Slices vor/nach Backfill; DuckDB-File-Größe; Schema-Cache-Hit-Rate (T2.7E-2); UI-Render-Zeit auf Home/Teams/Seasons-Views.
+- **DoD:** Kein `mart-rebuild` dauert länger als 60s; DuckDB bleibt unter 5 GB; UI-Views rendern unter 500ms.
+
+### T3.0F — Backup/Restore-Drill real (Woche 3)
+- **Ziel:** 5. Definition-v1.0-Kriterium aus `USE_CASE_VALIDATION_v0_1.md §2.3` von ⚠️ auf ✅ aufwerten.
+- **Szenario:** `backup-snapshot` auf gewachsener DB → ZIP-Integrität per `verify-snapshot` bestätigen → DuckDB-File vollständig löschen → `restore-snapshot` → Pflichtpfad-Suite (Home-Freshness-View rendert, Runs-View zeigt letzte Ticks) verifizieren.
+- **DoD:** Restore-zu-Restore-fähig, Payload-Hash deterministisch reproduzierbar, alle 10 UI-Views und sechs Core-Domänen nach Restore konsistent.
+
+### T3.0G — Ruff-Baseline-Cleanup (Woche 4, optional)
+- **Ziel:** 45 pre-existing Ruff-Rule-Drift-Errors (UP035/UP037/E501/I001/B905/UP012/E741) abbauen, wenn Testphase ruhig läuft.
+- **Nicht Pflicht:** Gate bleibt „Delta 0 gegenüber Baseline"; Cleanup ist Bonus-Arbeit, nicht T3.0-Blocker.
+
+### T3.0H+ — Bugfix-Tranchen nach Bedarf
+- **Ad hoc** während der vier Wochen: ungeplante Bugs kriegen jeweils eigenen T3.0H/I/J-Bolt mit Mini-Scope, eigenem Test-Gate und Mini-Lesson-Learned-Eintrag.
+
+**T3.0-DoD (gesamt):**
+- 4 Wochen ununterbrochener Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation
+- ADR-0030 auf `Accepted` (oder benannte Nachbesserung)
+- ADR-0032 auf `Accepted` (oder benannte Nachbesserung)
+- 5. v1.0-Kriterium auf ✅ (Backup/Restore-Operator-Validation abgeschlossen)
+- Full-Suite weiterhin grün, Ruff-Delta weiterhin 0 gegenüber Baseline
 
 ## 10. T3.1 — VPS-Migration (Ende Juli / Anfang August)
 
@@ -370,6 +412,10 @@ Gemäß `RUNBOOK_VPS_PREVIEW_RELEASE.md` und VPS-Dossier:
 | UI-Stack-Lernkurve (Tailwind/Plot/htmx) | T2.6 verzögert | T2.6A bewusst eine Woche Setup-Puffer |
 | VPS-Migration-Probleme | T3.1 verzögert | bereits vorhandenes Runbook + Tailscale-Validierung vorab |
 | Wetter-Backfill historisch nicht beschaffbar | Nur Phase-1.5 betroffen | dokumentiert opportunistisch |
+| Trade-Heuristik (ADR-0032) erkennt echte NFL-Trades nicht zuverlässig | T3.0B blockiert, ADR-0032-Flip verzögert | Konservativer Fallback `released`+`signed` ist korrekt, `trade`-Fehlklassifikation ist Bonus; Operator kann Einzelfälle manuell bestätigen |
+| DuckDB wächst bei Backfill über 5 GB oder `mart-rebuild` > 60s | T3.0E blockiert, Lasttest zeigt Skalierungs-Grenze | Schema-Cache (T2.7E-2) bereits aktiv; Retention (T2.7E-1) für `meta.run_event` aktiv; Emergency: Mart-Partitionierung nach Saison als T3.0-Folge-Arbeit |
+| 4-Wochen-Scheduler-Lauf bricht durch Windows-Update-Reboot | T3.0-DoD gefährdet | Auto-Restart-Shim + Health-Probe als Re-Arm-Mechanismus; DoD akzeptiert geplante Reboots wenn Service innerhalb 5min wieder läuft |
+| Parallel-Entwicklung im geteilten Working-Tree | Session-übergreifende Überschreibungen, falsche Branch-Commits | Ab nächster paralleler Tranche Pflicht: `git worktree add c:/projekte/newnfl.wt/<stream>` (siehe `PARALLEL_DEVELOPMENT.md` Retro-Block + Memory-Feedback) |
 
 ## 12. Verweise
 
@@ -377,6 +423,10 @@ Gemäß `RUNBOOK_VPS_PREVIEW_RELEASE.md` und VPS-Dossier:
 - `concepts/NEW_NFL_SYSTEM_CONCEPT_v0_3.md`
 - `ENGINEERING_MANIFEST_v1_3.md`
 - `UI_STYLE_GUIDE_v0_1.md`
-- `USE_CASE_VALIDATION_v0_1.md`
+- `USE_CASE_VALIDATION_v0_1.md` (§2.3 Definition v1.0)
 - `RUNBOOK_VPS_PREVIEW_RELEASE.md`
-- ADR-0025 bis ADR-0030 (Stubs in `adr/`)
+- `RELEASE_PROCESS.md` (§5 Mindestartefakte)
+- `PARALLEL_DEVELOPMENT.md` (mit T2.7-Retro-Block + Worktree-Pflicht)
+- `_ops/releases/v1.0.0-laptop.md` (v1.0-Cut Release-Evidence)
+- `LESSONS_LEARNED.md` (inkl. T2.7-Konsolidierung)
+- ADR-0025 bis ADR-0033 (Index unter `adr/README.md`)
