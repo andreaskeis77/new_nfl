@@ -21,6 +21,10 @@ from new_nfl.web.freshness import (
     build_home_overview,
     overview_to_template_context,
 )
+from new_nfl.web.game_view import (
+    GameDetail,
+    get_game_detail,
+)
 from new_nfl.web.games_view import (
     GameRow,
     SeasonSummary,
@@ -366,6 +370,53 @@ def render_players_page(
             BreadcrumbItem(label="Players", href=None),
         ),
         page_title="NEW NFL — Players",
+    )
+
+
+def render_game_detail_page(
+    settings: Settings,
+    game_id: str,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    detail: GameDetail | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    if detail is None:
+        detail = get_game_detail(settings, game_id)
+    if detail is None:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Seasons", href="/seasons"),
+            BreadcrumbItem(label=game_id, href=None),
+        )
+        page_title = f"NEW NFL — Game {game_id}"
+    else:
+        meta = detail.meta
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Seasons", href="/seasons"),
+            BreadcrumbItem(
+                label=f"Season {meta.season}",
+                href=f"/seasons/{meta.season}",
+            ),
+            BreadcrumbItem(
+                label=f"Woche {meta.week}",
+                href=f"/seasons/{meta.season}/weeks/{meta.week}",
+            ),
+            BreadcrumbItem(label=meta.matchup_label, href=None),
+        )
+        page_title = (
+            f"NEW NFL — {meta.matchup_label} · "
+            f"Season {meta.season} W{meta.week}"
+        )
+    return r.render(
+        "game_detail.html",
+        context={"detail": detail, "requested_key": game_id},
+        theme=theme,
+        active_nav="seasons",
+        breadcrumb=breadcrumb,
+        page_title=page_title,
     )
 
 

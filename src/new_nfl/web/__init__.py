@@ -11,6 +11,14 @@ from new_nfl.web.freshness import (
     build_home_overview,
     load_freshness_rows,
 )
+from new_nfl.web.game_view import (
+    BoxscorePlayer,
+    GameDetail,
+    GameMeta,
+    TeamSideForm,
+    TeamSideWeek,
+    get_game_detail,
+)
 from new_nfl.web.games_view import (
     GameRow,
     SeasonSummary,
@@ -33,6 +41,7 @@ from new_nfl.web.player_view import (
 from new_nfl.web.renderer import (
     WebRenderer,
     build_renderer,
+    render_game_detail_page,
     render_home,
     render_home_from_settings,
     render_player_profile_page,
@@ -55,7 +64,10 @@ from new_nfl.web.team_view import (
 )
 
 __all__ = [
+    "BoxscorePlayer",
     "FreshnessRow",
+    "GameDetail",
+    "GameMeta",
     "GameRow",
     "HomeOverview",
     "PlayerCard",
@@ -73,10 +85,13 @@ __all__ = [
     "TeamMeta",
     "TeamProfile",
     "TeamSeasonStatsRow",
+    "TeamSideForm",
+    "TeamSideWeek",
     "WebRenderer",
     "WeekSummary",
     "build_home_overview",
     "build_renderer",
+    "get_game_detail",
     "get_player_profile",
     "get_team_profile",
     "list_games",
@@ -85,6 +100,7 @@ __all__ = [
     "list_teams",
     "list_weeks",
     "load_freshness_rows",
+    "render_game_detail_page",
     "render_home",
     "render_home_from_settings",
     "render_player_profile_page",

@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  {% if detail is none %}
+    <header class="mb-8">
+      <p class="text-xs uppercase tracking-wide text-secondary">Spiel-Detail</p>
+      <h1 class="text-3xl font-semibold tracking-tight">Spiel nicht gefunden</h1>
+    </header>
+    <section aria-label="Spiel fehlt" class="mb-10">
+      {% call card('Unbekannte Game-ID') %}
+        {{ empty_state(
+              title='Game nicht in mart.game_overview_v1',
+              body='Die Game-ID "' ~ requested_key ~ '" ist im Mart nicht vorhanden.',
+              hint='Prüfe die verfügbaren Spiele unter /seasons.') }}
+      {% endcall %}
+    </section>
+  {% else %}
+    {% set meta = detail.meta %}
+    <header class="mb-8" data-testid="game-header" data-game-id="{{ meta.game_id }}">
+      <p class="text-xs uppercase tracking-wide text-secondary">
+        Season {{ meta.season }} · Woche {{ '%02d' | format(meta.week) }}
+        {% if meta.game_type %}· {{ meta.game_type }}{% endif %}
+      </p>
+      <h1 class="text-3xl font-semibold tracking-tight">
+        <span class="font-mono">{{ meta.away_team }}</span>
+        <span class="text-secondary">@</span>
+        <span class="font-mono">{{ meta.home_team }}</span>
+      </h1>
+      <p class="mt-1 text-sm text-secondary">
+        {{ meta.away_label }} bei {{ meta.home_label }}
+      </p>
+      <div class="mt-3 flex flex-wrap gap-4 text-sm">
+        <div class="tnum">
+          <span class="text-secondary">Score</span>
+          <span class="ml-2 font-mono" data-testid="game-score">{{ meta.score_label }}</span>
+        </div>
+        <div>
+          <span class="text-secondary">Status</span>
+          {% if meta.is_completed %}
+            <span class="badge status-success ml-2" data-testid="game-status">
+              <span class="badge-label">{{ meta.status_label }}</span>
+              {% if meta.winner_label != '—' %}
+                <span class="badge-meta">{{ meta.winner_label }}</span>
+              {% endif %}
+            </span>
+          {% else %}
+            <span class="badge status-neutral ml-2" data-testid="game-status">
+              <span class="badge-label">{{ meta.status_label }}</span>
+            </span>
+          {% endif %}
+        </div>
+        <div>
+          <span class="text-secondary">Kickoff</span>
+          <span class="ml-2 tnum">{{ meta.kickoff_label }}</span>
+        </div>
+        <div>
+          <span class="text-secondary">Venue</span>
+          <span class="ml-2">{{ meta.venue_label }}</span>
+        </div>
+      </div>
+    </header>
+
+    {% if detail.is_pre_game %}
+      <section aria-label="Pre-Game Form" class="mb-10" data-testid="pre-game">
+        {% call card('Form vor dem Spiel') %}
+          <div class="grid gap-6 md:grid-cols-2">
+            {% for side_label, form in (
+                 ('Auswärts · ' ~ meta.away_label, detail.away_form),
+                 ('Heim · ' ~ meta.home_label, detail.home_form),
+               ) %}
+              <div data-testid="form-card" data-team-abbr="{{ form.team_abbr if form else '' }}">
+                <h3 class="text-sm uppercase tracking-wide text-secondary">{{ side_label }}</h3>
+                {% if form %}
+                  <table class="data-table mt-2">
+                    <tbody>
+                      <tr>
+                        <td class="text-secondary">Bilanz</td>
+                        <td class="font-mono tnum">{{ form.record_label }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-secondary">Spiele</td>
+                        <td class="tnum">{{ form.games_played | fmt_number }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-secondary">Punkte ⌀ / Spiel</td>
+                        <td class="tnum">{{ form.avg_points_for | fmt_number }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-secondary">Gegenpunkte ⌀ / Spiel</td>
+                        <td class="tnum">{{ form.avg_points_against | fmt_number }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                {% else %}
+                  {{ empty_state(
+                        title='Keine Form verfügbar',
+                        body='Für dieses Team ist kein Pre-Game-Form im Mart.',
+                        hint='cli core-load --adapter nflverse_bulk --slice team_stats_weekly --execute') }}
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endcall %}
+      </section>
+    {% else %}
+      <section aria-label="Team-Line" class="mb-10" data-testid="post-game-teams">
+        {% call card('Team-Line') %}
+          <div class="grid gap-6 md:grid-cols-2">
+            {% for side_label, week in (
+                 ('Auswärts · ' ~ meta.away_label, detail.away_week),
+                 ('Heim · ' ~ meta.home_label, detail.home_week),
+               ) %}
+              <div data-testid="team-week-card" data-team-abbr="{{ week.team_abbr if week else '' }}">
+                <h3 class="text-sm uppercase tracking-wide text-secondary">{{ side_label }}</h3>
+                {% if week %}
+                  <table class="data-table mt-2">
+                    <tbody>
+                      <tr>
+                        <td class="text-secondary">Punkte</td>
+                        <td class="tnum">{{ week.points_for | fmt_number }} : {{ week.points_against | fmt_number }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-secondary">Yards</td>
+                        <td class="tnum">{{ week.yards_for | fmt_number }} : {{ week.yards_against | fmt_number }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-secondary">Turnovers</td>
+                        <td class="tnum">{{ week.turnovers | fmt_number }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-secondary">Penalties (eigene)</td>
+                        <td class="tnum">{{ week.penalties_for | fmt_number }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-secondary">Differenzen (Punkte · Yards)</td>
+                        <td class="tnum">{{ week.point_diff | fmt_number }} · {{ week.yard_diff | fmt_number }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                {% else %}
+                  {{ empty_state(
+                        title='Keine Team-Stats',
+                        body='Für dieses Team ist keine Wochenzeile im Mart.',
+                        hint='cli core-load --adapter nflverse_bulk --slice team_stats_weekly --execute') }}
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endcall %}
+      </section>
+
+      <section aria-label="Boxscore" class="mb-10" data-testid="post-game-boxscore">
+        {% call card('Boxscore · Top 10 je Team') %}
+          <div class="grid gap-6 md:grid-cols-2">
+            {% for side_label, roster in (
+                 ('Auswärts · ' ~ meta.away_label, detail.away_boxscore),
+                 ('Heim · ' ~ meta.home_label, detail.home_boxscore),
+               ) %}
+              <div data-testid="boxscore-card">
+                <h3 class="text-sm uppercase tracking-wide text-secondary">{{ side_label }}</h3>
+                {% if roster %}
+                  <table class="data-table mt-2">
+                    <thead>
+                      <tr>
+                        <th class="text-left">Spieler</th>
+                        <th class="text-left">Pos</th>
+                        <th class="text-right tnum">PassY</th>
+                        <th class="text-right tnum">RushY</th>
+                        <th class="text-right tnum">RecY</th>
+                        <th class="text-right tnum">TotalY</th>
+                        <th class="text-right tnum">TD</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for p in roster %}
+                        <tr data-testid="boxscore-row" data-player-id="{{ p.player_id }}">
+                          <td class="text-left">{{ p.display_label }}</td>
+                          <td class="text-left font-mono">{{ p.position or '—' }}</td>
+                          <td class="text-right tnum">{{ p.passing_yards | fmt_number }}</td>
+                          <td class="text-right tnum">{{ p.rushing_yards | fmt_number }}</td>
+                          <td class="text-right tnum">{{ p.receiving_yards | fmt_number }}</td>
+                          <td class="text-right tnum">{{ p.total_yards | fmt_number }}</td>
+                          <td class="text-right tnum">{{ p.total_touchdowns | fmt_number }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                {% else %}
+                  {{ empty_state(
+                        title='Keine Spielerstats',
+                        body='Für dieses Team ist kein Boxscore im Mart.',
+                        hint='cli core-load --adapter nflverse_bulk --slice player_stats_weekly --execute') }}
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endcall %}
+      </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}
