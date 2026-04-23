@@ -30,6 +30,7 @@ READ_MODULES = (
     'src/new_nfl/web/player_view.py',
     'src/new_nfl/web/provenance_view.py',
     'src/new_nfl/web/renderer.py',
+    'src/new_nfl/web/run_view.py',
     'src/new_nfl/web/team_view.py',
 )
 

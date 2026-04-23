@@ -210,6 +210,7 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
         build_provenance_v1,
         build_roster_current_v1,
         build_roster_history_v1,
+        build_run_evidence_v1,
         build_schedule_field_dictionary_v1,
         build_team_overview_v1,
         build_team_stats_season_v1,
@@ -243,6 +244,8 @@ def _executor_mart_build(settings: Settings, params: dict[str, Any]) -> Executio
         result = build_freshness_overview_v1(settings)
     elif mart_key == "provenance_v1":
         result = build_provenance_v1(settings)
+    elif mart_key == "run_evidence_v1":
+        result = build_run_evidence_v1(settings)
     else:
         raise ValueError(f"unknown mart_key={mart_key!r}")
 

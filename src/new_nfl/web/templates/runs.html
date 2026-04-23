@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  <header class="mb-8">
+    <p class="text-xs uppercase tracking-wide text-secondary">Run-Evidence</p>
+    <h1 class="text-3xl font-semibold tracking-tight">
+      {% if page.status_filter %}
+        Runs · {{ page.status_filter }}
+      {% else %}
+        Runs
+      {% endif %}
+    </h1>
+  </header>
+
+  <section aria-label="Runs" class="mb-10">
+    {% call card('Run-Zeilen · ' ~ page.page_range_label) %}
+      {% if page.rows %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Start</th>
+              <th class="text-left">Job</th>
+              <th class="text-left">Typ</th>
+              <th class="text-left">Status</th>
+              <th class="text-right tnum">Dauer</th>
+              <th class="text-right tnum">Attempt</th>
+              <th class="text-left">Evidence</th>
+              <th class="text-left">Drilldown</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in page.rows %}
+              <tr data-testid="run-row"
+                  data-job-run-id="{{ r.job_run_id }}"
+                  data-run-status="{{ r.run_status }}">
+                <td class="text-left tnum">
+                  {% if r.started_at %}{{ r.started_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+                </td>
+                <td class="text-left font-mono">{{ r.job_label }}</td>
+                <td class="text-left font-mono">{{ r.job_type or '—' }}</td>
+                <td class="text-left">
+                  {% if r.run_status == 'success' %}
+                    <span class="badge status-success"><span class="badge-label">{{ r.status_label }}</span></span>
+                  {% elif r.run_status in ('failed', 'quarantined') %}
+                    <span class="badge status-warn"><span class="badge-label">{{ r.status_label }}</span></span>
+                  {% else %}
+                    <span class="badge status-neutral"><span class="badge-label">{{ r.status_label }}</span></span>
+                  {% endif %}
+                </td>
+                <td class="text-right tnum">{{ r.duration_label }}</td>
+                <td class="text-right tnum">{{ r.attempt_label }}</td>
+                <td class="text-left">{{ r.evidence_label }}</td>
+                <td class="text-left">
+                  <a class="hover:text-primary" href="/runs/{{ r.job_run_id }}">öffnen</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if page.has_prev or page.has_next %}
+          <p class="mt-4 text-xs text-secondary" data-testid="run-pagination">
+            {% set base_url = '/runs' if not page.status_filter else '/runs/status/' ~ page.status_filter %}
+            {% if page.has_prev %}
+              <a class="hover:text-primary" href="{{ base_url }}?offset={{ page.prev_offset }}&amp;limit={{ page.limit }}">← vorherige</a>
+            {% else %}
+              <span class="text-muted">← vorherige</span>
+            {% endif %}
+            <span class="mx-2">·</span>
+            {% if page.has_next %}
+              <a class="hover:text-primary" href="{{ base_url }}?offset={{ page.next_offset }}&amp;limit={{ page.limit }}">nächste →</a>
+            {% else %}
+              <span class="text-muted">nächste →</span>
+            {% endif %}
+          </p>
+        {% endif %}
+      {% else %}
+        {{ empty_state(
+              title='Noch keine Runs',
+              body='Baue das Run-Evidence-Mart, um diese Seite zu befüllen.',
+              hint='cli mart-rebuild --mart-key run_evidence_v1') }}
+      {% endif %}
+    {% endcall %}
+  </section>
+{% endblock %}

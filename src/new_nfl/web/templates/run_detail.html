@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  {% if detail is none %}
+    <header class="mb-8">
+      <p class="text-xs uppercase tracking-wide text-secondary">Run-Evidence</p>
+      <h1 class="text-3xl font-semibold tracking-tight">Run nicht gefunden</h1>
+    </header>
+    <section aria-label="Run fehlt" class="mb-10">
+      {% call card('Unbekannter Run') %}
+        {{ empty_state(
+              title='Run-ID nicht in mart.run_overview_v1',
+              body='Die ID "' ~ requested_job_run_id ~ '" ist im Mart nicht vorhanden.',
+              hint='Prüfe den Index unter /runs oder baue das Mart neu (cli mart-rebuild --mart-key run_evidence_v1).') }}
+      {% endcall %}
+    </section>
+  {% else %}
+    {% set summary = detail.summary %}
+    <header class="mb-8" data-testid="run-header"
+            data-job-run-id="{{ summary.job_run_id }}"
+            data-run-status="{{ summary.run_status }}">
+      <p class="text-xs uppercase tracking-wide text-secondary">{{ summary.job_label }}</p>
+      <h1 class="text-3xl font-semibold tracking-tight font-mono">{{ summary.job_run_id }}</h1>
+      <div class="mt-3 flex flex-wrap gap-4 text-sm">
+        <div>
+          <span class="text-secondary">Status</span>
+          {% if summary.run_status == 'success' %}
+            <span class="badge status-success ml-2" data-testid="run-status">
+              <span class="badge-label">{{ summary.status_label }}</span>
+            </span>
+          {% elif summary.run_status in ('failed', 'quarantined') %}
+            <span class="badge status-warn ml-2" data-testid="run-status">
+              <span class="badge-label">{{ summary.status_label }}</span>
+            </span>
+          {% else %}
+            <span class="badge status-neutral ml-2" data-testid="run-status">
+              <span class="badge-label">{{ summary.status_label }}</span>
+            </span>
+          {% endif %}
+        </div>
+        <div>
+          <span class="text-secondary">Dauer</span>
+          <span class="ml-2 tnum">{{ summary.duration_label }}</span>
+        </div>
+        <div>
+          <span class="text-secondary">Attempt</span>
+          <span class="ml-2 tnum">{{ summary.attempt_label }}</span>
+        </div>
+        <div>
+          <span class="text-secondary">Evidence</span>
+          <span class="ml-2">{{ summary.evidence_label }}</span>
+        </div>
+      </div>
+    </header>
+
+    <section aria-label="Run-Stammdaten" class="mb-10">
+      {% call card('Job · Worker · Zeiten') %}
+        <table class="data-table">
+          <tbody>
+            <tr>
+              <td class="text-secondary">Job-Key</td>
+              <td class="font-mono">{{ summary.job_key or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Job-Type</td>
+              <td class="font-mono">{{ summary.job_type or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Worker</td>
+              <td class="font-mono">{{ summary.worker_id or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Start</td>
+              <td class="tnum">
+                {% if summary.started_at %}{{ summary.started_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Ende</td>
+              <td class="tnum">
+                {% if summary.finished_at %}{{ summary.finished_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Message</td>
+              <td class="font-mono">{{ summary.message or '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      {% endcall %}
+    </section>
+
+    <section aria-label="Event-Stream" class="mb-10">
+      {% call card('Event-Stream · ' ~ summary.event_count ~ ' Events') %}
+        {% if detail.events %}
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="text-left">Zeit</th>
+                <th class="text-left">Kind</th>
+                <th class="text-left">Severity</th>
+                <th class="text-left">Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in detail.events %}
+                <tr data-testid="run-event-row"
+                    data-run-event-id="{{ e.run_event_id }}"
+                    data-severity="{{ e.severity or '' }}">
+                  <td class="text-left tnum">
+                    {% if e.recorded_at %}{{ e.recorded_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+                  </td>
+                  <td class="text-left font-mono">{{ e.event_kind }}</td>
+                  <td class="text-left font-mono">{{ e.severity_label }}</td>
+                  <td class="text-left">{{ e.message or '—' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          {{ empty_state(
+                title='Keine Events für diesen Run',
+                body='In mart.run_event_v1 ist kein Event zu ' ~ summary.job_run_id ~ ' eingetragen.',
+                hint='Das kommt häufig bei frisch angelegten Runs vor, die noch keine Events emittiert haben.') }}
+        {% endif %}
+      {% endcall %}
+    </section>
+
+    <section aria-label="Artefakte" class="mb-10">
+      {% call card('Artefakte · ' ~ summary.artifact_count ~ ' Stück') %}
+        {% if detail.artifacts %}
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="text-left">Zeit</th>
+                <th class="text-left">Kind</th>
+                <th class="text-left">Ref</th>
+                <th class="text-left">Ref-Pfad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in detail.artifacts %}
+                <tr data-testid="run-artifact-row"
+                    data-run-artifact-id="{{ a.run_artifact_id }}"
+                    data-artifact-kind="{{ a.artifact_kind }}">
+                  <td class="text-left tnum">
+                    {% if a.recorded_at %}{{ a.recorded_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+                  </td>
+                  <td class="text-left font-mono">{{ a.artifact_kind }}</td>
+                  <td class="text-left font-mono">{{ a.ref_id or '—' }}</td>
+                  <td class="text-left font-mono">{{ a.ref_path or '—' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          {{ empty_state(
+                title='Keine Artefakte für diesen Run',
+                body='In mart.run_artifact_v1 ist kein Artefakt zu ' ~ summary.job_run_id ~ ' eingetragen.',
+                hint='Das ist normal bei Runs, die nur Events aber keine Materialisierungen erzeugen.') }}
+        {% endif %}
+      {% endcall %}
+    </section>
+  {% endif %}
+{% endblock %}

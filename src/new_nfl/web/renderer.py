@@ -45,6 +45,12 @@ from new_nfl.web.provenance_view import (
     get_provenance,
     list_provenance,
 )
+from new_nfl.web.run_view import (
+    RunDetail,
+    RunListPage,
+    get_run_detail,
+    list_runs,
+)
 from new_nfl.web.team_view import (
     TeamCard,
     TeamProfile,
@@ -542,6 +548,81 @@ def render_provenance_detail_page(
         },
         theme=theme,
         active_nav="provenance",
+        breadcrumb=breadcrumb,
+        page_title=page_title,
+    )
+
+
+def render_runs_page(
+    settings: Settings,
+    *,
+    offset: int = 0,
+    limit: int = 50,
+    status: str | None = None,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    page: RunListPage | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    data = page if page is not None else list_runs(
+        settings, offset=offset, limit=limit, status=status,
+    )
+    if data.status_filter is not None:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Runs", href="/runs"),
+            BreadcrumbItem(label=data.status_filter, href=None),
+        )
+        page_title = f"NEW NFL — Runs · {data.status_filter}"
+    else:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Runs", href=None),
+        )
+        page_title = "NEW NFL — Runs"
+    return r.render(
+        "runs.html",
+        context={"page": data},
+        theme=theme,
+        active_nav="runs",
+        breadcrumb=breadcrumb,
+        page_title=page_title,
+    )
+
+
+def render_run_detail_page(
+    settings: Settings,
+    job_run_id: str,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    detail: RunDetail | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    if detail is None:
+        detail = get_run_detail(settings, job_run_id)
+    if detail is None:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Runs", href="/runs"),
+            BreadcrumbItem(label=job_run_id, href=None),
+        )
+        page_title = f"NEW NFL — Run {job_run_id}"
+    else:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Runs", href="/runs"),
+            BreadcrumbItem(label=detail.summary.job_run_id, href=None),
+        )
+        page_title = f"NEW NFL — Run {detail.summary.job_run_id}"
+    return r.render(
+        "run_detail.html",
+        context={
+            "detail": detail,
+            "requested_job_run_id": job_run_id,
+        },
+        theme=theme,
+        active_nav="runs",
         breadcrumb=breadcrumb,
         page_title=page_title,
     )
