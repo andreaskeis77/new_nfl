@@ -25,8 +25,8 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 | **T2.4** Ontology Runtime | KW 19 | Ontologie-as-Code, Dedupe-Pipeline-Skelett |
 | **T2.5** Domain Expansion | KW 20–22 | Phase-1-Domänen 2–7 (Teams, Games, Players, Rosters, Stats) |
 | **T2.6** Web-UI v1.0 | KW 23–25 | Style-Guide-Implementierung, alle Pflicht-Views |
-| **T2.7** Resilienz und Observability | KW 26 | Health, Freshness, Backup-Drill, Replay-Drill |
-| **T2.8** v1.0 Cut auf DEV-LAPTOP | KW 26 (Ende Juni) | Release-Tag, Smoke, Handoff |
+| **T2.7** Resilienz und Observability | KW 26 | Health, Freshness, Backup-Drill, Replay-Drill — **✅ abgeschlossen 2026-04-23** |
+| **T2.8** v1.0 Cut auf DEV-LAPTOP | KW 26 (Ende Juni) | Release-Tag, Smoke, Handoff — **✅ abgeschlossen 2026-04-24** |
 | **T3.0** Testphase auf DEV-LAPTOP | Juli 2026 | echte Saison-nahe Last, Bugfixes |
 | **T3.1** VPS-Migration | Ende Juli / Anfang August | Deploy auf Contabo Windows-VPS, Cloudflare/Tailscale |
 | **Produktiv** | vor Preseason-Start | live |
@@ -309,14 +309,22 @@ Abarbeitung der fünf dokumentierten Backlog-Punkte aus T2.5C/F und T2.6H Lesson
 
 **Pflichtpfade nach T2.7:** Health + Logging + Backup + Replay + alle fünf Hardening-Punkte live in `main`. ADR-0033 `Accepted` seit T2.7P; ADR-0030 (UI-Stack) weiterhin `Proposed` — Status-Flip auf T2.8-Handoff verschoben, weil T2.7F den UI-Stack nicht berührt hat. ADR-0032 (bitemporale Rosters) weiterhin `Proposed` bis Operator-Validation mit echten Daten (T2.5D-Folge-Bolt). Registry-Pattern etabliert und für T3.0 wiederverwendbar.
 
-## 7. T2.8 — v1.0 Cut auf DEV-LAPTOP (Ende KW 26)
+## 7. T2.8 — v1.0 Cut auf DEV-LAPTOP ✅ (abgeschlossen 2026-04-24)
 
-- Tag `v1.0.0-laptop` auf `main`.
-- Release-Notes mit Domänen-Coverage, bekannten Grenzen, Quarantäne-Stand.
-- `PROJECT_STATE.md` aktualisiert auf „v1.0 feature-complete on DEV-LAPTOP".
-- Handoff-Dokument für Testphase.
+**Ergebnis:** Rein dokumentarischer Cut — kein Code berührt gegenüber T2.7F-Integration (`50d2652`) + T2.7-Retro-Doc (`bcc5cc3`). Git-Tag `v1.0.0-laptop` auf `main` gesetzt. Release-Evidence in [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md) gemäß RELEASE_PROCESS.md §5 (Zweck, Definition-v1.0-Matrix, betroffene Dateien, Gates, bekannte Restrisiken, nächster Schritt, Referenzen, Artefakt-Manifest).
 
-**Wichtig:** v1.0 läuft auf DEV-LAPTOP. **Kein** VPS-Deploy in T2.8.
+**Definition-v1.0-Matrix (USE_CASE_VALIDATION_v0_1.md §2.3):**
+- ✅ Alle Phase-1-Datendomänen geladen: 6 Core-Domänen (`core.team`, `core.game`, `core.player`, `core.roster_membership`, `core.team_stats_weekly`, `core.player_stats_weekly`) über 14 Slices (7 primary + 7 cross-check).
+- ✅ Web-UI liefert alle Pflicht-Views aus §5.4: Home/Freshness, Seasons/Weeks/Games-Drilldown, Teams, Players, Game-Detail Pre/Post, Provenance, Runs — 10 UI-Views insgesamt.
+- ✅ Scheduler autonom mit Retry/Quarantäne: Internal Runner (T2.3B), Quarantäne-Domäne (T2.3C), CLI `run-worker --once|--serve`.
+- ✅ Run-Evidence + Provenance vollständig: `mart.run_overview_v1`/`run_event_v1`/`run_artifact_v1` (T2.6H) + `mart.provenance_v1` (T2.6G).
+- ⚠️ Backup/Restore + Replay infrastruktur-seitig erfüllt: 37 Tests inkl. Determinismus-Gate. **Operator-Validation gegen echte Produktions-Load bewusst nach T3.0 verschoben.**
+
+**Gates:** 445 Tests grün (551.69s), Ruff-Delta 0 gegenüber Baseline-45 (Rule-Drift aus Ruff 0.15.10), AST-Lint `test_read_modules_do_not_reference_core_or_stg_directly` grün (ADR-0029-Invariante). Kein Operator-Smoke gegen Produktions-DB (T3.0), kein VPS-Smoke (T3.1), kein Backfill-Lasttest (T3.0).
+
+**Bekannte Restrisiken:** ADR-0030 (UI-Stack) und ADR-0032 (Bitemporale Rosters) bleiben `Proposed` bis T3.0-Feedback; Ruff-Baseline 45 Rule-Drift-Errors; Backup fehlt als Runner-Job (CLI-only); HTTP-Mirror für Health-Probes deferred; `events_YYYYMMDD.jsonl` ohne Retention; `replay-domain --all` fehlt.
+
+**Wichtig:** v1.0 läuft auf DEV-LAPTOP. **Kein** VPS-Deploy in T2.8 — VPS-Migration bleibt T3.1.
 
 ## 8. ADR-Block (begleitend zu T2.3)
 

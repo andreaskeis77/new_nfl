@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T2.7 Observability + Resilience + Hardening — vollständig integriert (2026-04-23).** Drei parallel entwickelte Feature-Streams sind über T2.7F sequenziell A → B → C in `main` gemerged (Merge-Commits `1eee163` / `a7575dc` / `1cada42`). **Full-Suite 445 Tests grün in 551.69s** (Baseline 332 + Stream A 28 + Stream B 37 + Stream C 48 = exakt 445). Neue Operator-Surfaces: CLI `new-nfl health-probe --kind <live|ready|freshness|deps>` mit JSON-Envelope + Shell-Exit-Codes, strukturierter JSON-Logger mit Runner-Hooks in allen vier Executors, `backup-snapshot`/`restore-snapshot`/`verify-snapshot` für Disaster-Recovery mit deterministischem Payload-Hash, `replay-domain` für alle sechs Kerndomains mit pure-SQL-Snapshot (pytz-frei), `trim-run-events` für Event-Retention, `adapter-slice-sync` für `meta.adapter_slice`-Projektion, `dedupe-review-resolve` für Review-Auflösung. Bootstrap aktiviert automatisch `ontology/v0_1` wenn keine aktive Version existiert. Schema-Cache mit TTL vorgelagert vor allen 9 Mart-Modulen. ADR-0033 (Registry-Pattern) hat sich unter echter Parallelität bewährt: drei neue `plugins/*.py`-Module ohne Eingriff in `cli.py`, einzige echte Merge-Konflikte pro Stream waren triviale Union-Resolves in `plugins/__init__.py` und `settings.py`. Nächster Bolt: **T2.5D Bitemporale Rosters-Validation** (ADR-0032 Accepted-Flip nach Operator-Validation mit echten Daten) oder **T2.8 v1.0 Cut auf DEV-LAPTOP** (Tag `v1.0.0-laptop`, Release-Notes).
+**v1.0 feature-complete auf DEV-LAPTOP — T2.8 v1.0 Cut abgeschlossen (2026-04-24).** Git-Tag `v1.0.0-laptop` auf `main`; Release-Evidence unter [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md). Definition-v1.0-Matrix nach [USE_CASE_VALIDATION_v0_1.md §2.3](USE_CASE_VALIDATION_v0_1.md): vier von fünf Kriterien vollständig erfüllt (alle Phase-1-Domänen geladen, alle Pflicht-Views live, autonomer Scheduler mit Retry/Quarantäne, Run-Evidence + Provenance in Marts); das fünfte Kriterium (Backup/Restore + Replay real getestet) ist Infrastruktur-seitig erfüllt mit 37 Tests inkl. Determinismus-Gate, **Operator-Validation gegen echte Produktions-Load bewusst nach T3.0 verschoben**. Artefakt-Manifest: ~31.600 aktive Zeilen, 445 Tests grün in 551.69s, 16 Marts unter 15 Builder-Modulen, 14 Slices (7 primary + 7 cross-check), 6 kanonische Core-Domänen, 10 UI-Views, 33 ADRs (davon 2 `Proposed`: ADR-0030 UI-Stack und ADR-0032 Bitemporale Rosters), 1 Ontologie-Version. **Kein VPS-Deploy in T2.8** — VPS-Migration bleibt T3.1. Nächster Bolt: **T3.0 — Testphase auf DEV-LAPTOP** (4 Wochen ununterbrochener Scheduler-Lauf, Designed Degradation, Backfill-Lasttest ~15 Saisons, Bugfix-Tranchen T3.0A ff. nach Bedarf).
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -13,10 +13,12 @@
 - `USE_CASE_VALIDATION_v0_1.md` — abgenommene Use Cases
 - ADR-0025, ADR-0026, ADR-0027, ADR-0028, ADR-0029, ADR-0031, ADR-0033 — `Accepted`; ADR-0030 (UI Tech Stack) `Proposed` (Implementierung seit T2.6A live, Status-Update überfällig — wird in T2.7F auf `Accepted`); ADR-0032 (bitemporale Roster-Modellierung) `Proposed` seit T2.5D (wartet auf Operator-Validierung mit echten Daten); ADR-0033 (Registry-Pattern für Parallel-Entwicklung) `Accepted` seit T2.7P (2026-04-23, 14 Builder registriert + CLI-Plugin-Hook, Web-Router-Registry deferred bis ein echter Router landet)
 - `CHAT_HANDOFF_PROTOCOL.md`, `LESSONS_LEARNED_PROTOCOL.md` — Methode
-- Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260423-2359_t27-integration-complete.md`
+- Letzter Chat-Handoff: `docs/_handoff/chat_handoff_20260424-0030_t28-v1-cut.md`
 
 ## Completed
 
+- T2.8 v1.0 Cut auf DEV-LAPTOP (2026-04-24)
+  - Git-Tag `v1.0.0-laptop` auf `main` gesetzt (Release-Evidence [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md)). Rein dokumentarischer Cut — kein Code berührt. Definition-v1.0-Matrix aus `USE_CASE_VALIDATION_v0_1.md §2.3`: ✅ alle Phase-1-Datendomänen geladen (6 Core-Domänen, 14 Slices), ✅ alle Phase-1-Browse-Views live (Home/Freshness, Seasons/Weeks/Games, Teams, Players, Game-Detail, Provenance, Runs), ✅ Scheduler autonom mit Retry/Quarantäne (Internal Runner + CLI `run-worker --once|--serve`), ✅ Run-Evidence + Provenance vollständig (`mart.run_overview_v1`/`run_event_v1`/`run_artifact_v1` + `mart.provenance_v1`), ⚠️ Backup/Restore + Replay infrastruktur-seitig erfüllt (37 Tests inkl. Determinismus-Gate `test_backup_is_payload_deterministic_across_two_runs` und `test_replay_on_unchanged_raw_has_empty_diff`) — Operator-Validation gegen Produktions-Load bewusst nach T3.0 verschoben. Bekannte Restrisiken: ADR-0030/0032 bleiben `Proposed` bis T3.0-Feedback; Ruff-Baseline 45 Rule-Drift-Errors (UP035/UP037/E501/I001/B905/UP012/E741, Delta 0 gegenüber Baseline); Backup fehlt als Runner-Job; HTTP-Mirror für Health-Probes deferred bis echter Web-Router. Nächster Schritt: T3.0 Testphase auf DEV-LAPTOP
 - T2.7A-F Observability + Resilience + Hardening — Parallel-Streams + Integration (2026-04-23)
   - **T2.7A Health-Endpoints** (Stream A, Merge `1eee163`): CLI `new-nfl health-probe --kind <live|ready|freshness|deps>` in [src/new_nfl/plugins/health.py](../src/new_nfl/plugins/health.py) mit kanonischem JSON-Envelope `{schema_version:"1.0", checked_at, status, details}` und Shell-Exit-Codes `0=ok / 1=warn / 2=fail`. `live` liefert PID ohne DB, `ready` prüft DB-Connect + `mart.freshness_overview_v1`-Presence, `freshness` spiegelt `build_home_overview()` (ADR-0029), `deps` liefert pro Primary-Slice letzte `meta.load_events`-Zeit. Severity-Ladder `ok=0<stale=1<warn=2<fail=3`, `stale` kollabiert zu `warn` (verhindert falsches Grün beim Cold-Start). HTTP-Mirror deferred. 16 Tests in [tests/test_health.py](../tests/test_health.py).
   - **T2.7B Structured Logging** (Stream A, Merge `1eee163`): [src/new_nfl/observability/logging.py](../src/new_nfl/observability/logging.py) mit `get_logger(settings)` und Pflicht-Envelope `{event_id(uuid4), ts(ISO-8601 UTC ms), level, msg, details}` plus optionale Kontext-Felder `adapter_id`/`source_file_id`/`job_run_id`. Konfig via zwei additive Settings-Properties: `log_level` (Env `NEW_NFL_LOG_LEVEL`, default `INFO`) und `log_destination` (Env `NEW_NFL_LOG_DESTINATION`, `stdout` default oder `file:<dir>` mit täglicher `events_YYYYMMDD.jsonl`-Rotation). Runner-Hook in [src/new_nfl/jobs/runner.py](../src/new_nfl/jobs/runner.py): je `_executor_*` (fetch_remote, stage_load, custom, mart_build) genau ein `executor_start` + `executor_complete`-Event, unter aktuellem Settings konstruiert (Severity-Gate kostenlos). 12 Tests in [tests/test_logging.py](../tests/test_logging.py).
@@ -119,32 +121,49 @@
 
 ## Current release posture
 
-The project now has a **local preview-release candidate**.
+**v1.0 feature-complete on DEV-LAPTOP.** Git-Tag `v1.0.0-laptop` auf `main` gesetzt (2026-04-24). Release-Evidence unter [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md).
 
-That means:
-- data can be fetched and loaded locally
-- the first canonical core object can be built locally
-- the first web-facing preview can be rendered and served locally
+Das heißt:
+- alle sechs Phase-1-Core-Domänen laden deterministisch mit Tier-A/B-Cross-Check und Quarantäne-Hook
+- alle Pflicht-Views aus USE_CASE_VALIDATION_v0_1.md §5.4 sind lokal renderbar
+- der interne Scheduler läuft autonom mit Retry, Quarantäne und deterministischem Replay
+- Run-Evidence + Provenance vollständig über `mart.*` sichtbar
+- Backup/Restore/Replay-Drill mechanisch ausgeliefert (CLI + Tests); Operator-Validation gegen echte Produktions-Load ist T3.0-Scope
 
-What is still missing before the first VPS preview release:
-- a pinned VPS runbook with exact operator steps
-- a preview release cut that is replayed on the VPS
-- a VPS smoke test covering `/healthz` and `/`
-- an explicit rollback / restart note for the preview service
+Was für T3.0 Testphase ansteht:
+- 4 Wochen ununterbrochener Scheduler-Lauf auf DEV-LAPTOP
+- Designed Degradation (bewusste Quell-Ausfälle)
+- Backfill-Lasttest ~15 Saisons
+- ADR-0032-Flip auf `Accepted` nach Operator-Validation
+- ADR-0030-Flip auf `Accepted` nach Lasttest-Feedback
+
+Was für T3.1 VPS-Migration ansteht (verschoben hinter T3.0):
+- Tailscale-RDP-Validierung
+- Repo-Sync + Python-Venv + DuckDB-Migration auf VPS
+- Cloudflare Tunnel + Cloudflare Access
+- VPS-Smoke auf `/healthz` und `/`
+- 7 Tage Parallel-Lauf VPS + Laptop mit identischen Outputs
 
 ## Current cycle
 
-T2.2 (lokales Preview + VPS-Runbook) ist abgeschlossen. **VPS-Deploy ist auf nach v1.0 verschoben** (Operator-Entscheidung, siehe `concepts/NEW_NFL_SYSTEM_CONCEPT_v0_3.md` §2). Der Fokus wechselt auf interne Foundation-Härtung, damit alle Phase-1-Domänen autonom, evidenz- und replay-fähig laufen.
+**T2.8 abgeschlossen (2026-04-24)** — v1.0-Cut auf DEV-LAPTOP mit Git-Tag `v1.0.0-laptop` gesetzt. Der Cut ist rein dokumentarisch und ändert keine Code-Artefakte gegenüber T2.7F-Integration. **VPS-Deploy ist auf T3.1 (Ende Juli / Anfang August 2026) verschoben.** Der nächste Zyklus ist T3.0 Testphase — 4 Wochen Scheduler-Lauf auf DEV-LAPTOP mit echten Daten, Designed Degradation und Backfill-Lasttest.
 
 ## Preferred next bolt
 
-**Operator-Entscheidung zwischen zwei Anschluss-Optionen:**
+**T3.0 — Testphase auf DEV-LAPTOP** gemäß [T2_3_PLAN.md §9](T2_3_PLAN.md). Laufzeit 4 Wochen mit:
+- echten täglichen Scheduler-Ticks über mehrere Wochen
+- bewussten Quell-Ausfällen (Designed Degradation) zur Validierung von Retry/Quarantäne
+- Lasttest mit Backfill ~15 Saisons zur Validierung von Schema-Cache, Mart-Rebuild-Zeiten, DB-Wachstum
+- Bugfix-Tranchen T3.0A, T3.0B, … nach Bedarf
+- DoD: 4 Wochen ununterbrochener Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation
 
-1. **T2.5D-Validation — bitemporale Rosters mit echten Daten durchspielen**, damit ADR-0032 von `Proposed` auf `Accepted` kippen kann. Das ist der fachlich nächste Schritt, weil alle späteren Rosters-abhängigen Views (Team-Roster-Card, Player-Roster-History) gegen das Intervall-Modell laufen und nur unter Produktions-Last erkennen, ob die Trade-/Release-Heuristik stabil trägt.
+**Parallel während T3.0:**
+- ADR-0032 (bitemporale Rosters) auf `Accepted` flippen nach Operator-Validation mit echten Trades/Releases
+- ADR-0030 (UI-Stack) auf `Accepted` flippen nach realem Lasttest-Feedback (oder gezielte Nachbesserung)
+- Backup/Restore/Replay-Drill einmal real auf gewachsener DB durchspielen (5. v1.0-Kriterium aufwerten)
+- Ruff-Baseline 45 Errors optional abbauen (T3.0-Aufräum-Bolzen)
 
-2. **T2.8 v1.0 Cut auf DEV-LAPTOP** — Tag `v1.0.0-laptop` auf `main`, Release-Notes mit Domänen-Coverage + bekannten Grenzen + Quarantäne-Stand, `PROJECT_STATE.md` auf „v1.0 feature-complete on DEV-LAPTOP" aktualisieren, Handoff-Dokument für Testphase. Kein VPS-Deploy in T2.8. Das ist der **fahrplangemäße** nächste Schritt laut T2_3_PLAN.md §7.
-
-**Empfehlung:** T2.5D-Validation zuerst, weil ein v1.0-Cut mit einer `Proposed` ADR-0032 halbwegs unpräzise wäre — die bitemporale Modellierung ist eine bewusste Architektur-Entscheidung und sollte vor dem Release-Tag produktions-validiert sein.
+**Nach T3.0:** T3.1 VPS-Migration gemäß `RUNBOOK_VPS_PREVIEW_RELEASE.md` und VPS-Dossier, Zielkorridor Ende Juli / Anfang August 2026.
 
 ## Zielkorridor v1.0
 
