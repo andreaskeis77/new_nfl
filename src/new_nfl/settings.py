@@ -52,6 +52,21 @@ class Settings:
     def temp_root(self) -> Path:
         return self.data_root / "temp"
 
+    @property
+    def schema_cache_ttl_seconds(self) -> int:
+        """TTL für den DESCRIBE-Cache in :mod:`new_nfl.meta.schema_cache` (T2.7E-2).
+
+        ``NEW_NFL_SCHEMA_CACHE_TTL_SECONDS`` env-Override, Default 300s.
+        Wert ``0`` deaktiviert das Caching vollständig (jeder Aufruf DESCRIBEt).
+        """
+        raw = os.environ.get("NEW_NFL_SCHEMA_CACHE_TTL_SECONDS", "").strip()
+        if not raw:
+            return 300
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            return 300
+
 
 def load_settings() -> Settings:
     repo_root = _resolve_repo_root()
