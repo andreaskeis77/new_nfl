@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  {% if record is none %}
+    <header class="mb-8">
+      <p class="text-xs uppercase tracking-wide text-secondary">Provenienz</p>
+      <h1 class="text-3xl font-semibold tracking-tight">Scope nicht gefunden</h1>
+    </header>
+    <section aria-label="Scope fehlt" class="mb-10">
+      {% call card('Unbekannter Scope') %}
+        {{ empty_state(
+              title='Scope nicht in mart.provenance_v1',
+              body='Die Kombination "' ~ requested_scope_type ~ ' · ' ~ requested_scope_ref ~ '" ist im Mart nicht vorhanden.',
+              hint='Prüfe den Index unter /provenance oder baue das Mart neu (cli mart-rebuild --mart-key provenance_v1).') }}
+      {% endcall %}
+    </section>
+  {% else %}
+    <header class="mb-8" data-testid="provenance-header"
+            data-scope-type="{{ record.scope_type }}"
+            data-scope-ref="{{ record.scope_ref }}">
+      <p class="text-xs uppercase tracking-wide text-secondary">{{ record.scope_type }}</p>
+      <h1 class="text-3xl font-semibold tracking-tight font-mono">{{ record.scope_ref }}</h1>
+      <div class="mt-3 flex flex-wrap gap-4 text-sm">
+        <div>
+          <span class="text-secondary">Status</span>
+          {% if record.provenance_status == 'warn' %}
+            <span class="badge status-warn ml-2" data-testid="provenance-status">
+              <span class="badge-label">{{ record.status_label }}</span>
+            </span>
+          {% elif record.provenance_status == 'unknown' %}
+            <span class="badge status-neutral ml-2" data-testid="provenance-status">
+              <span class="badge-label">{{ record.status_label }}</span>
+            </span>
+          {% else %}
+            <span class="badge status-success ml-2" data-testid="provenance-status">
+              <span class="badge-label">{{ record.status_label }}</span>
+            </span>
+          {% endif %}
+        </div>
+        <div>
+          <span class="text-secondary">Quellzeilen</span>
+          <span class="ml-2 tnum">{{ record.source_row_count | fmt_number }}</span>
+        </div>
+        <div>
+          <span class="text-secondary">Dateien</span>
+          <span class="ml-2 tnum">{{ record.source_file_count | fmt_number }}</span>
+        </div>
+        <div>
+          <span class="text-secondary">Quarantäne</span>
+          <span class="ml-2">{{ record.quarantine_label }}</span>
+        </div>
+      </div>
+    </header>
+
+    <section aria-label="Adapter und Ingest" class="mb-10">
+      {% call card('Adapter · Ingest-Runs') %}
+        <table class="data-table">
+          <tbody>
+            <tr>
+              <td class="text-secondary">Primary Adapter</td>
+              <td class="font-mono">{{ record.primary_adapter or '—' }}</td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Alle Adapter</td>
+              <td class="font-mono">
+                {% if record.source_adapter_ids %}
+                  {{ record.source_adapter_ids | join(', ') }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Source-File-IDs</td>
+              <td class="font-mono" data-testid="source-file-list">
+                {% if record.source_file_ids %}
+                  {% for sf in record.source_file_ids %}
+                    <span class="block">{{ sf }}</span>
+                  {% endfor %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Erstmals kanonisiert</td>
+              <td class="tnum">
+                {% if record.first_seen_at %}{{ record.first_seen_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-secondary">Zuletzt kanonisiert</td>
+              <td class="tnum">
+                {% if record.last_canonicalized_at %}{{ record.last_canonicalized_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      {% endcall %}
+    </section>
+
+    <section aria-label="Quarantäne" class="mb-10">
+      {% call card('Quarantäne-Zusammenfassung') %}
+        {% if record.quarantine_case_count > 0 %}
+          <table class="data-table">
+            <tbody>
+              <tr>
+                <td class="text-secondary">Fälle gesamt</td>
+                <td class="tnum">{{ record.quarantine_case_count | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Offen</td>
+                <td class="tnum">{{ record.open_quarantine_count | fmt_number }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Letzter Reason-Code</td>
+                <td class="font-mono">{{ record.last_reason_code or '—' }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Letzte Severity</td>
+                <td class="font-mono">{{ record.last_severity or '—' }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Letzter Status</td>
+                <td class="font-mono">{{ record.last_status or '—' }}</td>
+              </tr>
+              <tr>
+                <td class="text-secondary">Zuletzt gesehen</td>
+                <td class="tnum">
+                  {% if record.last_quarantine_at %}{{ record.last_quarantine_at.isoformat(' ', 'seconds') }}{% else %}—{% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        {% else %}
+          {{ empty_state(
+                title='Keine Quarantäne für diesen Scope',
+                body='In meta.quarantine_case sind keine Fälle zu ' ~ record.scope_type ~ ' · ' ~ record.scope_ref ~ ' eingetragen.',
+                hint='Prüfe /runs für globale Quarantäne-Statistik.') }}
+        {% endif %}
+      {% endcall %}
+    </section>
+  {% endif %}
+{% endblock %}

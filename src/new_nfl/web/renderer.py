@@ -39,6 +39,12 @@ from new_nfl.web.player_view import (
     get_player_profile,
     list_players,
 )
+from new_nfl.web.provenance_view import (
+    ProvenanceListPage,
+    ProvenanceRecord,
+    get_provenance,
+    list_provenance,
+)
 from new_nfl.web.team_view import (
     TeamCard,
     TeamProfile,
@@ -67,6 +73,7 @@ DEFAULT_NAV: tuple[NavItem, ...] = (
     NavItem(label="Seasons", href="/seasons", key="seasons"),
     NavItem(label="Teams", href="/teams", key="teams"),
     NavItem(label="Players", href="/players", key="players"),
+    NavItem(label="Provenance", href="/provenance", key="provenance"),
     NavItem(label="Runs", href="/runs", key="runs"),
 )
 
@@ -450,6 +457,91 @@ def render_player_profile_page(
         context={"profile": profile, "requested_key": player_id},
         theme=theme,
         active_nav="players",
+        breadcrumb=breadcrumb,
+        page_title=page_title,
+    )
+
+
+def render_provenance_page(
+    settings: Settings,
+    *,
+    offset: int = 0,
+    limit: int = 50,
+    scope_type: str | None = None,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    page: ProvenanceListPage | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    data = page if page is not None else list_provenance(
+        settings, offset=offset, limit=limit, scope_type=scope_type,
+    )
+    breadcrumb: tuple[BreadcrumbItem, ...]
+    if data.scope_type_filter is not None:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Provenance", href="/provenance"),
+            BreadcrumbItem(label=data.scope_type_filter, href=None),
+        )
+        page_title = f"NEW NFL — Provenance · {data.scope_type_filter}"
+    else:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Provenance", href=None),
+        )
+        page_title = "NEW NFL — Provenance"
+    return r.render(
+        "provenance.html",
+        context={"page": data},
+        theme=theme,
+        active_nav="provenance",
+        breadcrumb=breadcrumb,
+        page_title=page_title,
+    )
+
+
+def render_provenance_detail_page(
+    settings: Settings,
+    scope_type: str,
+    scope_ref: str,
+    *,
+    renderer: WebRenderer | None = None,
+    theme: str = "dark",
+    record: ProvenanceRecord | None = None,
+) -> str:
+    r = renderer or build_renderer()
+    if record is None:
+        record = get_provenance(settings, scope_type, scope_ref)
+    if record is None:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Provenance", href="/provenance"),
+            BreadcrumbItem(label=scope_type, href=f"/provenance/{scope_type}"),
+            BreadcrumbItem(label=scope_ref, href=None),
+        )
+        page_title = f"NEW NFL — Provenance {scope_type}:{scope_ref}"
+    else:
+        breadcrumb = (
+            BreadcrumbItem(label="Home", href="/"),
+            BreadcrumbItem(label="Provenance", href="/provenance"),
+            BreadcrumbItem(
+                label=record.scope_type,
+                href=f"/provenance/{record.scope_type}",
+            ),
+            BreadcrumbItem(label=record.scope_ref, href=None),
+        )
+        page_title = (
+            f"NEW NFL — Provenance {record.scope_type}:{record.scope_ref}"
+        )
+    return r.render(
+        "provenance_detail.html",
+        context={
+            "record": record,
+            "requested_scope_type": scope_type,
+            "requested_scope_ref": scope_ref,
+        },
+        theme=theme,
+        active_nav="provenance",
         breadcrumb=breadcrumb,
         page_title=page_title,
     )

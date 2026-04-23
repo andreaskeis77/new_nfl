@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% from '_components/card.html' import card %}
+{% from '_components/empty_state.html' import empty_state %}
+
+{% block content %}
+  <header class="mb-8">
+    <p class="text-xs uppercase tracking-wide text-secondary">Provenienz</p>
+    <h1 class="text-3xl font-semibold tracking-tight">
+      {% if page.scope_type_filter %}
+        Provenienz · {{ page.scope_type_filter }}
+      {% else %}
+        Provenienz-Index
+      {% endif %}
+    </h1>
+  </header>
+
+  <section aria-label="Provenienz" class="mb-10">
+    {% call card('Scope-Zeilen · ' ~ page.page_range_label) %}
+      {% if page.rows %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Scope-Typ</th>
+              <th class="text-left">Scope-Ref</th>
+              <th class="text-left">Adapter</th>
+              <th class="text-right tnum">Files</th>
+              <th class="text-right tnum">Quelle</th>
+              <th class="text-left">Quarantäne</th>
+              <th class="text-left">Status</th>
+              <th class="text-left">Drilldown</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in page.rows %}
+              <tr data-testid="provenance-row"
+                  data-scope-type="{{ r.scope_type }}"
+                  data-scope-ref="{{ r.scope_ref }}">
+                <td class="text-left font-mono">{{ r.scope_type }}</td>
+                <td class="text-left font-mono">{{ r.scope_ref }}</td>
+                <td class="text-left font-mono">{{ r.primary_adapter or '—' }}</td>
+                <td class="text-right tnum">{{ r.source_file_count | fmt_number }}</td>
+                <td class="text-right tnum">{{ r.source_row_count | fmt_number }}</td>
+                <td class="text-left">{{ r.quarantine_label }}</td>
+                <td class="text-left">
+                  {% if r.provenance_status == 'warn' %}
+                    <span class="badge status-warn"><span class="badge-label">{{ r.status_label }}</span></span>
+                  {% elif r.provenance_status == 'unknown' %}
+                    <span class="badge status-neutral"><span class="badge-label">{{ r.status_label }}</span></span>
+                  {% else %}
+                    <span class="badge status-success"><span class="badge-label">{{ r.status_label }}</span></span>
+                  {% endif %}
+                </td>
+                <td class="text-left">
+                  <a class="hover:text-primary"
+                     href="/provenance/{{ r.scope_type }}/{{ r.scope_ref }}">öffnen</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if page.has_prev or page.has_next %}
+          <p class="mt-4 text-xs text-secondary" data-testid="provenance-pagination">
+            {% set base_url = '/provenance' if not page.scope_type_filter else '/provenance/' ~ page.scope_type_filter %}
+            {% if page.has_prev %}
+              <a class="hover:text-primary" href="{{ base_url }}?offset={{ page.prev_offset }}&amp;limit={{ page.limit }}">← vorherige</a>
+            {% else %}
+              <span class="text-muted">← vorherige</span>
+            {% endif %}
+            <span class="mx-2">·</span>
+            {% if page.has_next %}
+              <a class="hover:text-primary" href="{{ base_url }}?offset={{ page.next_offset }}&amp;limit={{ page.limit }}">nächste →</a>
+            {% else %}
+              <span class="text-muted">nächste →</span>
+            {% endif %}
+          </p>
+        {% endif %}
+      {% else %}
+        {{ empty_state(
+              title='Noch keine Provenienz-Zeilen',
+              body='Baue das Provenienz-Mart, um diese Seite zu befüllen.',
+              hint='cli mart-rebuild --mart-key provenance_v1') }}
+      {% endif %}
+    {% endcall %}
+  </section>
+{% endblock %}
