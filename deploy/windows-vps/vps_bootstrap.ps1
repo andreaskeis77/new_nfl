@@ -97,9 +97,9 @@ Write-Step "Update pip in Venv"
 & $PyExe -m pip install --upgrade pip
 Assert-ExitCode "pip upgrade"
 
-Write-Step "Installiere NEW NFL editable (pip install -e .)"
-& $PipExe install -e $RepoPath
-Assert-ExitCode "pip install -e ."
+Write-Step "Installiere NEW NFL editable mit dev-Extras (pytest, ruff)"
+& $PipExe install -e "$RepoPath[dev]"
+Assert-ExitCode "pip install -e .[dev]"
 
 # --- Smoke ------------------------------------------------------------------
 
