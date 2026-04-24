@@ -100,7 +100,7 @@ def sync_adapter_slices(settings: Settings) -> AdapterSliceSyncResult:
                     spec.adapter_id,
                     spec.slice_key,
                     spec.label,
-                    spec.remote_url,
+                    spec.remote_url_template or spec.remote_url,
                     spec.stage_target_object,
                     spec.core_table,
                     spec.mart_key,

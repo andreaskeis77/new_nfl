@@ -65,11 +65,18 @@ def _executor_fetch_remote(settings: Settings, params: dict[str, Any]) -> Execut
     execute_flag = bool(params.get("execute", True))
     remote_url = params.get("remote_url") or None
     slice_key = params.get("slice_key") or DEFAULT_SLICE_KEY
+    season_raw = params.get("season")
+    season = int(season_raw) if season_raw is not None else None
 
     get_logger(settings).event(
         "INFO",
         "executor_start",
-        details={"job_type": "fetch_remote", "slice_key": slice_key, "execute": execute_flag},
+        details={
+            "job_type": "fetch_remote",
+            "slice_key": slice_key,
+            "execute": execute_flag,
+            "season": season,
+        },
         adapter_id=adapter_id,
     )
     result = execute_remote_fetch(
@@ -78,6 +85,7 @@ def _executor_fetch_remote(settings: Settings, params: dict[str, Any]) -> Execut
         execute=execute_flag,
         remote_url_override=remote_url,
         slice_key=slice_key,
+        season=season,
     )
     detail = {
         "adapter_id": result.adapter_id,

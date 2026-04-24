@@ -5,6 +5,44 @@
 
 ---
 
+## 2026-04-24 — T3.1 VPS-Smoke entdeckt URL-Drift bei nflverse; v1.0-Cut hat E2E-Fetch-Smoke vermisst
+**Status:** draft (wartet auf Operator-Freigabe)
+
+**Scope dieser Lesson:** Der erste echte Scheduler-Smoke auf dem Contabo-VPS (T3.1 iterativ Step 1: `run_slice.ps1 -Slice teams`) schlug mit HTTP 404 fehl. Nach Diagnose: zwei der sieben Primary-Slice-URLs zeigten auf einen entfernten Pfad im `nflverse/nflreadr`-Repo, drei weitere hatten die grundlegend andere Architektur "ein File pro Saison" im `nflverse/nflverse-data`-Releases-Raum statt "ein kombiniertes File pro Slice". Fix via ADR-0034-Folge-Refactor: `SliceSpec.remote_url_template`-Feld + `resolve_remote_url()` + `default_nfl_season()`-Helper; 17 neue Tests; Full-Suite grün 445/445 + 17 = 462.
+
+1. **Was lief gut:**
+   - **URL-Drift wurde in unter 10 Minuten diagnostiziert.** Parallele `curl -I`-Tests auf alle sieben Primary-URLs plus `gh api`-Listing der Release-Assets haben den Befund klar gemacht: 3 von 7 OK, 1 URL-Umzug, 3 Struktur-Änderung (single-file → per-season). Die `nflverse/nflreadr`-Suche nach „teams_colors_logos" über `gh search code` lieferte `R/load_teams.R`, das die neue URL direkt zeigte. Die Diagnose-Methode (lokal curl + gh api) ist schnell, billig und reproduzierbar — wird Default für zukünftige Verdachtsfälle.
+   - **Additive `remote_url_template`-Erweiterung hielt API rückwärts-kompatibel.** `SliceSpec` bekam ein neues Feld mit `default=""`, alle drei statischen Slices (schedule, games, players) sowie die Cross-Check-Slices blieben unverändert. Kein Test der bestehenden 445 ist umgefallen. Der Helper `resolve_remote_url(spec, season=None)` kapselt die Template-vs-statisch-Logik an einer Stelle — `remote_fetch.py:72` ist jetzt eine Zeile statt einer Ternary.
+   - **`default_nfl_season()`-Kalender-Logik in 15 Zeilen, 4 Branches.** Off-season (Mar–Aug) → Vorjahr; Playoffs (Jan–Feb) → Vorjahr; Regular Season (Sep–Dec) → aktuelles Jahr. Vier parametrisierte Unit-Tests + ein Smoke ohne `today`-Parameter; keine Zeit-Abhängigkeit im Rest des Codes.
+   - **Ruff-Delta -1 statt 0.** Ich habe unbeabsichtigt eine pre-existing Rule-Drift-Warnung im umgeschriebenen `slices.py` verloren (44 statt 45). Keine neue Regression, aber auch keine schlechter-werdende Baseline.
+
+2. **Was lief nicht gut:**
+   - **Der v1.0-Cut hatte keinen echten E2E-HTTP-Fetch-Smoke.** Die 445 Tests nutzen alle Fixtures oder `remote_url_override`; keiner prüft, dass die in `slices.py` hinterlegten Produktions-URLs tatsächlich existieren. Der v1.0-Tag `v1.0.0-laptop` wurde 2026-04-24 gesetzt mit vier der sieben Primary-Slices in einem kaputten Zustand — das wurde erst beim T3.1-VPS-Smoke am gleichen Tag sichtbar. In den 8 Restrisiken in [v1.0.0-laptop.md §5](_ops/releases/v1.0.0-laptop.md) ist URL-Drift nicht enthalten. Die Definition-v1.0-Matrix („alle Phase-1-Datendomänen regelmäßig gefüllt") hat grün gemeldet, obwohl keiner der Daten-Pipelines gegen die echte Datenquelle grün lief — nur die Code-Mechanik lief grün gegen Fixtures.
+   - **Gepinnte Commit-SHA-URL-Strategie ist nicht URL-stabil, sondern commit-stabil.** Zwei der vier toten URLs zeigten auf `nflverse/nflreadr` bei Commit `1f23027…`. Der Commit existiert noch, aber das File `data-raw/teams_colors_logos.csv` ist bei diesem Commit nicht (mehr) im Repo-Tree (nflverse hat die Datei historisch aus dem Repo entfernt und die Historie konsistent gemacht). Pin auf einen Commit-SHA sichert nur, dass *genau dieser Commit* existiert — nicht, dass ein bestimmtes File in diesem Commit den gleichen Inhalt hat oder überhaupt vorhanden ist.
+   - **Ich habe im VPS_DOSSIER §6 die Task-Tabelle blind übernommen mit dem alten `rosters`-Slice-Key „roster_membership", obwohl der tatsächliche Slice-Key „rosters" ist.** Erst beim Code-Lesen von `slices.py` im Phase-5-Design ist das aufgefallen. Die Memory-Notiz zur Pflichtlektüre war richtig, aber die Übersetzung Plan → Dossier hat die Konvention nicht verifiziert.
+   - **Scope des Fix war beim ersten Operator-Konsult nicht richtig abgeschätzt.** Ich hatte „Minimal-Chirurgisch" (`teams`-URL fix) als Option A verkauft, „Architektur-Fix mit Per-Season" als Option C mit „mehreren Tagen Arbeit". Tatsächlich: die Architektur-Änderung in SliceSpec + CLI + Runner + Tests lief in ~40 Minuten durch. Die Überschätzung kostet Optionalität — der Operator wählte Option C, aber hätte bei „Option C = 40 Min" möglicherweise schneller zugegriffen.
+
+3. **Root Cause:**
+   - **v1.0-Test-Gate deckt keine echten HTTP-Endpoints ab.** Das war architektonisch gewollt (Tests sollen deterministisch und Offline-fähig sein). Aber ohne einen separaten E2E-Smoke gegen echte Produktions-URLs gibt es keinen CI-Schutz gegen extern verursachte Drift. Dieser Schutz fehlt in v1.0 strukturell.
+   - **Upstream-Evolution von nflverse nicht als Restrisiko modelliert.** NflVerse ist eine Community-Datenquelle; Release-Asset-Schema-Änderungen sind nicht Vertragspflicht. v1.0.0-laptop.md §5 hätte das als Risiko #9 enthalten müssen.
+   - **Dokumentations-Autopilot bei Plan-Übersetzung.** `rosters` vs. `roster_membership`: im Plan-Dokument war beides inkonsistent verwendet, ohne dass ich es beim Verfassen des Dossiers gegen `slices.py` abgeglichen habe.
+   - **Zeit-Schätzungen für Refactors systematisch zu pessimistisch.** Wahrscheinlich ein Puffer-Reflex gegen Risiko, aber er bekommt Optionalität.
+
+4. **Konkrete Methodänderung:**
+   - **Neuer v1.0-Pflichtpunkt: „E2E-HTTP-Smoke gegen alle Primary-Slices" wird Definition-v1.0-Kriterium #6** (bislang gibt es fünf in USE_CASE_VALIDATION_v0_1.md §2.3). Vor jedem RC-Cut ein einmaliger Operator-CLI-Lauf `new-nfl fetch-remote --adapter-id nflverse_bulk --slice <each> --execute` auf frischer DB mit Log-Mitschrift. Das Ergebnis wird in der Release-Evidence als eigener Abschnitt geführt. Ziel-Datei für Änderung: [USE_CASE_VALIDATION_v0_1.md](USE_CASE_VALIDATION_v0_1.md) §2.3 + [RELEASE_PROCESS.md](RELEASE_PROCESS.md) §5.
+   - **URL-Pin auf Commit-SHA ist Anti-Pattern, solange nicht gesichert ist dass der Commit den File-Tree unverändert hat.** Regel: wenn wir Upstream-Files pinnen wollen, dann entweder (a) vollständig lokalen Mirror mit SHA256, oder (b) Release-Asset-Tag (bei nflverse: `nflverse-data/releases/download/<tag>/`). Gepinnte Commit-URLs im `raw.githubusercontent.com/<repo>/<sha>/<path>`-Format sind verboten. Ziel-Datei: [ENGINEERING_MANIFEST.md](ENGINEERING_MANIFEST.md) (neue §Hinzufügung unter „Datenquellen-Pin-Strategie") oder neue ADR.
+   - **Neues v1.0-Restrisiko #9: nflverse-Upstream-Schema-Drift.** Nachträglich in [v1.0.0-laptop.md §5](_ops/releases/v1.0.0-laptop.md) ergänzen, mit Verweis auf dieser Lesson und den T3.1-Fix-Commits.
+   - **Plan-Doku-Konsistenz-Check vor Commit:** Wenn ein Doku-Dokument Slice-Keys, Mart-Keys oder CLI-Command-Namen erwähnt, wird vor dem Commit ein grep gegen `src/new_nfl/` gemacht, um Drift zu finden. Ziel-Datei: [CHAT_HANDOFF_PROTOCOL.md](CHAT_HANDOFF_PROTOCOL.md) als Pflicht vor Handoff-Commits.
+   - **Refactor-Zeit-Schätzung: vor „mehrere Tage Arbeit"-Label eine konkrete Call-Site-Zählung.** Regel: für größere Refactors zuerst `grep` der Call-Sites, dann Stunden-Schätzung pro Site × 10-20 min. „Mehrere Tage" nur, wenn >20 Sites oder semantisch-komplexe Änderungen. Ziel-Datei: ENGINEERING_MANIFEST.md §Time-Estimates.
+
+5. **Was aus dem Erfolg zu bewahren ist:**
+   - **Additive-Feld-Strategie für Data-Class-Erweiterungen** (`remote_url_template: str = ""` mit Default) hält bestehende Aufruf-Stellen unverändert. Bleibt Default für Schema-Evolution innerhalb v1.x.
+   - **Zentraler Resolve-Helper statt verstreuter Template-Logic.** `resolve_remote_url(spec, season)` ist die einzige Stelle, wo Template-Rendering passiert. Runner, CLI und Tests rufen den Helper, nicht `.format()` direkt.
+   - **Kalender-Logik in explizitem Util-Modul statt magischer Inline-Arithmetik.** `default_nfl_season(today=None)` mit 4 klaren Branches statt `today.year - (today.month < 9)`-Einzeiler. Tests als Dokumentation der Semantik.
+   - **Parallele curl/gh-Diagnose als Default-Triage.** Bei Verdacht auf externe Drift: mehrere curl-Calls parallel starten statt seriell. Spart Zeit, liefert vollständige Wahrheit im ersten Durchgang.
+
+---
+
 ## 2026-04-23 — T2.7A-E Parallel-Streams + T2.7F Integration: Registry-Pattern hält, Shared-Workdir ist die eigentliche Kostenstelle
 **Status:** final (konsolidiert aus `docs/_handoff/lessons_t27a.md`, `lessons_t27b.md`, `lessons_t27c.md`)
 

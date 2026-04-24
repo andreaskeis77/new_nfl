@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from new_nfl.adapters.catalog import build_adapter_plan, get_adapter_descriptor
-from new_nfl.adapters.slices import DEFAULT_SLICE_KEY, SLICE_REGISTRY
+from new_nfl.adapters.slices import DEFAULT_SLICE_KEY, SLICE_REGISTRY, resolve_remote_url
 from new_nfl.metadata import (
     compute_sha256,
     create_ingest_run,
@@ -58,6 +58,7 @@ def execute_remote_fetch(
     execute: bool,
     remote_url_override: str | None = None,
     slice_key: str = DEFAULT_SLICE_KEY,
+    season: int | None = None,
 ) -> RemoteFetchResult:
     descriptor = get_adapter_descriptor(adapter_id)
     if descriptor is None:
@@ -69,7 +70,7 @@ def execute_remote_fetch(
 
     pipeline_name = f"adapter.{adapter_id}.remote_fetch"
     slice_spec = SLICE_REGISTRY.get((adapter_id, slice_key))
-    slice_url = (slice_spec.remote_url if slice_spec else "").strip()
+    slice_url = resolve_remote_url(slice_spec, season=season).strip() if slice_spec else ""
     legacy_url = (source.get("default_remote_url") or "").strip()
     remote_url = (
         (remote_url_override or "").strip()

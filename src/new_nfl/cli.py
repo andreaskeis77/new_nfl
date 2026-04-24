@@ -265,6 +265,7 @@ def _cmd_fetch_remote(
     execute: bool,
     remote_url: str,
     slice_key: str,
+    season: int | None = None,
 ) -> int:
     from new_nfl.adapters.slices import DEFAULT_SLICE_KEY
     settings = load_settings()
@@ -273,18 +274,21 @@ def _cmd_fetch_remote(
         if slice_key == DEFAULT_SLICE_KEY
         else f'cli_fetch_remote__{adapter_id}__{slice_key}'
     )
+    params: dict = {
+        'adapter_id': adapter_id,
+        'execute': execute,
+        'remote_url': remote_url or '',
+        'slice_key': slice_key,
+    }
+    if season is not None:
+        params['season'] = season
     rc, detail = _run_cli_job(
         settings,
         job_key=job_key,
         job_type='fetch_remote',
         adapter_id=adapter_id,
         description=f'CLI auto-job for fetch-remote {adapter_id} slice={slice_key}',
-        params={
-            'adapter_id': adapter_id,
-            'execute': execute,
-            'remote_url': remote_url or '',
-            'slice_key': slice_key,
-        },
+        params=params,
     )
     if rc != 0 and not detail:
         return rc
@@ -1094,6 +1098,17 @@ def build_parser() -> argparse.ArgumentParser:
         default='schedule_field_dictionary',
         help='Adapter slice key (ADR-0031). Default: schedule_field_dictionary',
     )
+    fetch_remote.add_argument(
+        '--season',
+        type=int,
+        default=None,
+        help=(
+            'NFL season year for per-season slices (e.g. rosters, '
+            'team_stats_weekly, player_stats_weekly). Ignored for '
+            'static-URL slices. Defaults to the current completed or '
+            'in-progress season when omitted.'
+        ),
+    )
 
     stage_load = sub.add_parser(
         'stage-load',
@@ -1361,7 +1376,7 @@ def main() -> int:
         return _cmd_run_adapter(args.adapter_id, args.execute)
     if args.command == 'fetch-remote':
         return _cmd_fetch_remote(
-            args.adapter_id, args.execute, args.remote_url, args.slice_key
+            args.adapter_id, args.execute, args.remote_url, args.slice_key, args.season
         )
     if args.command == 'stage-load':
         return _cmd_stage_load(

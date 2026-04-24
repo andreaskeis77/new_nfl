@@ -9,10 +9,20 @@ appear under multiple adapters (Tier-A primary + Tier-B cross-check).
 This module is the single source of truth for slice dispatch. The
 `stage_load`, `core_load`, `remote_fetch`, runner executors and CLI read from
 `SLICE_REGISTRY` instead of hard-coding `if adapter_id == "X"` branches.
+
+T3.1-URL-Drift-Fix (ADR-0034 follow-up, Lesson v1.0 URL drift): nflverse has
+moved several weekly datasets from a single multi-season CSV to per-season
+release assets (``roster_weekly_YYYY.csv``, ``stats_team_week_YYYY.csv``,
+``stats_player_week_YYYY.csv``). SliceSpec gained a ``remote_url_template``
+field with a ``{season}`` placeholder; ``resolve_remote_url()`` renders the
+template against an explicit or defaulted season. Static-URL slices keep
+``remote_url`` populated exactly as before; no caller is forced to pass a
+season when it isn't needed.
 """
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import date
 from typing import Literal
 
 TierRole = Literal["primary", "cross_check"]
@@ -31,13 +41,60 @@ class SliceSpec:
     mart_key: str
     tier_role: TierRole
     notes: str
+    remote_url_template: str = ""
 
     @property
     def stage_qualified_table(self) -> str:
         return f"stg.{self.stage_target_object}"
 
+    @property
+    def is_per_season(self) -> bool:
+        return bool(self.remote_url_template)
+
     def as_dict(self) -> dict[str, object]:
         return asdict(self)
+
+
+def default_nfl_season(today: date | None = None) -> int:
+    """Return the NFL season year that is the sensible default on *today*.
+
+    Semantics:
+    - Sep–Dec  -> current calendar year (regular season underway)
+    - Jan–Feb  -> previous calendar year (playoffs of the prior season)
+    - Mar–Aug  -> previous calendar year (off-season; last completed season)
+
+    Examples:
+    - 2026-04-24 -> 2025  (we are in the 2026 off-season; latest data is 2025)
+    - 2025-10-01 -> 2025
+    - 2026-01-15 -> 2025
+    - 2026-09-05 -> 2026
+    """
+    anchor = today or date.today()
+    if anchor.month >= 9:
+        return anchor.year
+    return anchor.year - 1
+
+
+def resolve_remote_url(
+    spec: SliceSpec,
+    season: int | None = None,
+    *,
+    today: date | None = None,
+) -> str:
+    """Return the concrete URL for *spec*.
+
+    For static-URL slices (``remote_url`` set, ``remote_url_template`` empty)
+    the remote URL is returned as-is; ``season`` is ignored.
+
+    For per-season slices (``remote_url_template`` set) the template is
+    rendered with the given ``season``; if ``season`` is ``None``,
+    :func:`default_nfl_season` is used as the fallback. The returned URL
+    always has ``{season}`` substituted.
+    """
+    if spec.remote_url_template:
+        resolved_season = season if season is not None else default_nfl_season(today)
+        return spec.remote_url_template.format(season=resolved_season)
+    return spec.remote_url
 
 
 _SLICE_SPECS: tuple[SliceSpec, ...] = (
@@ -60,14 +117,18 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
         slice_key="teams",
         label="NFL franchises (current + historical)",
         remote_url=(
-            "https://raw.githubusercontent.com/nflverse/nflreadr/"
-            "1f23027a27ec565f1272345a80a208b8f529f0fc/data-raw/teams_colors_logos.csv"
+            "https://github.com/nflverse/nflverse-data/releases/download/"
+            "teams/teams_colors_logos.csv"
         ),
         stage_target_object="nflverse_bulk_teams",
         core_table="core.team",
         mart_key="team_overview_v1",
         tier_role="primary",
-        notes="T2.5A primary teams slice; Tier-A source of truth for abbreviation, name, division, colors.",
+        notes=(
+            "T2.5A primary teams slice; Tier-A source of truth for abbreviation, "
+            "name, division, colors. URL relocated in T3.1 from nflreadr/data-raw "
+            "to nflverse-data/releases/teams after upstream file move."
+        ),
     ),
     SliceSpec(
         adapter_id="official_context_web",
@@ -154,9 +215,10 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
         adapter_id="nflverse_bulk",
         slice_key="rosters",
         label="NFL weekly roster snapshots (bitemporal source, ADR-0032)",
-        remote_url=(
+        remote_url="",
+        remote_url_template=(
             "https://github.com/nflverse/nflverse-data/releases/download/"
-            "weekly_rosters/roster_weekly.csv"
+            "weekly_rosters/roster_weekly_{season}.csv"
         ),
         stage_target_object="nflverse_bulk_rosters",
         core_table="core.roster_membership",
@@ -167,7 +229,9 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "Weekly snapshots collapsed into (player, team, season, from_week, "
             "to_week) intervals; open intervals have valid_to_week IS NULL. "
             "mart_key points at the current-roster projection; the full history "
-            "mart roster_history_v1 is rebuilt alongside via the same promoter."
+            "mart roster_history_v1 is rebuilt alongside via the same promoter. "
+            "T3.1 URL-drift fix: nflverse now publishes per-season release "
+            "assets; use --season or default_nfl_season() to pick a year."
         ),
     ),
     SliceSpec(
@@ -191,9 +255,10 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
         adapter_id="nflverse_bulk",
         slice_key="team_stats_weekly",
         label="NFL team statistics per (season, week, team)",
-        remote_url=(
+        remote_url="",
+        remote_url_template=(
             "https://github.com/nflverse/nflverse-data/releases/download/"
-            "stats_team/stats_team_week.csv"
+            "stats_team/stats_team_week_{season}.csv"
         ),
         stage_target_object="nflverse_bulk_team_stats_weekly",
         core_table="core.team_stats_weekly",
@@ -203,7 +268,9 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "T2.5E primary team-stats slice. First aggregating domain: "
             "mart_key points at the weekly projection; the season aggregate "
             "mart team_stats_season_v1 is rebuilt alongside via the same "
-            "promoter. Tier-A source of truth at the (season, week, team_id) grain."
+            "promoter. Tier-A source of truth at the (season, week, team_id) "
+            "grain. T3.1 URL-drift fix: per-season release assets "
+            "stats_team_week_{season}.csv replace the old combined file."
         ),
     ),
     SliceSpec(
@@ -227,9 +294,10 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
         adapter_id="nflverse_bulk",
         slice_key="player_stats_weekly",
         label="NFL player statistics per (season, week, player)",
-        remote_url=(
+        remote_url="",
+        remote_url_template=(
             "https://github.com/nflverse/nflverse-data/releases/download/"
-            "stats_player/stats_player_week.csv"
+            "stats_player/stats_player_week_{season}.csv"
         ),
         stage_target_object="nflverse_bulk_player_stats_weekly",
         core_table="core.player_stats_weekly",
@@ -242,7 +310,8 @@ _SLICE_SPECS: tuple[SliceSpec, ...] = (
             "player_stats_career_v1 are rebuilt alongside via the same "
             "promoter. Tier-A source of truth at the (season, week, player_id) "
             "grain; multi-position players (e.g. Taysom Hill) keep one row "
-            "per week with the rostered position pinned."
+            "per week with the rostered position pinned. T3.1 URL-drift fix: "
+            "per-season release assets stats_player_week_{season}.csv."
         ),
     ),
     SliceSpec(
@@ -313,9 +382,11 @@ __all__ = [
     "SliceSpec",
     "TierRole",
     "cross_check_slices_for_primary",
+    "default_nfl_season",
     "get_slice",
     "list_slices",
     "list_slices_for_adapter",
     "primary_slice_for_core_table",
+    "resolve_remote_url",
     "slices_targeting_core_table",
 ]

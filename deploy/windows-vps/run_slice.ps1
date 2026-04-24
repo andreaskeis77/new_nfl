@@ -15,7 +15,8 @@
 
 param(
     [Parameter(Mandatory=$true)][string]$Slice,
-    [string]$Adapter = "nflverse_bulk"
+    [string]$Adapter = "nflverse_bulk",
+    [Nullable[int]]$Season = $null
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,12 +43,18 @@ function Assert-ExitCode {
     }
 }
 
-Write-Host "=== run_slice: Adapter=$Adapter Slice=$Slice ==="
+$seasonDisplay = if ($Season -ne $null) { $Season } else { "(default)" }
+Write-Host "=== run_slice: Adapter=$Adapter Slice=$Slice Season=$seasonDisplay ==="
 Write-Host "Log-Destination: $env:NEW_NFL_LOG_DESTINATION"
+
+$fetchArgs = @("fetch-remote", "--adapter-id", $Adapter, "--slice", $Slice, "--execute")
+if ($Season -ne $null) {
+    $fetchArgs += @("--season", [string]$Season)
+}
 
 Write-Host ""
 Write-Host ">> fetch-remote" -ForegroundColor Cyan
-& $NewNflExe fetch-remote --adapter-id $Adapter --slice $Slice --execute
+& $NewNflExe @fetchArgs
 Assert-ExitCode "fetch-remote"
 
 Write-Host ""
