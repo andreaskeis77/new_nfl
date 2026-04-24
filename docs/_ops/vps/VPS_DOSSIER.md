@@ -63,28 +63,35 @@ Kein Konflikt, kein Firewall-Eintrag nötig — Tailscale-Verbindungen sind kein
 
 **Präfix:** alle NEW-NFL-Tasks beginnen mit `NewNFL-`. Vollständig reserviert für NEW NFL — capsule nutzt den Präfix `Capsule-`.
 
-**Task-Liste (Stand T3.1-Plan, konkret umgesetzt in Phase 5):**
+**Architektur-Entscheidung (geklärt 2026-04-24 bei der Phase-4-CLI-Analyse):** jeder `new-nfl`-CLI-Call geht intern bereits durch den Runner (`_invoke_via_runner` in [cli.py](../../../src/new_nfl/cli.py) macht `register_job` → `enqueue_job` → `run_worker_once` in einem Schuss und schreibt `meta.job_run`-Evidence gemäß ADR-0025). Deshalb ist **kein dauerhafter `NewNFL-Worker`-Service** nötig — jeder Scheduled-Task ist selbstständig und erzeugt eigene Runner-Evidence. Die ursprüngliche Idee, einen 24/7-Worker via Auto-Restart-Task zu betreiben, wurde verworfen.
 
-| Task-Name | Zweck | Trigger | Auto-Restart |
+**Pipeline pro Slice** (Wrapper [`run_slice.ps1`](../../../deploy/windows-vps/run_slice.ps1)):
+1. `fetch-remote --adapter-id nflverse_bulk --slice <slice> --execute`
+2. `stage-load --adapter-id nflverse_bulk --slice <slice> --execute`
+3. `core-load --adapter-id nflverse_bulk --slice <slice> --execute` — triggert `mart-rebuild` implizit
+
+Der Wrapper setzt außerdem `NEW_NFL_LOG_DESTINATION=file:C:\newNFL\data\logs` (T2.7B), damit JSONL-Events auch bei Task-Läufen persistiert werden (stdout geht sonst im Task-Scheduler verloren).
+
+**Task-Liste (Voll-Ausbau, schrittweise durch iterativen Rollout umgesetzt):**
+
+| Task-Name | Aktion | Trigger | Adapter/Slice |
 |---|---|---|---|
-| `NewNFL-Worker` | `new-nfl run-worker --serve` läuft dauerhaft, zieht Jobs aus `meta.job_queue` | At-Boot + „bei Task-Exit neu starten" | ja |
-| `NewNFL-Fetch-Teams` | Daily-Enqueue für Slice `nflverse_bulk`/`teams` | täglich 05:00 | — |
-| `NewNFL-Fetch-Games` | Daily-Enqueue für Slice `nflverse_bulk`/`games` | täglich 05:05 | — |
-| `NewNFL-Fetch-Players` | Daily-Enqueue für Slice `nflverse_bulk`/`players` | täglich 05:10 | — |
-| `NewNFL-Fetch-Rosters` | Daily-Enqueue für Slice `nflverse_bulk`/`roster_membership` | täglich 05:15 | — |
-| `NewNFL-Fetch-TeamStats` | Daily-Enqueue für Slice `nflverse_bulk`/`team_stats_weekly` | täglich 05:20 | — |
-| `NewNFL-Fetch-PlayerStats` | Daily-Enqueue für Slice `nflverse_bulk`/`player_stats_weekly` | täglich 05:25 | — |
-| `NewNFL-Fetch-Schedule` | Daily-Enqueue für Slice `schedule_field_dictionary` | täglich 05:30 | — |
-| `NewNFL-Backup-Daily` | `new-nfl backup-snapshot` nach `C:\newNFL-Backups\` | täglich 04:00 | — |
+| `NewNFL-Backup-Daily` | `new-nfl backup-snapshot --target C:\newNFL-Backups\` | täglich 04:00 | — |
+| `NewNFL-Fetch-Teams` | `run_slice.ps1 -Slice teams` | täglich 05:00 | `nflverse_bulk`/`teams` |
+| `NewNFL-Fetch-Games` | `run_slice.ps1 -Slice games` | täglich 05:05 | `nflverse_bulk`/`games` |
+| `NewNFL-Fetch-Players` | `run_slice.ps1 -Slice players` | täglich 05:10 | `nflverse_bulk`/`players` |
+| `NewNFL-Fetch-Rosters` | `run_slice.ps1 -Slice rosters` | täglich 05:15 | `nflverse_bulk`/`rosters` |
+| `NewNFL-Fetch-TeamStats` | `run_slice.ps1 -Slice team_stats_weekly` | täglich 05:20 | `nflverse_bulk`/`team_stats_weekly` |
+| `NewNFL-Fetch-PlayerStats` | `run_slice.ps1 -Slice player_stats_weekly` | täglich 05:25 | `nflverse_bulk`/`player_stats_weekly` |
+| `NewNFL-Fetch-Schedule` | `run_slice.ps1 -Slice schedule_field_dictionary` | täglich 05:30 | `nflverse_bulk`/`schedule_field_dictionary` |
 
 **Begründung der Uhrzeiten:**
 - **04:00 Backup:** vor den Fetch-Jobs, damit der Backup einen konsistenten Vor-Tages-Stand sichert.
-- **05:00–05:30 Fetch-Jobs gestaffelt in 5-Minuten-Schritten:** verhindert, dass alle sieben Fetches gleichzeitig starten und die Queue flooden. Der Worker arbeitet sie dann ohnehin sequentiell ab, aber die Staffelung macht Logs besser lesbar.
+- **05:00–05:30 Fetch-Jobs gestaffelt in 5-Minuten-Schritten:** auch wenn die Jobs selbstständig laufen, entlastet die Staffelung die nflverse-Endpoints und macht Logs sauber lesbar.
 
-**Enqueue-vs.-direkt-Ausführen-Frage** (Detail, final geklärt in Phase 4):
-- Variante A: Daily-Task ruft `new-nfl enqueue-job --job-name fetch-teams`, Worker arbeitet die Queue ab.
-- Variante B: Daily-Task ruft direkt `new-nfl fetch-remote --adapter nflverse_bulk --slice teams` plus `core-load` plus `mart-rebuild` als Skript-Chain.
-- Entscheidung hängt davon ab, ob die aktuelle CLI einen `enqueue-job`-Command hat. Wird in Phase 4 beim Bootstrap-Script geprüft und hier fixiert.
+**Iterativer Rollout (T3.1 Phase 5):** Erst nur `NewNFL-Backup-Daily` + `NewNFL-Fetch-Teams` anlegen und einen vollen Tages-Zyklus beobachten, dann die restlichen sechs Fetch-Tasks nachziehen. Siehe [VPS_DEPLOYMENT_RUNBOOK.md §4](VPS_DEPLOYMENT_RUNBOOK.md).
+
+**Task-Principal:** alle Tasks laufen als `srv-ops-admin` mit `RunLevel Highest` (für Datei-Zugriff auf `C:\newNFL\` und `C:\newNFL-Backups\`). `StartWhenAvailable=True` fängt verpasste Trigger (z. B. Windows-Update-Reboot) nach; Batterie-Policies sind für den VPS irrelevant, werden aber explizit gesetzt für Portabilität zu Laptops.
 
 ## 7. Git-Konventionen auf dem VPS
 

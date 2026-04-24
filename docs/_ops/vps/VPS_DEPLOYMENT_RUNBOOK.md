@@ -227,29 +227,129 @@ Erst dann starte ich Phase 5 (Scheduled Tasks).
 
 ---
 
-## 4. Phase 5 — Scheduled Tasks anlegen
+## 4. Phase 5 — Scheduled Tasks anlegen (iterativ)
 
-**In dieser Phase erzeugt:** `deploy\windows-vps\vps_install_tasks.ps1`.
+**Artefakte:**
+- [deploy\windows-vps\run_slice.ps1](../../../deploy/windows-vps/run_slice.ps1) — Pipeline-Wrapper pro Slice (fetch → stage → core mit impliziter mart-rebuild).
+- [deploy\windows-vps\vps_install_tasks.ps1](../../../deploy/windows-vps/vps_install_tasks.ps1) — **Step 1** legt nur `NewNFL-Backup-Daily` und `NewNFL-Fetch-Teams` an. Die restlichen 6 Fetch-Tasks folgen nach erfolgreichem ersten Scheduler-Tag (Step 2 kommt mit einem späteren Skript-Commit).
 
-**Durch das Script abgedeckt:** die 9 Tasks aus [VPS_DOSSIER.md §6](VPS_DOSSIER.md) idempotent angelegt (löscht existierende `NewNFL-*`-Tasks vorher und legt sie neu an, damit Trigger-Änderungen sauber greifen).
+**Grund für iterativen Rollout:** statt 8 Tasks gleichzeitig loszulassen und bei einem morgendlichen Fehler nicht zu wissen, welche Stelle schuld ist, testen wir erst **Backup** (einfach, kein externer HTTP-Call) und **Teams** (der konservativste Slice, kleine CSV). Wenn diese zwei grün sind, haben wir Vertrauen in Scheduler-Mechanik und Wrapper-Skript.
 
-**Operator-Schritt:**
+### 4.1 Update-Pull auf dem VPS
 
 **`VPS-ADMIN PS>`**
 ```powershell
-# wird in Phase 5 konkretisiert
 Set-Location C:\newNFL
-powershell -ExecutionPolicy Bypass -File .\deploy\windows-vps\vps_install_tasks.ps1
+git pull origin main
 ```
 
-**Verifikation in der Task-Scheduler-GUI:**
+Erwartet: pulls `run_slice.ps1` und `vps_install_tasks.ps1` in den bestehenden Clone.
+
+### 4.2 Manual-Smoke Backup
+
+Ein einmaliger manueller Test, bevor wir den Task registrieren — so sehen wir sofort, ob `backup-snapshot` auf VPS läuft.
+
+**`VPS-ADMIN PS>`**
+```powershell
+.\.venv\Scripts\new-nfl.exe backup-snapshot --target C:\newNFL-Backups
+```
+
+**Erwartete Ausgabe:** Zeilen wie `SNAPSHOT_PATH=C:\newNFL-Backups\snapshot_YYYYMMDD_HHMMSS.zip` und `PAYLOAD_SHA256=<64hex>`, letzte Zeile `BACKUP=OK`.
+
+**Verifikation:**
+```powershell
+Get-ChildItem C:\newNFL-Backups\ | Format-Table Name,Length,LastWriteTime
+```
+Erwartet: eine frische `snapshot_*.zip` mit wenigen KB Größe (leere Fresh-DB).
+
+### 4.3 Manual-Smoke Teams-Slice
+
+**`VPS-ADMIN PS>`**
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\newNFL\deploy\windows-vps\run_slice.ps1 -Slice teams
+```
+
+**Erwartete Ausgabe:**
+```
+=== run_slice: Adapter=nflverse_bulk Slice=teams ===
+Log-Destination: file:C:\newNFL\data\logs
+
+>> fetch-remote
+ADAPTER_ID=nflverse_bulk
+...
+STATUS=success
+
+>> stage-load
+...
+ROW_COUNT=<>0
+
+>> core-load (triggert mart-rebuild implizit)
+...
+CORE_ROW_COUNT=<>0
+MART_ROW_COUNT=<>0
+
+=== DONE: Adapter=nflverse_bulk Slice=teams ===
+```
+
+**Dauer:** 10–30 Sekunden je nach nflverse-Antwortzeit.
+
+**Bei Fehler:** Skript bricht mit Exception ab und zeigt welcher Schritt fehlgeschlagen ist. Output komplett an Claude.
+
+### 4.4 Install-Tasks (nur wenn 4.2 und 4.3 grün)
+
+**`VPS-ADMIN PS>`**
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\newNFL\deploy\windows-vps\vps_install_tasks.ps1
+```
+
+**Erwartete Ausgabe:**
+```
+==> NewNFL-Backup-Daily
+  OK -> naechster Tick: 04:00
+==> NewNFL-Fetch-Teams
+  OK -> naechster Tick: 05:00
+================================================================
+Scheduled Tasks (iterativ Step 1) installiert
+================================================================
+```
+
+### 4.5 Verifikation in der Task-Scheduler-GUI
 
 1. Windows-Taste + „Aufgabenplanung" tippen, Enter.
-2. Im linken Baum „Aufgabenplanungsbibliothek" → Root-Ebene.
-3. Nach `NewNFL-` filtern oder in der Liste finden.
-4. Alle 9 Tasks müssen sichtbar sein, Status „Bereit".
+2. Links „Aufgabenplanungsbibliothek" → Root-Ebene.
+3. In der Mitte-Liste `NewNFL-Backup-Daily` und `NewNFL-Fetch-Teams` suchen.
+4. Beide müssen Status „Bereit" zeigen, nächste Laufzeit morgen 04:00/05:00.
 
-**STOP-Punkt:** Screenshot der Task-Liste oder `Get-ScheduledTask | Where-Object { $_.TaskName -like "NewNFL-*" }` an Claude.
+Oder via PowerShell:
+
+**`VPS-ADMIN PS>`**
+```powershell
+Get-ScheduledTask -TaskName "NewNFL-*" | Format-Table TaskName,State,@{N='NextRun';E={(Get-ScheduledTaskInfo $_).NextRunTime}} -AutoSize
+```
+
+### 4.6 Optional: Heute noch einen Task-Lauf erzwingen
+
+Wenn du noch heute sehen willst, dass der **Task-Mechanismus** funktioniert (nicht nur der Manual-Lauf aus 4.2/4.3), kannst du die Tasks sofort manuell triggern:
+
+**`VPS-ADMIN PS>`**
+```powershell
+Start-ScheduledTask -TaskName "NewNFL-Backup-Daily"
+Start-Sleep -Seconds 20
+Start-ScheduledTask -TaskName "NewNFL-Fetch-Teams"
+Start-Sleep -Seconds 60
+Get-ScheduledTask -TaskName "NewNFL-*" | Get-ScheduledTaskInfo | Format-Table TaskName,LastRunTime,LastTaskResult -AutoSize
+```
+
+`LastTaskResult=0` ist der Erfolg. Jede andere Zahl ist Fehler — Details aus dem Task-Scheduler-Historien-Tab oder im JSONL-Log unter `C:\newNFL\data\logs\`.
+
+### 4.7 STOP — Bericht an Claude
+
+Zurück an mich:
+1. Output von 4.2 (Backup-Smoke) und 4.3 (Teams-Smoke).
+2. Output von 4.4 (Task-Install).
+3. Optional: Output von 4.6 (erzwungener Task-Lauf).
+
+Morgen nach den echten Triggern (04:00 + 05:00): `Get-ScheduledTaskInfo`-Output aus 4.5 mit `LastRunTime` und `LastTaskResult` an mich. Wenn beide grün sind, schreibe ich das Folge-Skript für die restlichen 6 Fetch-Tasks.
 
 ---
 
