@@ -1,4 +1,4 @@
-# NEW NFL — VPS Bootstrap
+# NEW NFL -- VPS Bootstrap
 #
 # Zweck: einmaliger Erst-Deploy von NEW NFL auf den Contabo-Windows-VPS.
 # Legt Venv, Daten- und Backup-Verzeichnisse an, installiert NEW NFL
@@ -60,7 +60,7 @@ if (-not (Test-Path $RepoPath)) {
     throw "$RepoPath existiert nicht. Bitte zuerst klonen: git clone https://github.com/andreaskeis77/new_nfl.git $RepoPath"
 }
 if (-not (Test-Path "$RepoPath\.git")) {
-    throw "$RepoPath existiert, enthaelt aber kein .git-Verzeichnis. Kein sauberer Clone — manueller Check noetig."
+    throw "$RepoPath existiert, enthaelt aber kein .git-Verzeichnis. Kein sauberer Clone - manueller Check noetig."
 }
 if (-not (Test-Path "$RepoPath\pyproject.toml")) {
     throw "$RepoPath\pyproject.toml fehlt. Clone unvollstaendig oder falsches Repo."
@@ -105,7 +105,7 @@ Assert-ExitCode "pip install -e ."
 
 Write-Step "DuckDB-Bootstrap (new-nfl bootstrap)"
 if (-not (Test-Path $NewNflExe)) {
-    throw "Erwarteter CLI-Entrypoint $NewNflExe fehlt nach pip install -e . — Package-Metadata pruefen."
+    throw "Erwarteter CLI-Entrypoint $NewNflExe fehlt nach pip install -e . - Package-Metadata pruefen."
 }
 & $NewNflExe bootstrap
 Assert-ExitCode "new-nfl bootstrap"
