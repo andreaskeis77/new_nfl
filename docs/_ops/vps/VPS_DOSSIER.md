@@ -15,9 +15,15 @@ Dieses Dokument beschreibt die **verbindlichen Konventionen** für den NEW-NFL-B
 
 **Provider:** Contabo, Windows-VPS (gemeinsam genutzt mit dem `capsule`-Projekt).
 
-**Zugang:** ausschließlich über Tailscale-RDP. Kein Public-RDP, kein offener 3389-Port im Internet.
+**Hostname:** `vmd193069`
+**Tailscale-IP:** `100.71.205.5` (stabil, aus Tailnet-Admin-Session ermittelt 2026-04-24)
+**Admin-User:** `srv-ops-admin` (separater Operations-User, nicht der Standard-`Administrator`-Account)
+**Gesamt-RAM:** ~12 GB, ausreichend Kopfluft für Mart-Rebuilds ohne Swap-Thrashing.
+**Disk C:** ~200 GB, ~178 GB frei (Stand 2026-04-24).
 
-**Koexistenz mit capsule:** der VPS hostet bereits das `capsule`-Projekt unter `C:\CapsuleWardrobeRAG` mit eigenem Port (`127.0.0.1:8000`), eigenem Task-Namensraum (`Capsule-*`) und eigener Cloudflare-Tunnel-Einbindung (`Contabo-Wardrobe` → `capsule-studio.de` + `api.capsule-studio.de`). NEW NFL darf die `capsule`-Infrastruktur **nicht** anfassen — weder den `cloudflared`-Service, noch die `Capsule-*`-Tasks, noch den `C:\CapsuleWardrobeRAG`-Pfad.
+**Zugang:** ausschließlich über Tailscale-RDP. Kein Public-RDP, kein offener 3389-Port im Internet. RDP-Aufruf vom DEV-LAPTOP: `mstsc.exe /v:100.71.205.5`.
+
+**Koexistenz mit capsule:** der VPS hostet bereits das `capsule`-Projekt unter `C:\CapsuleWardrobeRAG` mit eigenem Port (`127.0.0.1:8000`, verifiziert belegt durch PID 4636 am 2026-04-24), eigenem Task-Namensraum (`Capsule-*` — `Capsule-API` ist `Ready`, `Capsule-ngrok` ist `Disabled` seit Cloudflare-Umstellung) und eigener Cloudflare-Tunnel-Einbindung (`Contabo-Wardrobe` → `capsule-studio.de` + `api.capsule-studio.de`, Service `cloudflared` läuft mit `Automatic`-Startup). NEW NFL darf die `capsule`-Infrastruktur **nicht** anfassen — weder den `cloudflared`-Service, noch die `Capsule-*`-Tasks, noch den `C:\CapsuleWardrobeRAG`-Pfad.
 
 ## 3. Öffentlichkeit / Erreichbarkeit — Tailscale-only
 
@@ -89,18 +95,18 @@ Kein Konflikt, kein Firewall-Eintrag nötig — Tailscale-Verbindungen sind kein
 
 ## 8. Python und Toolchain
 
-**Minimum:** Python 3.11 (`tomllib` aus Stdlib, siehe ADR-0026).
-**Empfohlen:** Python 3.12 wenn auf VPS verfügbar — bringt kleinere Performance-Wins für DuckDB-Interop.
-**Ermitteln:** in der Inventarisierungs-Phase (Phase 3 des Deployment-Runbooks).
+**Verbindlich:** Python **3.12** via `py -3.12`. Authoritative Quelle ist [pyproject.toml](../../../pyproject.toml) mit `requires-python = ">=3.12,<3.14"` — Python 3.14 ist explizit ausgeschlossen, Python 3.13 wäre erlaubt aber nicht empfohlen.
 
-**Venv-Setup:**
+**VPS-Stand (2026-04-24):** Python 3.14.3 ist der default (`python --version`), Python 3.12 ist zusätzlich installiert unter `C:\Users\srv-ops-admin\AppData\Local\Programs\Python\Python312\python.exe`. Deshalb **nie** `python` direkt aufrufen, sondern immer `py -3.12` oder den expliziten Venv-Python `C:\newNFL\.venv\Scripts\python.exe`. DEV-LAPTOP läuft mit Python 3.12.0 — Parität zum VPS gewährleistet.
+
+**Venv-Setup (wird durch `vps_bootstrap.ps1` automatisiert):**
 ```powershell
-python -m venv C:\newNFL\.venv
-C:\newNFL\.venv\Scripts\Activate.ps1
-pip install -e C:\newNFL
+py -3.12 -m venv C:\newNFL\.venv
+C:\newNFL\.venv\Scripts\pip.exe install --upgrade pip
+C:\newNFL\.venv\Scripts\pip.exe install -e C:\newNFL
 ```
 
-**Kein `pip install --user`, kein globales `pip install`.** Alle Abhängigkeiten landen in der Venv.
+**Kein `pip install --user`, kein globales `pip install`.** Alle Abhängigkeiten landen in der Venv. Ruft man später `new-nfl` auf, geht das über `C:\newNFL\.venv\Scripts\new-nfl.exe` oder — mit aktivierter Venv — über den kurzen `new-nfl`-Namen.
 
 ## 9. Abgrenzung zum capsule-Projekt
 

@@ -148,29 +148,82 @@ Das ist **ein einziger Kopier-Block**. Markiere den ganzen Block (Umschalt+Ende 
 
 ## 3. Phase 4 — Bootstrap
 
-**In dieser Phase erzeugt:** `deploy\windows-vps\vps_bootstrap.ps1` im NEW-NFL-Repo auf DEV-LAPTOP. Committed, gepusht. Dann auf VPS geklont und ausgeführt.
+**Artefakt:** [deploy\windows-vps\vps_bootstrap.ps1](../../../deploy/windows-vps/vps_bootstrap.ps1) im Repo (committed 2026-04-24).
 
-**Durch das Script abgedeckt:**
-- Git-Clone `https://github.com/andreaskeis77/new_nfl.git` nach `C:\newNFL`
-- Venv anlegen unter `C:\newNFL\.venv`
-- `pip install -e .` im Venv-Kontext
-- Verzeichnisse anlegen: `C:\newNFL\data\`, `C:\newNFL\data\logs\`, `C:\newNFL-Backups\`
-- `.env`-Template nach `C:\newNFL\.env` kopieren (falls nicht existiert)
-- Erste `bootstrap_local_environment`-Invocation, um DuckDB-Schema anzulegen
-- Smoke-Check: `new-nfl registry-list` zeigt die erwarteten 16 Mart-Keys
+**Was das Skript tut:**
+- prüft Python 3.12 via `py -3.12` (Python 3.14 auf VPS passt nicht zu pyproject.toml-Constraint `<3.14`)
+- prüft git und die Existenz von `C:\newNFL` mit `.git`- und `pyproject.toml`-Datei
+- legt Verzeichnisse an: `C:\newNFL\data\`, `C:\newNFL\data\db\`, `C:\newNFL\data\logs\`, `C:\newNFL-Backups\`
+- erstellt Venv `C:\newNFL\.venv` mit Python 3.12
+- installiert NEW NFL editable (`pip install -e .`) in der Venv
+- ruft `new-nfl bootstrap` → DuckDB-Schema wird angelegt, Ontologie wird aktiviert
+- Smoke-Check: `new-nfl registry-list` zeigt die 16 Mart-Keys
+- wirft bei jedem Fehler eine Exception und bricht ab — kein halb-fertiger Zustand
 
-**Operator-Schritt (wird später konkretisiert):**
+### 3.1 Repo auf VPS klonen
+
+Der Clone-Schritt ist absichtlich **nicht** im Bootstrap-Skript, damit der Operator sehen kann, was gezogen wird, bevor das Skript startet.
 
 **`VPS-ADMIN PS>`**
 ```powershell
-# wird in Phase 4 konkretisiert, Platzhalter
 Set-Location C:\
 git clone https://github.com/andreaskeis77/new_nfl.git C:\newNFL
-Set-Location C:\newNFL
-powershell -ExecutionPolicy Bypass -File .\deploy\windows-vps\vps_bootstrap.ps1
 ```
 
-**STOP-Punkt:** Bootstrap-Output an Claude schicken, ich verifiziere.
+**Erwartete Ausgabe:**
+```
+Cloning into 'C:\newNFL'...
+remote: Enumerating objects: ...
+remote: Counting objects: ...
+Receiving objects: 100% (...)
+Resolving deltas: 100% (...)
+```
+
+**Bei Fehler:**
+- `C:\newNFL exists and is not empty` → Pfad existiert schon. Nicht löschen, Operator fragen.
+- SSL-/Proxy-Fehler → `git --version` prüfen, ggf. `git config --global http.sslBackend schannel`.
+
+### 3.2 Bootstrap-Skript starten
+
+**`VPS-ADMIN PS>`**
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\newNFL\deploy\windows-vps\vps_bootstrap.ps1
+```
+
+**Erwartete Ausgabe:** Block-für-Block `==> …`-Zeilen in Cyan, am Ende:
+```
+================================================================
+NEW NFL Bootstrap abgeschlossen
+================================================================
+Repo:         C:\newNFL
+Venv:         C:\newNFL\.venv (Python 3.12)
+...
+```
+
+**Dauer:** 2–4 Minuten (meiste Zeit ist `pip install -e .` für Abhängigkeiten).
+
+**Bei Fehler:** Skript wirft Exception mit klarem Context-String (z. B. `"Schritt 'pip install -e .' fehlgeschlagen (ExitCode=1)"`) und bricht ab. Output vollständig an mich schicken, ich analysiere.
+
+### 3.3 Nach-Bootstrap-Check
+
+**`VPS-ADMIN PS>`**
+```powershell
+Set-Location C:\newNFL
+.\.venv\Scripts\pytest.exe -v --tb=short 2>&1 | Tee-Object -FilePath $env:TEMP\newnfl-bootstrap-pytest.log
+```
+
+**Erwartete Ausgabe:** `445 passed` am Ende. Laufzeit auf VPS darf länger sein als auf DEV-LAPTOP (dort 9:11), z. B. 15 Minuten — keine Regression, nur CPU-Unterschied.
+
+**Bei Fehler:** Testliste mit `FAILED`-Zeilen isolieren, an mich schicken. Log liegt unter `%TEMP%\newnfl-bootstrap-pytest.log`.
+
+### 3.4 STOP — Output an Claude
+
+Zurück an mich:
+1. Ob das Bootstrap-Skript **sauber durchgelaufen** ist (letzte grüne Ausgabe vorhanden).
+2. Ob die Full-Suite **grün** ist (`445 passed`).
+3. Bei Abweichung: den kompletten Fehler-Output.
+
+Erst dann starte ich Phase 5 (Scheduled Tasks).
 
 ---
 
