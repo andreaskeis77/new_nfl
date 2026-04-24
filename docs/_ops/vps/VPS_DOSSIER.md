@@ -76,7 +76,7 @@ Der Wrapper setzt außerdem `NEW_NFL_LOG_DESTINATION=file:C:\newNFL\data\logs` (
 
 | Task-Name | Aktion | Trigger | Adapter/Slice |
 |---|---|---|---|
-| `NewNFL-Backup-Daily` | `new-nfl backup-snapshot --target C:\newNFL-Backups\` | täglich 04:00 | — |
+| `NewNFL-Backup-Daily` | `run_backup.ps1` (generiert ZIP-Name mit Zeitstempel in `C:\newNFL-Backups\`) | täglich 04:00 | — |
 | `NewNFL-Fetch-Teams` | `run_slice.ps1 -Slice teams` | täglich 05:00 | `nflverse_bulk`/`teams` |
 | `NewNFL-Fetch-Games` | `run_slice.ps1 -Slice games` | täglich 05:05 | `nflverse_bulk`/`games` |
 | `NewNFL-Fetch-Players` | `run_slice.ps1 -Slice players` | täglich 05:10 | `nflverse_bulk`/`players` |

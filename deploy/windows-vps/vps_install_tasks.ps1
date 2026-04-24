@@ -22,6 +22,7 @@ $User       = "srv-ops-admin"
 $PsExe      = "powershell.exe"
 $NewNflExe  = "$RepoPath\.venv\Scripts\new-nfl.exe"
 $RunSlice   = "$RepoPath\deploy\windows-vps\run_slice.ps1"
+$RunBackup  = "$RepoPath\deploy\windows-vps\run_backup.ps1"
 
 # --- Sanity ----------------------------------------------------------------
 
@@ -30,6 +31,9 @@ if (-not (Test-Path $NewNflExe)) {
 }
 if (-not (Test-Path $RunSlice)) {
     throw "Wrapper $RunSlice fehlt. git pull auf $RepoPath laufen lassen."
+}
+if (-not (Test-Path $RunBackup)) {
+    throw "Wrapper $RunBackup fehlt. git pull auf $RepoPath laufen lassen."
 }
 if (-not (Test-Path $BackupPath)) {
     New-Item -ItemType Directory -Force -Path $BackupPath | Out-Null
@@ -73,8 +77,8 @@ Install-NewNflTask `
     -TaskName    "NewNFL-Backup-Daily" `
     -Description "NEW NFL daily backup-snapshot (T3.0A iterativ Step 1)" `
     -TriggerTime (Get-Date "04:00") `
-    -ActionExe   $NewNflExe `
-    -ActionArgs  "backup-snapshot --target `"$BackupPath`""
+    -ActionExe   $PsExe `
+    -ActionArgs  "-ExecutionPolicy Bypass -NoProfile -File `"$RunBackup`""
 
 # --- Task 2: Fetch Teams (Pipeline-Wrapper) --------------------------------
 
@@ -92,7 +96,7 @@ Write-Host "================================================================" -F
 Write-Host "Scheduled Tasks (iterativ Step 1) installiert" -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host "Tasks:"
-Write-Host "  NewNFL-Backup-Daily  @ 04:00  ->  $NewNflExe backup-snapshot --target $BackupPath"
+Write-Host "  NewNFL-Backup-Daily  @ 04:00  ->  run_backup.ps1 -BackupDir $BackupPath"
 Write-Host "  NewNFL-Fetch-Teams   @ 05:00  ->  run_slice.ps1 -Slice teams"
 Write-Host ""
 Write-Host "Manuelle Smoke-Trigger (Task sofort starten):" -ForegroundColor Yellow

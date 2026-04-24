@@ -247,14 +247,14 @@ Erwartet: pulls `run_slice.ps1` und `vps_install_tasks.ps1` in den bestehenden C
 
 ### 4.2 Manual-Smoke Backup
 
-Ein einmaliger manueller Test, bevor wir den Task registrieren — so sehen wir sofort, ob `backup-snapshot` auf VPS läuft.
+Wrapper-Skript `run_backup.ps1` erzeugt einen Zeitstempel-basierten ZIP-Namen und ruft `backup-snapshot` mit explizitem `--target`-Pfad auf (die CLI erwartet einen Datei-Pfad, nicht ein Verzeichnis).
 
 **`VPS-ADMIN PS>`**
 ```powershell
-.\.venv\Scripts\new-nfl.exe backup-snapshot --target C:\newNFL-Backups
+powershell -ExecutionPolicy Bypass -File C:\newNFL\deploy\windows-vps\run_backup.ps1
 ```
 
-**Erwartete Ausgabe:** Zeilen wie `SNAPSHOT_PATH=C:\newNFL-Backups\snapshot_YYYYMMDD_HHMMSS.zip` und `PAYLOAD_SHA256=<64hex>`, letzte Zeile `BACKUP=OK`.
+**Erwartete Ausgabe:** Zeilen `TARGET_ZIP=…`, `PAYLOAD_HASH=…`, `MART_TABLE_COUNT=…`, letzte Zeile `=== DONE: C:\newNFL-Backups\snapshot_YYYYMMDD_HHMMSS.zip ===` in Grün.
 
 **Verifikation:**
 ```powershell
