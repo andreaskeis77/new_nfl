@@ -27,8 +27,8 @@ Tranchen sind **klein und sequenziell**. Abhängigkeiten sind explizit. Parallel
 | **T2.6** Web-UI v1.0 | KW 23–25 | Style-Guide-Implementierung, alle Pflicht-Views |
 | **T2.7** Resilienz und Observability | KW 26 | Health, Freshness, Backup-Drill, Replay-Drill — **✅ abgeschlossen 2026-04-23** |
 | **T2.8** v1.0 Cut auf DEV-LAPTOP | KW 26 (Ende Juni) | Release-Tag, Smoke, Handoff — **✅ abgeschlossen 2026-04-24** |
-| **T3.0** Testphase auf DEV-LAPTOP | Juli 2026 | echte Saison-nahe Last, Bugfixes |
-| **T3.1** VPS-Migration | Ende Juli / Anfang August | Deploy auf Contabo Windows-VPS, Cloudflare/Tailscale |
+| **T3.1** VPS-Migration (vorgezogen) | Juni-Ende / Anfang Juli 2026 | Deploy auf Contabo Windows-VPS, Tailscale-only (keine Cloudflare-Route für NEW NFL) — **Reihenfolge geflippt, siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md)** |
+| **T3.0** Testphase auf VPS | Juli 2026 | echte Saison-nahe Last, Bugfixes — läuft auf VPS, nicht auf DEV-LAPTOP |
 | **Produktiv** | vor Preseason-Start | live |
 
 ## 2. T2.3 — Foundation Hardening (KW 17–18)
@@ -342,16 +342,18 @@ Abarbeitung der fünf dokumentierten Backlog-Punkte aus T2.5C/F und T2.6H Lesson
 
 ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Abschluss der jeweils gekoppelten Tranche gesetzt.
 
-## 9. T3.0 — Testphase auf DEV-LAPTOP (ab Juli 2026, Laufzeit ~4 Wochen)
+## 9. T3.0 — Testphase auf VPS (ab Juli 2026, Laufzeit ~4 Wochen)
 
-**Zweck:** v1.0-Infrastruktur unter echter Operator-Last validieren. Ziel ist, die drei noch offenen Punkte aus dem v1.0-Cut zu schließen (ADR-0030-Flip, ADR-0032-Flip, 5. Definition-Kriterium Backup/Restore-Operator-Validation) und vier Wochen ununterbrochenen Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation nachzuweisen.
+**Reihenfolge-Hinweis:** T3.0 läuft **nach T3.1**, nicht davor. Siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md). Grund: DEV-LAPTOP läuft nicht always-on, ein 4-Wochen-Scheduler-Test ist dort nicht sauber nachweisbar.
 
-**Vorbedingung:** Tag `v1.0.0-laptop` auf `main` (erfüllt seit 2026-04-24). Release-Evidence unter [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md).
+**Zweck:** v1.0-Infrastruktur unter echter Operator-Last auf der Ziel-Umgebung (VPS) validieren. Ziel ist, die drei noch offenen Punkte aus dem v1.0-Cut zu schließen (ADR-0030-Flip, ADR-0032-Flip, 5. Definition-Kriterium Backup/Restore-Operator-Validation) und vier Wochen ununterbrochenen Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation nachzuweisen.
 
-### T3.0A — Tägliche Scheduler-Automation auf DEV-LAPTOP (Woche 1)
-- **Ziel:** `new-nfl run-worker --serve` läuft als Windows-Task-Scheduler-Eintrag oder als Windows-Service-Shim mit Auto-Restart.
-- **Artefakte:** Windows-Task-Definition (`schtasks.exe /create …`) dokumentiert unter `docs/RUNBOOK.md` oder neuem `docs/_ops/scheduler_laptop.md`; Register-Job-Einträge für alle sieben Primary-Slices mit Daily-Trigger; `backup-snapshot` als eigene Daily-Task; Log-Destination auf `file:<data_root>/logs` (T2.7B).
-- **DoD:** Task läuft drei Tage stabil mit sichtbarem `executor_complete`-Event-Stream im JSONL-Log und `last_event_at`-Ticks im Home-Freshness-Dashboard.
+**Vorbedingung:** T3.1 abgeschlossen — NEW NFL läuft auf dem Contabo-VPS unter `C:\newNFL`, Tailscale-erreichbar, `backup-snapshot` mechanisch einmal erfolgreich. Tag `v1.0.0-laptop` auf `main` (erfüllt seit 2026-04-24). Release-Evidence unter [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md).
+
+### T3.0A — Tägliche Scheduler-Automation auf VPS (Woche 1)
+- **Ziel:** `new-nfl run-worker --serve` läuft als `NewNFL-Worker`-Scheduled-Task auf dem VPS mit Auto-Restart-Policy.
+- **Artefakte:** `deploy\windows-vps\vps_install_tasks.ps1` (idempotent, analog zu `capsule`-Muster) legt `NewNFL-Worker` sowie `NewNFL-Fetch-<slice>` für alle sieben Primary-Slices mit Daily-Trigger plus `NewNFL-Backup-Daily` an. Log-Destination `C:\newNFL\data\logs\` (T2.7B). Backup-Ablage `C:\newNFL-Backups\`. Task-Definitionen dokumentiert unter `docs/_ops/vps/VPS_DEPLOYMENT_RUNBOOK.md`.
+- **DoD:** Drei Tage stabiler Tick-Stream mit sichtbarem `executor_complete`-Event-Stream im JSONL-Log, `last_event_at`-Ticks im Home-Freshness-Dashboard (via Tailscale) und mindestens ein erfolgreicher `backup-snapshot`-Lauf pro Kalendertag.
 
 ### T3.0B — ADR-0032 Operator-Validation (Woche 1–2, parallel)
 - **Ziel:** Bitemporale Roster-Modellierung gegen echte NFL-Saison (z. B. 2023 oder 2024 mit bekannten Trades/Releases) durchspielen.
@@ -392,16 +394,39 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 - 5. v1.0-Kriterium auf ✅ (Backup/Restore-Operator-Validation abgeschlossen)
 - Full-Suite weiterhin grün, Ruff-Delta weiterhin 0 gegenüber Baseline
 
-## 10. T3.1 — VPS-Migration (Ende Juli / Anfang August)
+## 10. T3.1 — VPS-Migration (Juni-Ende / Anfang Juli 2026, **vor T3.0**)
 
-Gemäß `RUNBOOK_VPS_PREVIEW_RELEASE.md` und VPS-Dossier:
-- Tailscale-RDP validiert vor Beginn.
-- Repo-Sync auf VPS, Python-Venv, DuckDB-Migration.
-- Cloudflare Tunnel als Windows-Service.
-- Cloudflare Access vor Web-UI.
-- Smoke: `/healthz`, `/`, eine Game-Detail-Seite.
-- Backup-Strategie: tägliche Provider-Snapshots des VPS (Operator-bestätigt).
-- DoD: 7 Tage parallel-Lauf VPS + Laptop, identische Outputs.
+**Reihenfolge-Hinweis:** T3.1 ist gegenüber dem Original-Plan **vorgezogen** und läuft vor T3.0. Siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md).
+
+**Zielumgebung:** Contabo-Windows-VPS, der bereits für das `capsule`-Projekt produktiv ist. Tailscale-RDP, Windows-Hardening und `cloudflared`-Service sind auf dem Gerät bereits aufgesetzt — NEW NFL benutzt Tailscale mit, verzichtet aber bewusst auf Cloudflare (Single-Operator-Setup, kein öffentlicher Zugriff nötig).
+
+**Artefakte (neu in diesem Repo, im Rahmen von T3.1 anzulegen):**
+- [docs/_ops/vps/VPS_DOSSIER.md](_ops/vps/VPS_DOSSIER.md) — NEW-NFL-spezifische VPS-Konventionen (Pfad, Port, Task-Präfix, Backup-Ablage, Tailscale-Erreichbarkeit). Referenziert die `capsule`-Runbooks für VPS-Grundausbau statt sie zu duplizieren.
+- [docs/_ops/vps/VPS_DEPLOYMENT_RUNBOOK.md](_ops/vps/VPS_DEPLOYMENT_RUNBOOK.md) — Schritt-für-Schritt-Anweisungen mit Gerät-/User-/Shell-Prefix (`DEV-LAPTOP $`, `VPS-ADMIN PS>`).
+- `deploy\windows-vps\vps_bootstrap.ps1` — klont Repo nach `C:\newNFL`, legt Venv an, `pip install -e .`, legt `C:\newNFL-Backups\` und `C:\newNFL\data\logs\` an.
+- `deploy\windows-vps\vps_install_tasks.ps1` — Scheduled Tasks mit `NewNFL-*`-Präfix.
+- `deploy\windows-vps\vps_smoke_test.ps1` — erster End-to-End-Smoke auf VPS.
+- `deploy\windows-vps\vps_update_from_git.ps1` — idempotenter Update-Pfad (analog zu `capsule`-Muster).
+
+**Betriebs-Entscheidungen (NEW-NFL-spezifisch):**
+- **Repo-Pfad:** `C:\newNFL` (kurz, analog zu `capsule`). Daten und Logs unter `C:\newNFL\data\…` — gleiche Struktur wie auf DEV-LAPTOP für Migrations-Parität.
+- **Backend-Port:** `8001` (capsule belegt `8000`). Bindung auf `127.0.0.1:8001`, Erreichbarkeit ausschließlich über Tailscale-IP.
+- **Öffentlicher Zugriff:** bewusst **nicht** vorgesehen. Kein Cloudflare-Tunnel-Eintrag, keine Subdomain, kein Cloudflare-Access. Wenn später gewünscht, über zusätzlichen Tunnel oder Route nachrüstbar ohne Architektur-Änderung.
+- **Scheduled-Task-Präfix:** `NewNFL-*` — getrennt vom `Capsule-*`-Namensraum.
+- **Backup-Ablage:** `C:\newNFL-Backups\` lokal auf VPS. Offsite-Sync (Tailnet → DEV-LAPTOP) als Folgearbeit, nicht T3.1-Blocker.
+- **Python-Venv:** `C:\newNFL\.venv`, kein globales Python. Version wird bei VPS-Inventarisierung festgelegt (mind. Python 3.11 wegen `tomllib`/`Self`-Typ aus ADR-0026).
+
+**Pflichtpfade (DoD T3.1):**
+- Tailscale-RDP validiert vor Beginn (aus `capsule`-Setup bereits erfüllt).
+- Repo-Sync, Venv, `pip install -e .` erfolgreich; `new-nfl --help` gibt die erwartete Subcommand-Liste (inklusive Plugin-Registry-Commands aus ADR-0033).
+- DuckDB-Migration: frische `new_nfl.db` auf VPS via `bootstrap_local_environment`; alle sechs Core-Domänen einmal mit `core-load` gefüllt; `mart-rebuild --all` grün; `backup-snapshot` + `verify-snapshot` + `restore-snapshot` einmal End-to-End validiert.
+- Smoke über Tailscale-IP: `http://<tailscale-ip>:8001/` rendert Home-Dashboard, eine Game-Detail-Seite und `/health/*`-Probe; alle 10 Pflicht-Views aus USE_CASE_VALIDATION_v0_1.md §5.4 erreichbar.
+- Full-Suite (`pytest -v`) läuft auf dem VPS grün — gleiche 445 Tests in vergleichbarer Zeit (VPS darf langsamer sein, aber keine Test-Regressionen).
+
+**DoD:**
+- 24-Stunden-Smoke-Lauf auf VPS ohne Quarantäne-Eskalation (ersetzt den entfallenen 7-Tage-Parallel-Lauf mit DEV-LAPTOP).
+- Backup-Mechanik einmal manuell vollständig durchgespielt (Snapshot → verify → Löschen → Restore → Views grün).
+- VPS ist ab diesem Zeitpunkt die **Source of Truth** für NEW-NFL-Runtime; DEV-LAPTOP wird Dev-only.
 
 ## 11. Risiken und Gegenmaßnahmen
 

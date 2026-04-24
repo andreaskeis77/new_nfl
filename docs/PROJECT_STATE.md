@@ -130,40 +130,41 @@ Das heißt:
 - Run-Evidence + Provenance vollständig über `mart.*` sichtbar
 - Backup/Restore/Replay-Drill mechanisch ausgeliefert (CLI + Tests); Operator-Validation gegen echte Produktions-Load ist T3.0-Scope
 
-Was für T3.0 Testphase ansteht:
-- 4 Wochen ununterbrochener Scheduler-Lauf auf DEV-LAPTOP
+**Reihenfolge T3.0 ↔ T3.1 umgekehrt** gegenüber Original-Plan. Siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md). Grund: DEV-LAPTOP läuft nicht always-on, 4-Wochen-Scheduler-Test ist dort nicht sauber nachweisbar. VPS existiert bereits (via `capsule`-Projekt), Tailscale + Windows-Hardening sind dort eingerichtet.
+
+Was für T3.1 VPS-Migration ansteht (**vorgezogen, Juni-Ende / Anfang Juli 2026**):
+- Repo-Sync + Python-Venv unter `C:\newNFL` + DuckDB-Migration auf VPS
+- Tailscale-only für NEW NFL (kein Cloudflare-Tunnel, kein öffentlicher Zugriff)
+- Backend-Port `8001`, Scheduled-Task-Präfix `NewNFL-*`, Backup-Ablage `C:\newNFL-Backups\`
+- VPS-Smoke über Tailscale-IP auf Home-Dashboard, Game-Detail und `/health/*`
+- 24-Stunden-Smoke-Lauf auf VPS ohne Quarantäne-Eskalation (ersetzt den entfallenen Parallel-Lauf Laptop+VPS)
+
+Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
+- 4 Wochen ununterbrochener Scheduler-Lauf auf VPS
 - Designed Degradation (bewusste Quell-Ausfälle)
 - Backfill-Lasttest ~15 Saisons
 - ADR-0032-Flip auf `Accepted` nach Operator-Validation
 - ADR-0030-Flip auf `Accepted` nach Lasttest-Feedback
 
-Was für T3.1 VPS-Migration ansteht (verschoben hinter T3.0):
-- Tailscale-RDP-Validierung
-- Repo-Sync + Python-Venv + DuckDB-Migration auf VPS
-- Cloudflare Tunnel + Cloudflare Access
-- VPS-Smoke auf `/healthz` und `/`
-- 7 Tage Parallel-Lauf VPS + Laptop mit identischen Outputs
-
 ## Current cycle
 
-**T2.8 abgeschlossen (2026-04-24)** — v1.0-Cut auf DEV-LAPTOP mit Git-Tag `v1.0.0-laptop` gesetzt. Der Cut ist rein dokumentarisch und ändert keine Code-Artefakte gegenüber T2.7F-Integration. **VPS-Deploy ist auf T3.1 (Ende Juli / Anfang August 2026) verschoben.** Der nächste Zyklus ist T3.0 Testphase — 4 Wochen Scheduler-Lauf auf DEV-LAPTOP mit echten Daten, Designed Degradation und Backfill-Lasttest.
+**T2.8 abgeschlossen (2026-04-24)** — v1.0-Cut auf DEV-LAPTOP mit Git-Tag `v1.0.0-laptop` gesetzt. Der Cut ist rein dokumentarisch und ändert keine Code-Artefakte gegenüber T2.7F-Integration. **Nächster Zyklus: T3.1 VPS-Migration** — wegen Laptop-nicht-always-on auf Juni-Ende / Anfang Juli 2026 **vorgezogen** gegenüber dem Original-Plan. T3.0 Testphase läuft **danach auf dem VPS**, nicht auf DEV-LAPTOP. Entscheidung dokumentiert in [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md).
 
 ## Preferred next bolt
 
-**T3.0 — Testphase auf DEV-LAPTOP** gemäß [T2_3_PLAN.md §9](T2_3_PLAN.md). Laufzeit 4 Wochen mit:
-- echten täglichen Scheduler-Ticks über mehrere Wochen
-- bewussten Quell-Ausfällen (Designed Degradation) zur Validierung von Retry/Quarantäne
-- Lasttest mit Backfill ~15 Saisons zur Validierung von Schema-Cache, Mart-Rebuild-Zeiten, DB-Wachstum
-- Bugfix-Tranchen T3.0A, T3.0B, … nach Bedarf
-- DoD: 4 Wochen ununterbrochener Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation
+**T3.1 — VPS-Migration** gemäß [T2_3_PLAN.md §10](T2_3_PLAN.md). Läuft auf dem bereits vorhandenen Contabo-Windows-VPS (via `capsule`-Projekt eingerichtet). NEW-NFL-spezifische Entscheidungen:
+- Repo-Pfad `C:\newNFL`, Backend-Port `8001`, Python-Venv unter `C:\newNFL\.venv`
+- Tailscale-only (kein Cloudflare-Tunnel für NEW NFL)
+- Scheduled-Task-Präfix `NewNFL-*` (getrennt von `Capsule-*`)
+- Backup-Ablage `C:\newNFL-Backups\`
+- DoD: 24-Stunden-Smoke-Lauf auf VPS ohne Quarantäne-Eskalation, Backup-Restore-Zyklus einmal vollständig durchgespielt, alle 10 Pflicht-Views über Tailscale-IP erreichbar
 
-**Parallel während T3.0:**
-- ADR-0032 (bitemporale Rosters) auf `Accepted` flippen nach Operator-Validation mit echten Trades/Releases
-- ADR-0030 (UI-Stack) auf `Accepted` flippen nach realem Lasttest-Feedback (oder gezielte Nachbesserung)
-- Backup/Restore/Replay-Drill einmal real auf gewachsener DB durchspielen (5. v1.0-Kriterium aufwerten)
-- Ruff-Baseline 45 Errors optional abbauen (T3.0-Aufräum-Bolzen)
+**Phase 1 Artefakte (noch in dieser Session anzulegen):**
+- `docs/_ops/vps/VPS_DOSSIER.md` — NEW-NFL-spezifische Konventionen
+- `docs/_ops/vps/VPS_DEPLOYMENT_RUNBOOK.md` — Schritt-für-Schritt-Operator-Anweisungen
+- `deploy\windows-vps\vps_bootstrap.ps1`, `vps_install_tasks.ps1`, `vps_smoke_test.ps1`, `vps_update_from_git.ps1` — analog zum `capsule`-Muster
 
-**Nach T3.0:** T3.1 VPS-Migration gemäß `RUNBOOK_VPS_PREVIEW_RELEASE.md` und VPS-Dossier, Zielkorridor Ende Juli / Anfang August 2026.
+**Nach T3.1:** T3.0 Testphase auf VPS (Juli 2026), 4 Wochen ununterbrochener Scheduler-Lauf mit echten Daten, Designed Degradation, Backfill-Lasttest ~15 Saisons, ADR-0030/0032-Flip auf `Accepted` nach Operator-Validation.
 
 ## Zielkorridor v1.0
 
