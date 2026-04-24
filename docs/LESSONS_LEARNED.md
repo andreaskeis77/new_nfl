@@ -5,10 +5,12 @@
 
 ---
 
-## 2026-04-24 — T3.1 VPS-Smoke entdeckt URL-Drift bei nflverse; v1.0-Cut hat E2E-Fetch-Smoke vermisst
+## 2026-04-24 — T3.1 VPS-Smoke entdeckt URL-Drift UND Schema-Drift bei nflverse; v1.0-Cut hat E2E-Fetch-Smoke vermisst
 **Status:** draft (wartet auf Operator-Freigabe)
 
 **Scope dieser Lesson:** Der erste echte Scheduler-Smoke auf dem Contabo-VPS (T3.1 iterativ Step 1: `run_slice.ps1 -Slice teams`) schlug mit HTTP 404 fehl. Nach Diagnose: zwei der sieben Primary-Slice-URLs zeigten auf einen entfernten Pfad im `nflverse/nflreadr`-Repo, drei weitere hatten die grundlegend andere Architektur "ein File pro Saison" im `nflverse/nflverse-data`-Releases-Raum statt "ein kombiniertes File pro Slice". Fix via ADR-0034-Folge-Refactor: `SliceSpec.remote_url_template`-Feld + `resolve_remote_url()` + `default_nfl_season()`-Helper; 17 neue Tests; Full-Suite grün 445/445 + 17 = 462.
+
+**Zweite Schicht — Schema-Drift (nach URL-Fix am gleichen Tag sichtbar):** Nach dem URL-Fix liefen Fetch + Stage für alle 7 Slices durch, aber Core-Load scheiterte bei 3 Slices an fehlenden Spalten. Diagnose via CSV-Header-Inspektion: nflverse hat Spalten zusätzlich zu URLs umbenannt. `player_id` → `gsis_id` in `players.csv` und `roster_weekly_{season}.csv`; `team_id` → `team` in `roster_weekly_{season}.csv`, `stats_team_week_{season}.csv`. `stats_player_week_{season}.csv` behielt `player_id` und wurde deshalb grün, was den Befund ursprünglich verdeckt hatte. Fix-Scope für Bolt **T3.1S** (dokumentiert in T2_3_PLAN.md §10.1, separat von dieser Session): Core-Loader `core/players.py`, `core/rosters.py`, `core/team_stats.py` um Column-Alias-Logik erweitern — `gsis_id` als akzeptierter Alias für `player_id`, `team` als akzeptierter Alias für `team_id`. 4 von 7 Slices sind heute end-to-end grün (teams, games, schedule_field_dictionary, player_stats_weekly). Die Lesson bleibt gültig — beide Drifts haben die gleiche Root-Cause.
 
 1. **Was lief gut:**
    - **URL-Drift wurde in unter 10 Minuten diagnostiziert.** Parallele `curl -I`-Tests auf alle sieben Primary-URLs plus `gh api`-Listing der Release-Assets haben den Befund klar gemacht: 3 von 7 OK, 1 URL-Umzug, 3 Struktur-Änderung (single-file → per-season). Die `nflverse/nflreadr`-Suche nach „teams_colors_logos" über `gh search code` lieferte `R/load_teams.R`, das die neue URL direkt zeigte. Die Diagnose-Methode (lokal curl + gh api) ist schnell, billig und reproduzierbar — wird Default für zukünftige Verdachtsfälle.

@@ -148,23 +148,31 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 
 ## Current cycle
 
-**T2.8 abgeschlossen (2026-04-24)** — v1.0-Cut auf DEV-LAPTOP mit Git-Tag `v1.0.0-laptop` gesetzt. Der Cut ist rein dokumentarisch und ändert keine Code-Artefakte gegenüber T2.7F-Integration. **Nächster Zyklus: T3.1 VPS-Migration** — wegen Laptop-nicht-always-on auf Juni-Ende / Anfang Juli 2026 **vorgezogen** gegenüber dem Original-Plan. T3.0 Testphase läuft **danach auf dem VPS**, nicht auf DEV-LAPTOP. Entscheidung dokumentiert in [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md).
+**T3.1 läuft (Stand 2026-04-24 23:00)** — VPS-Migration Step 1 erfolgreich, Schema-Drift-Fix ausstehend.
+
+**T3.1 Step 1 erledigt:**
+- VPS-Bootstrap (Python 3.12 Venv unter `C:\newNFL`, 445 Tests grün auf VPS).
+- ADR-0034 gesetzt (T3.1 vor T3.0 wegen Laptop-nicht-always-on).
+- URL-Drift-Fix für 7 Primary-Slices: `SliceSpec.remote_url_template` + `resolve_remote_url()` + `default_nfl_season()`, 17 neue Tests, Full-Suite 462 grün.
+- Scheduled Tasks Step 1 auf VPS: `NewNFL-Backup-Daily` (04:00) + `NewNFL-Fetch-Teams` (05:00). Fetch-Teams `LastTaskResult=0` ✓.
+- Slice-Smoke: 4 von 7 Primary-Slices end-to-end grün (teams, games, schedule_field_dictionary, player_stats_weekly).
+
+**T3.1 offen:**
+- **T3.1S Core-Loader-Schema-Drift-Fix** (players, rosters, team_stats: `player_id`↔`gsis_id`, `team_id`↔`team`) — siehe [T2_3_PLAN.md §10.1](T2_3_PLAN.md).
+- **T3.1 Step 2** iterativer Rollout der restlichen 6 Fetch-Tasks nach T3.1S.
+- Backup-Task-Manual-Trigger steht aus (Task noch nie geflaufen, `LastTaskResult=267011` = „not yet run"; Trigger morgen 04:00 oder manuell `Start-ScheduledTask`).
 
 ## Preferred next bolt
 
-**T3.1 — VPS-Migration** gemäß [T2_3_PLAN.md §10](T2_3_PLAN.md). Läuft auf dem bereits vorhandenen Contabo-Windows-VPS (via `capsule`-Projekt eingerichtet). NEW-NFL-spezifische Entscheidungen:
-- Repo-Pfad `C:\newNFL`, Backend-Port `8001`, Python-Venv unter `C:\newNFL\.venv`
-- Tailscale-only (kein Cloudflare-Tunnel für NEW NFL)
-- Scheduled-Task-Präfix `NewNFL-*` (getrennt von `Capsule-*`)
-- Backup-Ablage `C:\newNFL-Backups\`
-- DoD: 24-Stunden-Smoke-Lauf auf VPS ohne Quarantäne-Eskalation, Backup-Restore-Zyklus einmal vollständig durchgespielt, alle 10 Pflicht-Views über Tailscale-IP erreichbar
+**T3.1S — Core-Loader-Schema-Drift-Fix** gemäß [T2_3_PLAN.md §10.1](T2_3_PLAN.md). Scope:
+- Core-Loader `core/players.py`, `core/rosters.py`, `core/team_stats.py` um Column-Alias-Logik erweitern (Empfehlung: zentrale Column-Alias-Registry in `adapters/column_aliases.py`).
+- Aliases: `gsis_id` als Alternative für `player_id`; `team` als Alternative für `team_id`.
+- Tests pro Loader für den Alias-Pfad; Full-Suite weiterhin grün; Ruff-Delta ≤ 0.
+- **Neu einführen:** E2E-HTTP-Smoke-Test pro Primary-Slice mit `@pytest.mark.network`-Marker (folgt der Lesson-Methodänderung).
+- Lesson von `draft` auf `accepted` flippen nach Abschluss.
+- DoD: alle 7 Primary-Slices laufen `run_slice.ps1 -Slice <key>` grün bis `=== DONE ===`.
 
-**Phase 1 Artefakte (noch in dieser Session anzulegen):**
-- `docs/_ops/vps/VPS_DOSSIER.md` — NEW-NFL-spezifische Konventionen
-- `docs/_ops/vps/VPS_DEPLOYMENT_RUNBOOK.md` — Schritt-für-Schritt-Operator-Anweisungen
-- `deploy\windows-vps\vps_bootstrap.ps1`, `vps_install_tasks.ps1`, `vps_smoke_test.ps1`, `vps_update_from_git.ps1` — analog zum `capsule`-Muster
-
-**Nach T3.1:** T3.0 Testphase auf VPS (Juli 2026), 4 Wochen ununterbrochener Scheduler-Lauf mit echten Daten, Designed Degradation, Backfill-Lasttest ~15 Saisons, ADR-0030/0032-Flip auf `Accepted` nach Operator-Validation.
+**Nach T3.1S:** T3.1 Step 2 (restliche 6 Fetch-Tasks anlegen + 2 Tage Beobachtung), dann T3.0 Testphase (4 Wochen ununterbrochener Scheduler-Lauf auf VPS mit Designed Degradation, Backfill-Lasttest, ADR-0030/0032-Flips).
 
 ## Zielkorridor v1.0
 

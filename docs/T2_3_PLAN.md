@@ -428,6 +428,49 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 - Backup-Mechanik einmal manuell vollständig durchgespielt (Snapshot → verify → Löschen → Restore → Views grün).
 - VPS ist ab diesem Zeitpunkt die **Source of Truth** für NEW-NFL-Runtime; DEV-LAPTOP wird Dev-only.
 
+**Fortschritt (Stand 2026-04-24 23:00):**
+- ✅ VPS-Bootstrap abgeschlossen: Repo unter `C:\newNFL`, Venv mit Python 3.12, 445 Tests grün auf VPS in 13:05.
+- ✅ `seed-sources`-Bug in Bootstrap entdeckt und gefixt (Commit `25561f9`).
+- ✅ URL-Drift-Fix für 4 von 7 Primary-Slices (Commit `f0e8d13`, siehe §10.1 unten).
+- ✅ Scheduled Tasks Step 1 installiert: `NewNFL-Backup-Daily` (04:00), `NewNFL-Fetch-Teams` (05:00). `Fetch-Teams` einmal manuell getriggert, `LastTaskResult=0`.
+- ✅ Slice-Smoke: 4 von 7 Primary-Slices end-to-end grün (teams, games, schedule_field_dictionary, player_stats_weekly).
+- ⏳ Schema-Drift in 3 Slices offen — siehe [§10.1 T3.1S](#101-t31s--core-loader-schema-drift-fix-schema-alias-strategie) unten.
+- ⏳ Step 2 iterativer Rollout (restliche 6 Fetch-Tasks) — nach T3.1S.
+- ⏳ Backup-Task-Manual-Smoke steht aus (Task selbst nie getriggert — `LastTaskResult=267011` = "not yet run"; Trigger morgen 04:00 oder manuell via `Start-ScheduledTask -TaskName NewNFL-Backup-Daily`).
+
+### 10.1 T3.1S — Core-Loader-Schema-Drift-Fix (Schema-Alias-Strategie)
+
+**Ziel:** die drei per-season-Slices, die am Core-Load-Gate hängen, endgültig grün bekommen. Rest-Blocker für die Aufnahme der restlichen 6 Fetch-Tasks (Step 2 des iterativen Rollouts) und damit für den T3.1-Abschluss.
+
+**Betroffene Module:**
+- [src/new_nfl/core/players.py](../src/new_nfl/core/players.py) — erwartet `player_id`, nflverse schickt `gsis_id`.
+- [src/new_nfl/core/rosters.py](../src/new_nfl/core/rosters.py) — erwartet `player_id` + `team_id`, nflverse schickt `gsis_id` + `team`.
+- [src/new_nfl/core/team_stats.py](../src/new_nfl/core/team_stats.py) — erwartet `team_id`, nflverse schickt `team`.
+- `core/player_stats.py` ist nicht betroffen (die Staging-Spalte heißt `player_id` im aktuellen File, und `team` wird dort bereits akzeptiert).
+
+**Design-Optionen (in T3.1S zu entscheiden):**
+- **Option A — pro Loader einzelne Fallback-Reads:** `_assert_required_columns` nimmt eine `aliases: dict[str, str]`-Map entgegen; Alias wird akzeptiert und im anschließenden SELECT umbenannt. Minimal-invasiv.
+- **Option B — zentraler Column-Alias-Registry:** `src/new_nfl/adapters/column_aliases.py` mit `(slice_key) -> {nflverse_name: canonical_name}` — Single-Point-of-Truth für zukünftige Drifts. Saubere Erweiterbarkeit.
+
+Empfehlung beim Session-Start: **Option B** — die drei Loader bleiben konsistent, zukünftige Drifts kosten nur einen Registry-Eintrag.
+
+**Artefakte:**
+- Alias-Registry oder pro-Loader-Parameter (je nach Option).
+- Tests: pro Loader ein Test „mit nflverse-Schema-Column-Namen grün" + bestehende Tests bleiben grün.
+- **Neu:** E2E-HTTP-Smoke-Test pro Primary-Slice gegen echte Produktions-URL, selektierbar via `@pytest.mark.network` (folgt der Lesson-Methodänderung „E2E-HTTP-Smoke fehlt im v1.0-Cut").
+- Doku-Update: Lesson von `draft` auf `accepted` flippen nachdem T3.1S durch ist.
+
+**DoD:**
+- Alle 7 Primary-Slices laufen `run_slice.ps1 -Slice <key>` grün bis `=== DONE ===`.
+- Full-Suite weiterhin grün, Ruff-Delta ≤ 0 gegenüber Baseline 45.
+- Bolt-T3.1S-eigener Mini-Lesson-Learned-Eintrag oder Erweiterung der 2026-04-24-Lesson.
+
+### 10.2 T3.1 Step 2 — restliche Fetch-Tasks (nach T3.1S)
+
+- 6 weitere Scheduled Tasks (`NewNFL-Fetch-Games`, `-Players`, `-Rosters`, `-TeamStats`, `-PlayerStats`, `-Schedule`) installieren.
+- Anpassung des bestehenden `deploy/windows-vps/vps_install_tasks.ps1` oder ein neues `vps_install_tasks_step2.ps1`.
+- 2 Tage Beobachtung aller 7 Fetches + Backup ohne Quarantäne-Eskalation = T3.1 final.
+
 ## 11. Risiken und Gegenmaßnahmen
 
 | Risiko | Wirkung | Gegenmaßnahme |
