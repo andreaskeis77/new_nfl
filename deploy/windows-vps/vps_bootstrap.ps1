@@ -110,6 +110,10 @@ if (-not (Test-Path $NewNflExe)) {
 & $NewNflExe bootstrap
 Assert-ExitCode "new-nfl bootstrap"
 
+Write-Step "Seed source registry (new-nfl seed-sources)"
+& $NewNflExe seed-sources
+Assert-ExitCode "new-nfl seed-sources"
+
 Write-Step "Smoke: registry-list"
 & $NewNflExe registry-list
 Assert-ExitCode "new-nfl registry-list"
