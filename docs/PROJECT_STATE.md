@@ -168,18 +168,18 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 - Drei Core-Loader (players, rosters, team_stats) wenden den Helper vor `_assert_required_columns` auf Tier-A- und Tier-B-Stages an. `core/player_stats.py` ist unverändert (war nicht betroffen).
 - Lesson-Konsequenz: `@pytest.mark.network`-Marker registriert + 7 E2E-HTTP-Smokes gegen die echten nflverse-URLs (default deselected, opt-in via `pytest -m network`).
 - Full-Suite **474 grün** (462 + 12 neue Tests), 8 deselected; Ruff Delta -1 gegenüber Baseline 45.
+- **Operator-Re-Smoke auf VPS 2026-04-25:** `players` (24408 rows, 0 invalid), `rosters` (10861 intervals aus 46579 source, 167 open, 234 trades), `team_stats_weekly` (570 rows, 32 season aggregates) — alle drei `=== DONE ===`. Damit sind alle 7 Primary-Slices end-to-end grün auf VPS. 2026-04-24-Lesson auf `accepted` geflippt.
 
 **T3.1 offen:**
-- **T3.1 Step 2** iterativer Rollout der restlichen 6 Fetch-Tasks (Games/Players/Rosters/TeamStats/PlayerStats/Schedule) auf VPS — nach Operator-Re-Smoke der Slices `players`, `rosters`, `team_stats_weekly` mit dem T3.1S-Code.
-- Operator-Validierung der 7 Primary-Slices via `pytest -m network` und `run_slice.ps1 -Slice <key>` auf VPS (gilt als T3.1S-DoD-Bestätigung).
+- **T3.1 Step 2** iterativer Rollout der restlichen 6 Fetch-Tasks (Games/Players/Rosters/TeamStats/PlayerStats/Schedule) auf VPS.
 - Backup-Task-Manual-Trigger steht aus (Task noch nie geflaufen, `LastTaskResult=267011` = „not yet run"; Trigger 04:00 oder manuell via `Start-ScheduledTask`).
 
 ## Preferred next bolt
 
 **T3.1 Step 2 — restliche Fetch-Tasks auf VPS** gemäß [T2_3_PLAN.md §10.2](T2_3_PLAN.md). Scope:
-- Vor Step 2: Operator re-smoked die 3 vormals roten Slices (`players`, `rosters`, `team_stats_weekly`) auf VPS via `run_slice.ps1 -Slice <key> -Season 2024`. Erwartetes Ergebnis: `=== DONE ===`. Falls grün, T3.1S-Lesson auf `accepted` flippen.
-- 6 weitere Scheduled Tasks installieren (`NewNFL-Fetch-Games`, `-Players`, `-Rosters`, `-TeamStats`, `-PlayerStats`, `-Schedule`) — Anpassung an `deploy/windows-vps/vps_install_tasks.ps1` oder ein neues `vps_install_tasks_step2.ps1`.
+- 6 weitere Scheduled Tasks installieren (`NewNFL-Fetch-Games`, `-Players`, `-Rosters`, `-TeamStats`, `-PlayerStats`, `-Schedule`) — Anpassung an `deploy/windows-vps/vps_install_tasks.ps1` oder ein neues `vps_install_tasks_step2.ps1`. Per-season-Slices brauchen `-Season`-Parameter (oder `default_nfl_season()` als Fallback).
 - 2 Tage Beobachtung aller 7 Fetches + Backup ohne Quarantäne-Eskalation = T3.1 final.
+- Optional vor Step 2: einmal `pytest -m network` als Pre-Release-Gate (DEV-LAPTOP oder VPS).
 
 **Nach T3.1:** T3.0 Testphase (4 Wochen ununterbrochener Scheduler-Lauf auf VPS mit Designed Degradation, Backfill-Lasttest, ADR-0030/0032-Flips).
 

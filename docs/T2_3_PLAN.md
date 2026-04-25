@@ -457,8 +457,8 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 
 **DoD-Tracking:**
 - ✅ Full-Suite **474 grün** (462 + 12 neue), 8 deselected (= 8 network smokes), in ~9:57 auf DEV-LAPTOP. Ruff Delta -1 gegenüber Baseline 45. AST-Lint grün.
-- ⏳ Operator-Re-Smoke auf VPS für `players`, `rosters`, `team_stats_weekly` via `run_slice.ps1 -Slice <key> -Season 2024` (erwartet `=== DONE ===` für alle drei). Außerdem `pytest -m network` einmal auf VPS/DEV-LAPTOP gegen Live-URLs.
-- ⏳ Bei grüner Re-Smoke: 2026-04-24-Lesson auf `accepted` flippen + T3.1S-Befund-Erweiterung anhängen.
+- ✅ Operator-Re-Smoke auf VPS 2026-04-25: `players` (24408 rows, 0 invalid), `rosters` (10861 intervals aus 46579 source, 167 open, 234 trades), `team_stats_weekly` (570 rows, 32 season-aggregates) — alle drei `=== DONE ===`. Damit alle 7 Primary-Slices end-to-end grün auf VPS.
+- ✅ 2026-04-24-Lesson auf `accepted` geflippt + T3.1S-Befund mit DoD-Beleg angehängt.
 
 ### 10.2 T3.1 Step 2 — restliche Fetch-Tasks (nach T3.1S)
 

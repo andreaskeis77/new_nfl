@@ -6,10 +6,17 @@
 ---
 
 ## 2026-04-24 — T3.1 VPS-Smoke entdeckt URL-Drift UND Schema-Drift bei nflverse; v1.0-Cut hat E2E-Fetch-Smoke vermisst
-**Status:** draft (Code-seitige Lesson-Konsequenzen 2026-04-25 mit T3.1S umgesetzt; Flip auf `accepted` wartet auf Operator-Re-Smoke der drei vormals roten Slices auf VPS)
+**Status:** accepted (2026-04-25 — T3.1S code-seitig durch + VPS-Re-Smoke aller drei vormals roten Slices grün)
 
-**T3.1S-Folgeumsetzung (2026-04-25, vor Code-Lesson-Flip):**
+**T3.1S-Folgeumsetzung (2026-04-25):**
 Die zentrale Methodänderung „neuer v1.0-Pflichtpunkt: E2E-HTTP-Smoke gegen alle Primary-Slices" ist jetzt code-seitig in Form des `@pytest.mark.network`-Markers verfügbar. `tests/test_slices_network_smoke.py` parametriert über die 7 Primary-Slices der `nflverse_bulk`-Adapter; per-season-Slices nutzen `PINNED_SMOKE_SEASON=2024` (deliberately not `default_nfl_season()`-gekoppelt — ein Kalenderflip mid-test darf den Smoke nicht von grün auf rot kippen). HEAD-Probe mit GET-Fallback bei 405 + CSV-Header-Heuristik. Default-Run filtert via `addopts = -q -m 'not network'`; Operator triggert vor jedem Release-Cut einmal `pytest -m network`. Der Smoke deckt URL-Drift UND Schema-Drift in einem Sweep — die nächste 2026-04-24-Klasse-Drift fällt damit beim Test-Lauf auf statt erst beim VPS-Smoke. Schema-Drift selbst ist mit der Column-Alias-Registry (`adapters/column_aliases.py`) repariert: drei Loader, drei Aliase, idempotenter `ALTER TABLE ... RENAME COLUMN`; Future-Drift wird in der Registry zur 1-Zeilen-Änderung. Ein Coverage-Test (`test_all_seven_primary_slices_are_covered`) pinnt das Set der primären Slice-Keys, sodass eine künftige Slice ohne Smoke-Update einen lauten Fehler erzeugt statt stillschweigend ungetestet zu bleiben.
+
+**VPS-Re-Smoke 2026-04-25 (DoD-Bestätigung):** Operator hat auf VPS `run_slice.ps1 -Slice <key> -Season 2024` für alle drei vormals roten Slices ausgeführt. Ergebnisse:
+- `players`: 24408 source rows → core.player 24408 distinct, 0 invalid, 0 conflicts; mart.player_overview_v1 24408. `=== DONE ===`.
+- `rosters`: 46579 source rows → core.roster_membership 10861 intervals (3215 distinct players, 167 open), 7 invalid; meta.roster_event 852 mit 234 trades; mart.roster_current_v1 167, mart.roster_history_v1 10861. `=== DONE ===`. (Trade-Heuristik aus ADR-0032 läuft konservativ — die 234 trades enthalten echte Trades plus practice-squad-Wechsel; ADR-0032-Validierung gegen echte NFL-Trades bleibt T3.0-Scope.)
+- `team_stats_weekly`: 570 source rows → core.team_stats_weekly 570 (570 distinct (team, season, week)), 0 invalid; mart.team_stats_weekly_v1 570, mart.team_stats_season_v1 32 (= 32 Franchises). `=== DONE ===`.
+
+Damit sind alle 7 Primary-Slices auf VPS end-to-end grün; T3.1S-DoD aus [T2_3_PLAN.md §10.1](T2_3_PLAN.md) ist erfüllt. Nächster Bolt: T3.1 Step 2 (restliche 6 Fetch-Tasks).
 
 **Scope dieser Lesson:** Der erste echte Scheduler-Smoke auf dem Contabo-VPS (T3.1 iterativ Step 1: `run_slice.ps1 -Slice teams`) schlug mit HTTP 404 fehl. Nach Diagnose: zwei der sieben Primary-Slice-URLs zeigten auf einen entfernten Pfad im `nflverse/nflreadr`-Repo, drei weitere hatten die grundlegend andere Architektur "ein File pro Saison" im `nflverse/nflverse-data`-Releases-Raum statt "ein kombiniertes File pro Slice". Fix via ADR-0034-Folge-Refactor: `SliceSpec.remote_url_template`-Feld + `resolve_remote_url()` + `default_nfl_season()`-Helper; 17 neue Tests; Full-Suite grün 445/445 + 17 = 462.
 
