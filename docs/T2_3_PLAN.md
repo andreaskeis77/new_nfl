@@ -394,7 +394,7 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 - 5. v1.0-Kriterium auf ✅ (Backup/Restore-Operator-Validation abgeschlossen)
 - Full-Suite weiterhin grün, Ruff-Delta weiterhin 0 gegenüber Baseline
 
-## 10. T3.1 — VPS-Migration (Juni-Ende / Anfang Juli 2026, **vor T3.0**)
+## 10. T3.1 — VPS-Migration (Juni-Ende / Anfang Juli 2026, **vor T3.0**) — final 2026-04-25
 
 **Reihenfolge-Hinweis:** T3.1 ist gegenüber dem Original-Plan **vorgezogen** und läuft vor T3.0. Siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md).
 
@@ -485,16 +485,16 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 - 06:15 NewNFL-Fetch-TeamStats
 - 06:30 NewNFL-Fetch-PlayerStats
 
-**Operator-Pflichtteil (T3.1-final-Closer):**
-- VPS-Pull + Step-2-Skript-Lauf: `git pull && powershell -ExecutionPolicy Bypass -File C:\newNFL\deploy\windows-vps\vps_install_tasks_step2.ps1`.
-- Manueller Initial-Trigger pro Task (`Start-ScheduledTask -TaskName NewNFL-Fetch-<Slice>`); Erwartung `LastTaskResult=0` für alle sechs.
-- 2 Tage Beobachtung: `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo` zeigt für alle Tasks `LastTaskResult=0`, kein `meta.run_event` mit `severity in ('error','critical','fatal')` ausserhalb der dokumentierten Edge-Cases (z. B. die 7 invalid roster rows aus 2024).
-- Backup-Task einmal manuell durchgespielt (oder durch 04:00-Trigger automatisch).
+**Operator-Closer 2026-04-25 23:30 — durchgeführt:**
+- VPS-Pull auf Commit `5a9e54c` und Skript-Lauf liefen ohne Fehler durch (sechs Tasks idempotent angelegt).
+- Manueller Initial-Trigger pro Task (`Start-ScheduledTask -TaskName NewNFL-Fetch-<Slice>`) für alle sechs erfolgreich; jeder Task lief fetch+stage+core durch.
+- `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo` zeigt für **alle 8 Tasks** (1 Backup + 7 Fetches) `LastTaskResult=0` und nächsten Cron-Tick im erwarteten Slot.
+- Backup-Task lief im 04:00-Tick desselben Tages mit `LastTaskResult=0`; zusätzlich manuell getriggert nach dem Step-2-Lauf.
 
 **DoD T3.1 final:**
-- Alle 7 Fetch-Tasks + 1 Backup-Task aktiv mit `LastTaskResult=0`.
-- 24-Stunden-Smoke-Lauf-DoD aus §10 erfüllt.
-- Backup einmal end-to-end (Snapshot → verify → restore-test) durchgespielt.
+- ✅ Alle 7 Fetch-Tasks + 1 Backup-Task aktiv mit `LastTaskResult=0` (Operator-Closer 2026-04-25 23:30).
+- ⏳ 2-Tage-Beobachtungsfenster läuft 2026-04-25 → 2026-04-27 — kein `meta.run_event` mit `severity in ('error','critical','fatal')` ausserhalb der dokumentierten Edge-Cases (z. B. die 7 invalid roster rows aus 2024).
+- ⏳ Backup-End-to-End-Drill (Snapshot → `verify-snapshot` → Test-`restore-snapshot`) einmal durchspielen vor T3.0-Start.
 
 ## 11. Risiken und Gegenmaßnahmen
 
