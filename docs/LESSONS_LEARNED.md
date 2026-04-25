@@ -6,7 +6,10 @@
 ---
 
 ## 2026-04-24 — T3.1 VPS-Smoke entdeckt URL-Drift UND Schema-Drift bei nflverse; v1.0-Cut hat E2E-Fetch-Smoke vermisst
-**Status:** draft (wartet auf Operator-Freigabe)
+**Status:** draft (Code-seitige Lesson-Konsequenzen 2026-04-25 mit T3.1S umgesetzt; Flip auf `accepted` wartet auf Operator-Re-Smoke der drei vormals roten Slices auf VPS)
+
+**T3.1S-Folgeumsetzung (2026-04-25, vor Code-Lesson-Flip):**
+Die zentrale Methodänderung „neuer v1.0-Pflichtpunkt: E2E-HTTP-Smoke gegen alle Primary-Slices" ist jetzt code-seitig in Form des `@pytest.mark.network`-Markers verfügbar. `tests/test_slices_network_smoke.py` parametriert über die 7 Primary-Slices der `nflverse_bulk`-Adapter; per-season-Slices nutzen `PINNED_SMOKE_SEASON=2024` (deliberately not `default_nfl_season()`-gekoppelt — ein Kalenderflip mid-test darf den Smoke nicht von grün auf rot kippen). HEAD-Probe mit GET-Fallback bei 405 + CSV-Header-Heuristik. Default-Run filtert via `addopts = -q -m 'not network'`; Operator triggert vor jedem Release-Cut einmal `pytest -m network`. Der Smoke deckt URL-Drift UND Schema-Drift in einem Sweep — die nächste 2026-04-24-Klasse-Drift fällt damit beim Test-Lauf auf statt erst beim VPS-Smoke. Schema-Drift selbst ist mit der Column-Alias-Registry (`adapters/column_aliases.py`) repariert: drei Loader, drei Aliase, idempotenter `ALTER TABLE ... RENAME COLUMN`; Future-Drift wird in der Registry zur 1-Zeilen-Änderung. Ein Coverage-Test (`test_all_seven_primary_slices_are_covered`) pinnt das Set der primären Slice-Keys, sodass eine künftige Slice ohne Smoke-Update einen lauten Fehler erzeugt statt stillschweigend ungetestet zu bleiben.
 
 **Scope dieser Lesson:** Der erste echte Scheduler-Smoke auf dem Contabo-VPS (T3.1 iterativ Step 1: `run_slice.ps1 -Slice teams`) schlug mit HTTP 404 fehl. Nach Diagnose: zwei der sieben Primary-Slice-URLs zeigten auf einen entfernten Pfad im `nflverse/nflreadr`-Repo, drei weitere hatten die grundlegend andere Architektur "ein File pro Saison" im `nflverse/nflverse-data`-Releases-Raum statt "ein kombiniertes File pro Slice". Fix via ADR-0034-Folge-Refactor: `SliceSpec.remote_url_template`-Feld + `resolve_remote_url()` + `default_nfl_season()`-Helper; 17 neue Tests; Full-Suite grün 445/445 + 17 = 462.
 

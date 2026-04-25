@@ -20,6 +20,7 @@ from typing import Iterable
 
 import duckdb
 
+from new_nfl.adapters.column_aliases import apply_column_aliases
 from new_nfl.adapters.slices import (
     SliceSpec,
     cross_check_slices_for_primary,
@@ -347,6 +348,9 @@ def execute_core_player_load(
 
     con = duckdb.connect(str(settings.db_path))
     try:
+        apply_column_aliases(con, primary.stage_qualified_table, primary.slice_key)
+        for spec in cross_checks:
+            apply_column_aliases(con, spec.stage_qualified_table, spec.slice_key)
         tier_a_columns = _assert_required_columns(
             con, primary.stage_qualified_table, _REQUIRED_TIER_A_COLUMNS
         )

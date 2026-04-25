@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**v1.0 feature-complete auf DEV-LAPTOP — T2.8 v1.0 Cut abgeschlossen (2026-04-24).** Git-Tag `v1.0.0-laptop` auf `main`; Release-Evidence unter [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md). Definition-v1.0-Matrix nach [USE_CASE_VALIDATION_v0_1.md §2.3](USE_CASE_VALIDATION_v0_1.md): vier von fünf Kriterien vollständig erfüllt (alle Phase-1-Domänen geladen, alle Pflicht-Views live, autonomer Scheduler mit Retry/Quarantäne, Run-Evidence + Provenance in Marts); das fünfte Kriterium (Backup/Restore + Replay real getestet) ist Infrastruktur-seitig erfüllt mit 37 Tests inkl. Determinismus-Gate, **Operator-Validation gegen echte Produktions-Load bewusst nach T3.0 verschoben**. Artefakt-Manifest: ~31.600 aktive Zeilen, 445 Tests grün in 551.69s, 16 Marts unter 15 Builder-Modulen, 14 Slices (7 primary + 7 cross-check), 6 kanonische Core-Domänen, 10 UI-Views, 33 ADRs (davon 2 `Proposed`: ADR-0030 UI-Stack und ADR-0032 Bitemporale Rosters), 1 Ontologie-Version. **Kein VPS-Deploy in T2.8** — VPS-Migration bleibt T3.1. Nächster Bolt: **T3.0 — Testphase auf DEV-LAPTOP** (4 Wochen ununterbrochener Scheduler-Lauf, Designed Degradation, Backfill-Lasttest ~15 Saisons, Bugfix-Tranchen T3.0A ff. nach Bedarf).
+**T3.1 VPS-Migration läuft (Stand 2026-04-25).** Git-Tag `v1.0.0-laptop` auf `main` (2026-04-24); HEAD nach T3.1S auf einem Folge-Commit von `f0e8d13`. T3.1 Step 1 + T3.1S sind durch; Step 2 (restliche 6 Fetch-Tasks) wartet auf Operator-Re-Smoke der drei vormals roten Slices auf VPS. Test-Footprint **474 grün, 8 deselected (network)** in ~9:57 auf DEV-LAPTOP, ~13:05 auf VPS (vorletzter Stand). Ruff Delta -1 gegenüber Baseline 45 (44 Errors, alle pre-existing UP035/UP037/E501/I001/B905/UP012/E741). **Reihenfolge T3.0 ↔ T3.1 umgekehrt** gegenüber Original-Plan (siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md)). T3.0 Testphase folgt nach T3.1-Abschluss auf VPS, Juli 2026. Produktiv (Tailscale-only, Port 8001, `NewNFL-*`-Tasks): vor NFL-Preseason Anfang August 2026.
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -17,6 +17,12 @@
 
 ## Completed
 
+- T3.1S Core-Loader-Schema-Drift-Fix (2026-04-25)
+  - Zentrale Column-Alias-Registry [src/new_nfl/adapters/column_aliases.py](../src/new_nfl/adapters/column_aliases.py) als Single-Point-of-Truth für nflverse-Spalten-Drifts: dict `slice_key -> {upstream: canonical}`. Helper `apply_column_aliases(con, qualified_table, slice_key)` macht idempotentes `ALTER TABLE ... RENAME COLUMN`; defensiv bei fehlender Tabelle (no-op statt Exception); case-insensitive Spalten-Matching mit Original-Case-Preservation für ALTER. Drei Slices in der Registry: `players` (`gsis_id` → `player_id`), `rosters` (`gsis_id` → `player_id`, `team` → `team_id`), `team_stats_weekly` (`team` → `team_id`). `core/player_stats.py` ist nicht betroffen (akzeptiert `team` und `player_id` schon seit v1.0).
+  - Drei Core-Loader [src/new_nfl/core/players.py](../src/new_nfl/core/players.py), [src/new_nfl/core/rosters.py](../src/new_nfl/core/rosters.py), [src/new_nfl/core/team_stats.py](../src/new_nfl/core/team_stats.py) rufen den Helper vor `_assert_required_columns` auf — sowohl für die Tier-A-Stage als auch für jede Tier-B-Cross-Check-Stage. Die Stage-Tabelle wird in-place auf den kanonischen Schema-Namen geflippt; der gesamte nachgelagerte SQL-Code (Profiling, Rebuild, Cross-Check-Detect) bleibt unverändert. Idempotent über Re-Runs.
+  - Lesson-Konsequenz aus 2026-04-24 umgesetzt: `@pytest.mark.network`-Marker registriert in [pyproject.toml](../pyproject.toml) (`addopts = -q -m 'not network'` schließt Network-Tests vom Default-Run aus, separat ausführbar via `pytest -m network`); neues Test-File [tests/test_slices_network_smoke.py](../tests/test_slices_network_smoke.py) probt alle 7 Primary-Slices (4 statisch + 3 per-season auf `PINNED_SMOKE_SEASON=2024`) gegen die echten `nflverse-data/releases/...`-URLs via HEAD/GET-Probe mit CSV-Header-Heuristik. 8 parametrierte Smokes plus 1 Coverage-Test (Registry-Drift-Detect).
+  - 12 neue Unit-Tests in [tests/test_column_aliases.py](../tests/test_column_aliases.py): Registry-Shape (gegen unbeabsichtigte Erweiterungen gepinnt), `get_aliases_for_slice` Copy-Semantik, Helper-Verhalten (Rename, Idempotenz, fehlende Tabelle, kanonische Spalte schon vorhanden, unknown slice, case-insensitive Match), drei End-to-End-Tests: jeder betroffene Loader läuft `execute=True` durch, wenn die Stage-Tabelle die nflverse-Spaltennamen trägt.
+  - Full-Suite **474 grün, 8 deselected (network)** in ~9:57 auf DEV-LAPTOP. Ruff Delta -1 gegenüber Baseline 45 (44 Errors, alle pre-existing UP035/UP037/E501/I001/B905/UP012/E741). AST-Lint grün (`tests/test_mart.py::test_read_modules_do_not_reference_core_or_stg_directly`).
 - T2.8 v1.0 Cut auf DEV-LAPTOP (2026-04-24)
   - Git-Tag `v1.0.0-laptop` auf `main` gesetzt (Release-Evidence [docs/_ops/releases/v1.0.0-laptop.md](_ops/releases/v1.0.0-laptop.md)). Rein dokumentarischer Cut — kein Code berührt. Definition-v1.0-Matrix aus `USE_CASE_VALIDATION_v0_1.md §2.3`: ✅ alle Phase-1-Datendomänen geladen (6 Core-Domänen, 14 Slices), ✅ alle Phase-1-Browse-Views live (Home/Freshness, Seasons/Weeks/Games, Teams, Players, Game-Detail, Provenance, Runs), ✅ Scheduler autonom mit Retry/Quarantäne (Internal Runner + CLI `run-worker --once|--serve`), ✅ Run-Evidence + Provenance vollständig (`mart.run_overview_v1`/`run_event_v1`/`run_artifact_v1` + `mart.provenance_v1`), ⚠️ Backup/Restore + Replay infrastruktur-seitig erfüllt (37 Tests inkl. Determinismus-Gate `test_backup_is_payload_deterministic_across_two_runs` und `test_replay_on_unchanged_raw_has_empty_diff`) — Operator-Validation gegen Produktions-Load bewusst nach T3.0 verschoben. Bekannte Restrisiken: ADR-0030/0032 bleiben `Proposed` bis T3.0-Feedback; Ruff-Baseline 45 Rule-Drift-Errors (UP035/UP037/E501/I001/B905/UP012/E741, Delta 0 gegenüber Baseline); Backup fehlt als Runner-Job; HTTP-Mirror für Health-Probes deferred bis echter Web-Router. Nächster Schritt: T3.0 Testphase auf DEV-LAPTOP
 - T2.7A-F Observability + Resilience + Hardening — Parallel-Streams + Integration (2026-04-23)
@@ -148,31 +154,34 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 
 ## Current cycle
 
-**T3.1 läuft (Stand 2026-04-24 23:00)** — VPS-Migration Step 1 erfolgreich, Schema-Drift-Fix ausstehend.
+**T3.1 läuft (Stand 2026-04-25)** — Step 1 + T3.1S abgeschlossen, Step 2 als nächster Bolt.
 
-**T3.1 Step 1 erledigt:**
+**T3.1 Step 1 erledigt (2026-04-24):**
 - VPS-Bootstrap (Python 3.12 Venv unter `C:\newNFL`, 445 Tests grün auf VPS).
 - ADR-0034 gesetzt (T3.1 vor T3.0 wegen Laptop-nicht-always-on).
 - URL-Drift-Fix für 7 Primary-Slices: `SliceSpec.remote_url_template` + `resolve_remote_url()` + `default_nfl_season()`, 17 neue Tests, Full-Suite 462 grün.
 - Scheduled Tasks Step 1 auf VPS: `NewNFL-Backup-Daily` (04:00) + `NewNFL-Fetch-Teams` (05:00). Fetch-Teams `LastTaskResult=0` ✓.
 - Slice-Smoke: 4 von 7 Primary-Slices end-to-end grün (teams, games, schedule_field_dictionary, player_stats_weekly).
 
+**T3.1S erledigt (2026-04-25):**
+- Zentrale Column-Alias-Registry `adapters/column_aliases.py` mit idempotentem `apply_column_aliases`-Helper (`ALTER TABLE ... RENAME COLUMN`).
+- Drei Core-Loader (players, rosters, team_stats) wenden den Helper vor `_assert_required_columns` auf Tier-A- und Tier-B-Stages an. `core/player_stats.py` ist unverändert (war nicht betroffen).
+- Lesson-Konsequenz: `@pytest.mark.network`-Marker registriert + 7 E2E-HTTP-Smokes gegen die echten nflverse-URLs (default deselected, opt-in via `pytest -m network`).
+- Full-Suite **474 grün** (462 + 12 neue Tests), 8 deselected; Ruff Delta -1 gegenüber Baseline 45.
+
 **T3.1 offen:**
-- **T3.1S Core-Loader-Schema-Drift-Fix** (players, rosters, team_stats: `player_id`↔`gsis_id`, `team_id`↔`team`) — siehe [T2_3_PLAN.md §10.1](T2_3_PLAN.md).
-- **T3.1 Step 2** iterativer Rollout der restlichen 6 Fetch-Tasks nach T3.1S.
-- Backup-Task-Manual-Trigger steht aus (Task noch nie geflaufen, `LastTaskResult=267011` = „not yet run"; Trigger morgen 04:00 oder manuell `Start-ScheduledTask`).
+- **T3.1 Step 2** iterativer Rollout der restlichen 6 Fetch-Tasks (Games/Players/Rosters/TeamStats/PlayerStats/Schedule) auf VPS — nach Operator-Re-Smoke der Slices `players`, `rosters`, `team_stats_weekly` mit dem T3.1S-Code.
+- Operator-Validierung der 7 Primary-Slices via `pytest -m network` und `run_slice.ps1 -Slice <key>` auf VPS (gilt als T3.1S-DoD-Bestätigung).
+- Backup-Task-Manual-Trigger steht aus (Task noch nie geflaufen, `LastTaskResult=267011` = „not yet run"; Trigger 04:00 oder manuell via `Start-ScheduledTask`).
 
 ## Preferred next bolt
 
-**T3.1S — Core-Loader-Schema-Drift-Fix** gemäß [T2_3_PLAN.md §10.1](T2_3_PLAN.md). Scope:
-- Core-Loader `core/players.py`, `core/rosters.py`, `core/team_stats.py` um Column-Alias-Logik erweitern (Empfehlung: zentrale Column-Alias-Registry in `adapters/column_aliases.py`).
-- Aliases: `gsis_id` als Alternative für `player_id`; `team` als Alternative für `team_id`.
-- Tests pro Loader für den Alias-Pfad; Full-Suite weiterhin grün; Ruff-Delta ≤ 0.
-- **Neu einführen:** E2E-HTTP-Smoke-Test pro Primary-Slice mit `@pytest.mark.network`-Marker (folgt der Lesson-Methodänderung).
-- Lesson von `draft` auf `accepted` flippen nach Abschluss.
-- DoD: alle 7 Primary-Slices laufen `run_slice.ps1 -Slice <key>` grün bis `=== DONE ===`.
+**T3.1 Step 2 — restliche Fetch-Tasks auf VPS** gemäß [T2_3_PLAN.md §10.2](T2_3_PLAN.md). Scope:
+- Vor Step 2: Operator re-smoked die 3 vormals roten Slices (`players`, `rosters`, `team_stats_weekly`) auf VPS via `run_slice.ps1 -Slice <key> -Season 2024`. Erwartetes Ergebnis: `=== DONE ===`. Falls grün, T3.1S-Lesson auf `accepted` flippen.
+- 6 weitere Scheduled Tasks installieren (`NewNFL-Fetch-Games`, `-Players`, `-Rosters`, `-TeamStats`, `-PlayerStats`, `-Schedule`) — Anpassung an `deploy/windows-vps/vps_install_tasks.ps1` oder ein neues `vps_install_tasks_step2.ps1`.
+- 2 Tage Beobachtung aller 7 Fetches + Backup ohne Quarantäne-Eskalation = T3.1 final.
 
-**Nach T3.1S:** T3.1 Step 2 (restliche 6 Fetch-Tasks anlegen + 2 Tage Beobachtung), dann T3.0 Testphase (4 Wochen ununterbrochener Scheduler-Lauf auf VPS mit Designed Degradation, Backfill-Lasttest, ADR-0030/0032-Flips).
+**Nach T3.1:** T3.0 Testphase (4 Wochen ununterbrochener Scheduler-Lauf auf VPS mit Designed Degradation, Backfill-Lasttest, ADR-0030/0032-Flips).
 
 ## Zielkorridor v1.0
 

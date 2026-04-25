@@ -428,42 +428,37 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 - Backup-Mechanik einmal manuell vollständig durchgespielt (Snapshot → verify → Löschen → Restore → Views grün).
 - VPS ist ab diesem Zeitpunkt die **Source of Truth** für NEW-NFL-Runtime; DEV-LAPTOP wird Dev-only.
 
-**Fortschritt (Stand 2026-04-24 23:00):**
+**Fortschritt (Stand 2026-04-25):**
 - ✅ VPS-Bootstrap abgeschlossen: Repo unter `C:\newNFL`, Venv mit Python 3.12, 445 Tests grün auf VPS in 13:05.
 - ✅ `seed-sources`-Bug in Bootstrap entdeckt und gefixt (Commit `25561f9`).
-- ✅ URL-Drift-Fix für 4 von 7 Primary-Slices (Commit `f0e8d13`, siehe §10.1 unten).
+- ✅ URL-Drift-Fix für 7 Primary-Slices (Commit `f0e8d13`, siehe §10.1).
 - ✅ Scheduled Tasks Step 1 installiert: `NewNFL-Backup-Daily` (04:00), `NewNFL-Fetch-Teams` (05:00). `Fetch-Teams` einmal manuell getriggert, `LastTaskResult=0`.
-- ✅ Slice-Smoke: 4 von 7 Primary-Slices end-to-end grün (teams, games, schedule_field_dictionary, player_stats_weekly).
-- ⏳ Schema-Drift in 3 Slices offen — siehe [§10.1 T3.1S](#101-t31s--core-loader-schema-drift-fix-schema-alias-strategie) unten.
-- ⏳ Step 2 iterativer Rollout (restliche 6 Fetch-Tasks) — nach T3.1S.
-- ⏳ Backup-Task-Manual-Smoke steht aus (Task selbst nie getriggert — `LastTaskResult=267011` = "not yet run"; Trigger morgen 04:00 oder manuell via `Start-ScheduledTask -TaskName NewNFL-Backup-Daily`).
+- ✅ Slice-Smoke nach Step 1: 4 von 7 Primary-Slices end-to-end grün (teams, games, schedule_field_dictionary, player_stats_weekly).
+- ✅ **T3.1S Schema-Drift-Fix abgeschlossen (2026-04-25):** zentrale Column-Alias-Registry + Helper, drei Loader-Edits, 12 neue Unit-Tests, 8 neue Network-Smokes als `@pytest.mark.network`. Full-Suite **474 grün** (462 + 12), 8 deselected. Ruff Delta -1 vs Baseline 45. Siehe §10.1.
+- ⏳ Operator-Re-Smoke auf VPS für `players`, `rosters`, `team_stats_weekly` mit T3.1S-Code (`run_slice.ps1 -Slice <key> -Season 2024`). Bestätigt T3.1S-DoD und triggert Lesson-Flip auf `accepted`.
+- ⏳ Step 2 iterativer Rollout (restliche 6 Fetch-Tasks) — nach Operator-Re-Smoke.
+- ⏳ Backup-Task-Manual-Smoke steht aus (Task selbst nie getriggert — `LastTaskResult=267011` = "not yet run"; Trigger 04:00 oder manuell via `Start-ScheduledTask -TaskName NewNFL-Backup-Daily`).
 
-### 10.1 T3.1S — Core-Loader-Schema-Drift-Fix (Schema-Alias-Strategie)
+### 10.1 T3.1S — Core-Loader-Schema-Drift-Fix (Schema-Alias-Strategie) ✅
 
 **Ziel:** die drei per-season-Slices, die am Core-Load-Gate hängen, endgültig grün bekommen. Rest-Blocker für die Aufnahme der restlichen 6 Fetch-Tasks (Step 2 des iterativen Rollouts) und damit für den T3.1-Abschluss.
 
-**Betroffene Module:**
-- [src/new_nfl/core/players.py](../src/new_nfl/core/players.py) — erwartet `player_id`, nflverse schickt `gsis_id`.
-- [src/new_nfl/core/rosters.py](../src/new_nfl/core/rosters.py) — erwartet `player_id` + `team_id`, nflverse schickt `gsis_id` + `team`.
-- [src/new_nfl/core/team_stats.py](../src/new_nfl/core/team_stats.py) — erwartet `team_id`, nflverse schickt `team`.
-- `core/player_stats.py` ist nicht betroffen (die Staging-Spalte heißt `player_id` im aktuellen File, und `team` wird dort bereits akzeptiert).
+**Status:** ✅ Code + Tests abgeschlossen 2026-04-25. Operator-Re-Smoke auf VPS steht aus (DoD-Punkt 1 unten).
 
-**Design-Optionen (in T3.1S zu entscheiden):**
-- **Option A — pro Loader einzelne Fallback-Reads:** `_assert_required_columns` nimmt eine `aliases: dict[str, str]`-Map entgegen; Alias wird akzeptiert und im anschließenden SELECT umbenannt. Minimal-invasiv.
-- **Option B — zentraler Column-Alias-Registry:** `src/new_nfl/adapters/column_aliases.py` mit `(slice_key) -> {nflverse_name: canonical_name}` — Single-Point-of-Truth für zukünftige Drifts. Saubere Erweiterbarkeit.
+**Entschieden:** Operator hat 2026-04-25 **Option B** (zentrale Column-Alias-Registry) freigegeben. Begründung: Single-Point-of-Truth, drei Loader bleiben konsistent, zukünftige Drifts kosten nur einen Registry-Eintrag.
 
-Empfehlung beim Session-Start: **Option B** — die drei Loader bleiben konsistent, zukünftige Drifts kosten nur einen Registry-Eintrag.
+**Geliefert:**
+- [src/new_nfl/adapters/column_aliases.py](../src/new_nfl/adapters/column_aliases.py) — `ALIAS_REGISTRY` als dict `slice_key -> {upstream: canonical}` plus Helper `apply_column_aliases(con, qualified_table, slice_key)`. Idempotentes `ALTER TABLE ... RENAME COLUMN` mit case-insensitivem Match und Original-Case-Preservation. Defensiv bei fehlender Tabelle (no-op statt Exception) — wichtig für Cross-Check-Stages, die im fresh-DB-Fall nicht existieren.
+- Registry-Inhalt: `players` → `gsis_id`/`player_id`; `rosters` → `gsis_id`/`player_id` + `team`/`team_id`; `team_stats_weekly` → `team`/`team_id`. `core/player_stats.py` ist nicht in der Registry — der Loader akzeptiert `team` bereits seit v1.0 (inline `_opt('team_id', ...)`-Pfad) und `player_id` ist im aktuellen File vorhanden.
+- [src/new_nfl/core/players.py](../src/new_nfl/core/players.py), [src/new_nfl/core/rosters.py](../src/new_nfl/core/rosters.py), [src/new_nfl/core/team_stats.py](../src/new_nfl/core/team_stats.py) rufen `apply_column_aliases` vor `_assert_required_columns` auf — sowohl auf primary.stage_qualified_table als auch in einer Schleife auf jede cross_check.stage_qualified_table. Helper-Aufruf ist 2 Zeilen pro Loader; gesamter SQL-Code unverändert.
+- pytest-Marker `network` registriert in [pyproject.toml](../pyproject.toml) via `markers = [ ... ]`; default-Run filtert via `addopts = -q -m 'not network'`. Network-Smokes sind opt-in über `pytest -m network`.
+- 12 neue Unit-Tests in [tests/test_column_aliases.py](../tests/test_column_aliases.py): Registry-Shape pinnt die drei betroffenen Slices, `get_aliases_for_slice` Copy-Semantik, Helper-Verhalten (Rename, Idempotenz, fehlende Tabelle, kanonische Spalte schon vorhanden, unknown slice, case-insensitive `GSIS_ID` → `player_id`), drei End-to-End-Tests (jeder betroffene Loader läuft `execute=True` durch mit nflverse-Schema-Stage).
+- 8 Network-Smokes in [tests/test_slices_network_smoke.py](../tests/test_slices_network_smoke.py): 7 parametrierte Probes über die Primary-Slices (4 statisch + 3 per-season auf `PINNED_SMOKE_SEASON=2024`) plus 1 Coverage-Test (Registry-Drift-Detect — fängt den Fall, dass eine künftige Slice ohne Smoke-Update hinzugefügt wird). HEAD-Probe mit GET-Fallback bei 405; CSV-Header-Heuristik (`,` in erster Zeile) als Sanity gegen 200-HTML-Error-Pages.
 
-**Artefakte:**
-- Alias-Registry oder pro-Loader-Parameter (je nach Option).
-- Tests: pro Loader ein Test „mit nflverse-Schema-Column-Namen grün" + bestehende Tests bleiben grün.
-- **Neu:** E2E-HTTP-Smoke-Test pro Primary-Slice gegen echte Produktions-URL, selektierbar via `@pytest.mark.network` (folgt der Lesson-Methodänderung „E2E-HTTP-Smoke fehlt im v1.0-Cut").
-- Doku-Update: Lesson von `draft` auf `accepted` flippen nachdem T3.1S durch ist.
-
-**DoD:**
-- Alle 7 Primary-Slices laufen `run_slice.ps1 -Slice <key>` grün bis `=== DONE ===`.
-- Full-Suite weiterhin grün, Ruff-Delta ≤ 0 gegenüber Baseline 45.
-- Bolt-T3.1S-eigener Mini-Lesson-Learned-Eintrag oder Erweiterung der 2026-04-24-Lesson.
+**DoD-Tracking:**
+- ✅ Full-Suite **474 grün** (462 + 12 neue), 8 deselected (= 8 network smokes), in ~9:57 auf DEV-LAPTOP. Ruff Delta -1 gegenüber Baseline 45. AST-Lint grün.
+- ⏳ Operator-Re-Smoke auf VPS für `players`, `rosters`, `team_stats_weekly` via `run_slice.ps1 -Slice <key> -Season 2024` (erwartet `=== DONE ===` für alle drei). Außerdem `pytest -m network` einmal auf VPS/DEV-LAPTOP gegen Live-URLs.
+- ⏳ Bei grüner Re-Smoke: 2026-04-24-Lesson auf `accepted` flippen + T3.1S-Befund-Erweiterung anhängen.
 
 ### 10.2 T3.1 Step 2 — restliche Fetch-Tasks (nach T3.1S)
 
