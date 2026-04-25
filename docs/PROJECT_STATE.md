@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T3.1 VPS-Migration läuft (Stand 2026-04-25).** Git-Tag `v1.0.0-laptop` auf `main` (2026-04-24); HEAD nach T3.1S auf einem Folge-Commit von `f0e8d13`. T3.1 Step 1 + T3.1S sind durch; Step 2 (restliche 6 Fetch-Tasks) wartet auf Operator-Re-Smoke der drei vormals roten Slices auf VPS. Test-Footprint **474 grün, 8 deselected (network)** in ~9:57 auf DEV-LAPTOP, ~13:05 auf VPS (vorletzter Stand). Ruff Delta -1 gegenüber Baseline 45 (44 Errors, alle pre-existing UP035/UP037/E501/I001/B905/UP012/E741). **Reihenfolge T3.0 ↔ T3.1 umgekehrt** gegenüber Original-Plan (siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md)). T3.0 Testphase folgt nach T3.1-Abschluss auf VPS, Juli 2026. Produktiv (Tailscale-only, Port 8001, `NewNFL-*`-Tasks): vor NFL-Preseason Anfang August 2026.
+**T3.1 VPS-Migration läuft (Stand 2026-04-25).** Git-Tag `v1.0.0-laptop` auf `main` (2026-04-24); HEAD nach T3.1 Step 2 Code+Tests auf einem Folgecommit von `fb737d2`. T3.1 Step 1 + T3.1S sind durch (alle 7 Primary-Slices end-to-end grün auf VPS via Operator-Re-Smoke 2026-04-25); T3.1 Step 2 ist code-seitig fertig (Skript + 16 Validierungs-Tests), Operator-Closer auf VPS (Pull + Skript-Lauf + 2 Tage Beobachtung) ist T3.1-final. Test-Footprint **490 grün, 8 deselected (network)** in ~8:31 auf DEV-LAPTOP. Ruff Delta -1 gegenüber Baseline 45 (44 Errors, alle pre-existing UP035/UP037/E501/I001/B905/UP012/E741). **Reihenfolge T3.0 ↔ T3.1 umgekehrt** gegenüber Original-Plan (siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md)). T3.0 Testphase folgt nach T3.1-Abschluss auf VPS, Juli 2026. Produktiv (Tailscale-only, Port 8001, `NewNFL-*`-Tasks): vor NFL-Preseason Anfang August 2026.
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -17,6 +17,11 @@
 
 ## Completed
 
+- T3.1 Step 2 Code + Tests (2026-04-25) — Operator-Trigger + 2-Tage-Beobachtung als T3.1-final-Closer
+  - Neues Deployment-Skript [deploy/windows-vps/vps_install_tasks_step2.ps1](../deploy/windows-vps/vps_install_tasks_step2.ps1) registriert sechs zusätzliche Scheduled Tasks gestaffelt im 15-Minuten-Raster (`05:15 NewNFL-Fetch-Schedule`, `05:30 -Games`, `05:45 -Players`, `06:00 -Rosters`, `06:15 -TeamStats`, `06:30 -PlayerStats`), idempotenter Drop+Re-Register-Pfad pro Task, ASCII-only und ohne PS-5.1-inkompatible Konstrukte. Per-season-Tasks rufen `run_slice.ps1` ohne `-Season`-Parameter auf — im Python-Pfad greift dann `default_nfl_season(today)` über `SliceSpec.remote_url_template` + `resolve_remote_url(spec, season=None)`, sodass das Jahr nicht doppelt in PowerShell und Python gepflegt werden muss.
+  - 16 neue Tests in [tests/test_deploy_scripts.py](../tests/test_deploy_scripts.py) als statische Validierung aller fünf Deployment-Skripte (`vps_bootstrap.ps1`, `vps_install_tasks.ps1`, `vps_install_tasks_step2.ps1`, `run_slice.ps1`, `run_backup.ps1`): ASCII-only-Encoding (PowerShell-5.1-CP1252-Falle, Commit-Erfahrung 3c15751), kein `&&`/`||` (Pipeline-Chain-Inkompatibilität), exakte Task-Namen + Trigger-Zeiten + Slice-Keys aus dem Runbook, kein hartcodiertes `-Season` in Step-2-Task-Definitionen, idempotenter Re-Register-Pattern, `run_slice.ps1` reicht `--season` nur bei explizitem Argument durch.
+  - Full-Suite **490 grün** (474 nach T3.1S + 16 Deployment-Tests), 8 deselected (network) in ~8:31 auf DEV-LAPTOP. Ruff Delta -1 gegenüber Baseline 45 (44 Errors, alle pre-existing). AST-Lint grün.
+  - **Operator-Pflichtteil offen (T3.1-final):** VPS-Pull + Skript-Lauf + manueller Initial-Trigger pro Task (`LastTaskResult=0` erwartet) + 2 Tage Beobachtung + Backup-End-to-End-Drill.
 - T3.1S Core-Loader-Schema-Drift-Fix (2026-04-25)
   - Zentrale Column-Alias-Registry [src/new_nfl/adapters/column_aliases.py](../src/new_nfl/adapters/column_aliases.py) als Single-Point-of-Truth für nflverse-Spalten-Drifts: dict `slice_key -> {upstream: canonical}`. Helper `apply_column_aliases(con, qualified_table, slice_key)` macht idempotentes `ALTER TABLE ... RENAME COLUMN`; defensiv bei fehlender Tabelle (no-op statt Exception); case-insensitive Spalten-Matching mit Original-Case-Preservation für ALTER. Drei Slices in der Registry: `players` (`gsis_id` → `player_id`), `rosters` (`gsis_id` → `player_id`, `team` → `team_id`), `team_stats_weekly` (`team` → `team_id`). `core/player_stats.py` ist nicht betroffen (akzeptiert `team` und `player_id` schon seit v1.0).
   - Drei Core-Loader [src/new_nfl/core/players.py](../src/new_nfl/core/players.py), [src/new_nfl/core/rosters.py](../src/new_nfl/core/rosters.py), [src/new_nfl/core/team_stats.py](../src/new_nfl/core/team_stats.py) rufen den Helper vor `_assert_required_columns` auf — sowohl für die Tier-A-Stage als auch für jede Tier-B-Cross-Check-Stage. Die Stage-Tabelle wird in-place auf den kanonischen Schema-Namen geflippt; der gesamte nachgelagerte SQL-Code (Profiling, Rebuild, Cross-Check-Detect) bleibt unverändert. Idempotent über Re-Runs.
@@ -170,18 +175,29 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 - Full-Suite **474 grün** (462 + 12 neue Tests), 8 deselected; Ruff Delta -1 gegenüber Baseline 45.
 - **Operator-Re-Smoke auf VPS 2026-04-25:** `players` (24408 rows, 0 invalid), `rosters` (10861 intervals aus 46579 source, 167 open, 234 trades), `team_stats_weekly` (570 rows, 32 season aggregates) — alle drei `=== DONE ===`. Damit sind alle 7 Primary-Slices end-to-end grün auf VPS. 2026-04-24-Lesson auf `accepted` geflippt.
 
-**T3.1 offen:**
-- **T3.1 Step 2** iterativer Rollout der restlichen 6 Fetch-Tasks (Games/Players/Rosters/TeamStats/PlayerStats/Schedule) auf VPS.
-- Backup-Task-Manual-Trigger steht aus (Task noch nie geflaufen, `LastTaskResult=267011` = „not yet run"; Trigger 04:00 oder manuell via `Start-ScheduledTask`).
+**T3.1 Step 2 erledigt (2026-04-25, Code + Tests):**
+- `deploy/windows-vps/vps_install_tasks_step2.ps1` registriert sechs Tasks gestaffelt 05:15–06:30 (Schedule, Games, Players, Rosters, TeamStats, PlayerStats). Per-season-Slices ohne `-Season`-Argument → `default_nfl_season()` greift im Python-Pfad.
+- 16 statische Skript-Validierungs-Tests (ASCII-Only, kein `&&`/`||`, Task-Namen, Trigger-Zeiten, Slice-Keys, idempotenter Pattern).
+- Full-Suite **490 grün**, 8 deselected; Ruff Delta -1 vs Baseline 45.
+
+**T3.1 offen (T3.1-final-Closer beim Operator):**
+- VPS-Pull + Step-2-Skript-Lauf + manueller Initial-Trigger jeder Task; `LastTaskResult=0` für alle sechs erwartet.
+- 2 Tage Beobachtung aller 7 Fetches + Backup ohne Quarantäne-Eskalation.
+- Backup-Task-Manual-Trigger steht weiterhin aus (Task noch nie geflaufen, `LastTaskResult=267011` = „not yet run"; löst sich beim 04:00-Trigger oder manuell via `Start-ScheduledTask`).
+- Backup-End-to-End-Drill (Snapshot → verify → Test-Restore) einmal durchspielen vor T3.0.
 
 ## Preferred next bolt
 
-**T3.1 Step 2 — restliche Fetch-Tasks auf VPS** gemäß [T2_3_PLAN.md §10.2](T2_3_PLAN.md). Scope:
-- 6 weitere Scheduled Tasks installieren (`NewNFL-Fetch-Games`, `-Players`, `-Rosters`, `-TeamStats`, `-PlayerStats`, `-Schedule`) — Anpassung an `deploy/windows-vps/vps_install_tasks.ps1` oder ein neues `vps_install_tasks_step2.ps1`. Per-season-Slices brauchen `-Season`-Parameter (oder `default_nfl_season()` als Fallback).
-- 2 Tage Beobachtung aller 7 Fetches + Backup ohne Quarantäne-Eskalation = T3.1 final.
-- Optional vor Step 2: einmal `pytest -m network` als Pre-Release-Gate (DEV-LAPTOP oder VPS).
+**T3.1-final — Operator-Closer auf VPS** (kein DEV-LAPTOP-Code). Scope:
+- VPS-Pull `git pull` auf `C:\newNFL` (alle Step-2-Artefakte + Tests sind auf origin).
+- Step-2-Skript ausführen: `powershell -ExecutionPolicy Bypass -File C:\newNFL\deploy\windows-vps\vps_install_tasks_step2.ps1`.
+- Manueller Initial-Trigger pro Task: `Start-ScheduledTask -TaskName NewNFL-Fetch-<Schedule|Games|Players|Rosters|TeamStats|PlayerStats>`.
+- Status-Check nach jedem Lauf: `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo`. Erwartung: `LastTaskResult=0` für alle sieben Fetch-Tasks und für `NewNFL-Backup-Daily` (Backup einmal manuell triggern, falls 04:00 noch nicht erfolgt).
+- 2 Tage Beobachtung der täglichen Läufe; kein `meta.run_event` mit `severity in ('error','critical','fatal')` ausserhalb der dokumentierten Edge-Cases.
+- Backup-End-to-End-Drill: einmal `backup-snapshot` → `verify-snapshot` → Test-`restore-snapshot` in einem temporären Verzeichnis.
+- Optional vor dem Lauf: `pytest -m network` einmal auf VPS als Live-URL-Pre-Check.
 
-**Nach T3.1:** T3.0 Testphase (4 Wochen ununterbrochener Scheduler-Lauf auf VPS mit Designed Degradation, Backfill-Lasttest, ADR-0030/0032-Flips).
+**Bei grüner 2-Tage-Beobachtung ist T3.1 final.** Danach beginnt **T3.0 Testphase** (4 Wochen ununterbrochener Scheduler-Lauf auf VPS mit Designed Degradation, Backfill-Lasttest, ADR-0030/0032-Flips).
 
 ## Zielkorridor v1.0
 

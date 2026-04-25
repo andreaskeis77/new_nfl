@@ -462,9 +462,39 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 
 ### 10.2 T3.1 Step 2 — restliche Fetch-Tasks (nach T3.1S)
 
-- 6 weitere Scheduled Tasks (`NewNFL-Fetch-Games`, `-Players`, `-Rosters`, `-TeamStats`, `-PlayerStats`, `-Schedule`) installieren.
-- Anpassung des bestehenden `deploy/windows-vps/vps_install_tasks.ps1` oder ein neues `vps_install_tasks_step2.ps1`.
-- 2 Tage Beobachtung aller 7 Fetches + Backup ohne Quarantäne-Eskalation = T3.1 final.
+**Status:** Code + Tests abgeschlossen 2026-04-25. Operator-Trigger auf VPS + 2 Tage Beobachtung sind die T3.1-final-Closer.
+
+**Geliefert:**
+- [deploy/windows-vps/vps_install_tasks_step2.ps1](../deploy/windows-vps/vps_install_tasks_step2.ps1) — neues Skript (statt Step-1-Skript zu erweitern), idempotenter Drop+Re-Register-Pfad pro Task. Sechs Tasks gestaffelt im 15-Minuten-Raster:
+  - `05:15 NewNFL-Fetch-Schedule` (statisch, slice `schedule_field_dictionary`)
+  - `05:30 NewNFL-Fetch-Games` (statisch, slice `games`)
+  - `05:45 NewNFL-Fetch-Players` (statisch, slice `players`)
+  - `06:00 NewNFL-Fetch-Rosters` (per-season, slice `rosters`)
+  - `06:15 NewNFL-Fetch-TeamStats` (per-season, slice `team_stats_weekly`)
+  - `06:30 NewNFL-Fetch-PlayerStats` (per-season, slice `player_stats_weekly`)
+- Per-season-Tasks rufen `run_slice.ps1` ohne `-Season`-Parameter auf. Im Python-Pfad triggert das `default_nfl_season(today)` über `SliceSpec.remote_url_template` + `resolve_remote_url(spec, season=None)`. Das vermeidet, das Jahr in PowerShell und Python doppelt zu pflegen.
+- 16 neue Tests in [tests/test_deploy_scripts.py](../tests/test_deploy_scripts.py) — statische Validierung aller fünf Deployment-Skripte: ASCII-only-Encoding (PowerShell-5.1-Falle aus 3c15751), keine `&&`/`||`-Pipeline-Chains (PS-5.1-Inkompatibilität), exakte Task-Namen + Trigger-Zeiten + Slice-Keys, kein hartcodiertes `-Season` in den Step-2-Task-Definitionen, idempotenter Re-Register-Pattern, `run_slice.ps1` reicht `--season` nur durch wenn explizit gesetzt.
+
+**Erwartete Gesamt-Belegung nach Step 2 (Step 1 + Step 2):**
+- 04:00 NewNFL-Backup-Daily
+- 05:00 NewNFL-Fetch-Teams
+- 05:15 NewNFL-Fetch-Schedule
+- 05:30 NewNFL-Fetch-Games
+- 05:45 NewNFL-Fetch-Players
+- 06:00 NewNFL-Fetch-Rosters
+- 06:15 NewNFL-Fetch-TeamStats
+- 06:30 NewNFL-Fetch-PlayerStats
+
+**Operator-Pflichtteil (T3.1-final-Closer):**
+- VPS-Pull + Step-2-Skript-Lauf: `git pull && powershell -ExecutionPolicy Bypass -File C:\newNFL\deploy\windows-vps\vps_install_tasks_step2.ps1`.
+- Manueller Initial-Trigger pro Task (`Start-ScheduledTask -TaskName NewNFL-Fetch-<Slice>`); Erwartung `LastTaskResult=0` für alle sechs.
+- 2 Tage Beobachtung: `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo` zeigt für alle Tasks `LastTaskResult=0`, kein `meta.run_event` mit `severity in ('error','critical','fatal')` ausserhalb der dokumentierten Edge-Cases (z. B. die 7 invalid roster rows aus 2024).
+- Backup-Task einmal manuell durchgespielt (oder durch 04:00-Trigger automatisch).
+
+**DoD T3.1 final:**
+- Alle 7 Fetch-Tasks + 1 Backup-Task aktiv mit `LastTaskResult=0`.
+- 24-Stunden-Smoke-Lauf-DoD aus §10 erfüllt.
+- Backup einmal end-to-end (Snapshot → verify → restore-test) durchgespielt.
 
 ## 11. Risiken und Gegenmaßnahmen
 
