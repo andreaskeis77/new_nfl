@@ -17,10 +17,13 @@
 
 ## Completed
 
+- T3.1 vollständig durch — Backup-End-to-End-Drill validiert (2026-04-29 21:07)
+  - Operator-Drill auf VPS: `backup-snapshot` → `verify-snapshot` → `restore-snapshot` → DuckDB-Sanity-Read in einem isolierten `C:\newNFL-Backups\drill_restore_*`-Verzeichnis. Snapshot mit `RAW_FILE_COUNT=141`, `MART_TABLE_COUNT=11`, `PAYLOAD_HASH=2c028eaf...`. Verify lieferte `OK=true`, alle drei Mismatch-Counter 0. Restore lieferte `RESTORED_FILE_COUNT=142` und denselben `PAYLOAD_HASH=2c028eaf...` aus dem Snapshot.
+  - DuckDB-Sanity der wiederhergestellten DB (`<drillRestore>\db\new_nfl.duckdb` read-only): `core.team=32` (= 32 NFL-Franchises), `core.game=7276`, `core.player=24633`, `core.player_stats_weekly=19399`. Die `core.player`-Zahl ist drei Tage höher als die 24408 aus dem T3.1S-Re-Smoke vom 2026-04-25 — passt zur erwarteten täglichen nflverse-Player-Master-Zunahme (Reservist-Eintragungen). Damit beweist der Drill, dass die ZIP-Manifest-Hash-Kette intakt ist UND die wiederhergestellte DB den produktiven Datenstand korrekt rekonstruiert.
+  - **Definition-v1.0-Kriterium 5 (Backup/Restore + Replay real getestet) endgültig auf `✅`.** Das `⚠️ teilweise`-Flag aus [docs/_ops/releases/v1.0.0-laptop.md §2](_ops/releases/v1.0.0-laptop.md) ist mit dieser Operator-Validation gegen produktive DB aufgehoben.
 - T3.1 final — Beobachtungs-Fenster geschlossen (2026-04-29)
   - Vier grüne Cron-Tage 2026-04-26 bis 2026-04-29 (überfüllt das 2-Tage-DoD-Fenster aus T2_3_PLAN.md §10.2). `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo` am 2026-04-29 zeigt für alle 8 Tasks `LastTaskResult=0` und `LastRunTime` im erwarteten Cron-Slot des 2026-04-29.
   - `new-nfl health-probe --kind deps` am 2026-04-29 19:00 UTC zeigt Status `ok`, `slices_without_events: 0`, alle 7 Primary-Slices haben `last_event_status: "core_loaded"` mit Timestamp im 2026-04-29-Cron-Slot. Damit hat heute jeder Slice den vollständigen fetch+stage+core+mart-Pfad sauber durchlaufen.
-  - **T3.1-Tranche endgültig abgehakt.** Operator-Pflichtteile aus T2_3_PLAN.md §10.2 erfüllt (Tasks angelegt, Initial-Trigger grün, 2-Tage-Beobachtung gruen). Verbleibende Restpunkte für T3.0-Vorlauf: Backup-End-to-End-Drill (Snapshot → verify → Test-Restore) einmal manuell durchspielen.
 - T3.1 Step 2 Operator-Closer (2026-04-25 23:30) — alle 8 Scheduled Tasks `LastTaskResult=0`
   - VPS-Pull auf Commit `5a9e54c` und Skript-Lauf `vps_install_tasks_step2.ps1` registrierten sechs `NewNFL-Fetch-*`-Tasks idempotent (Schedule 05:15, Games 05:30, Players 05:45, Rosters 06:00, TeamStats 06:15, PlayerStats 06:30). Manueller Initial-Trigger pro Task innerhalb von ~3 Minuten ausgeführt (`Start-ScheduledTask`); jeder Task lief fetch+stage+core durch.
   - `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo` zeigt für **alle 8 Tasks** (1 Backup + 7 Fetches) `LastTaskResult=0` und nächsten Tick im erwarteten Cron-Slot. Damit ist der DoD-Punkt „alle Tasks angelegt mit `LastTaskResult=0` nach manuellem Initial-Trigger" aus T2_3_PLAN.md §10.2 erfüllt. Backup-Task zusätzlich manuell getriggert; ursprünglicher 04:00-Tick lief auf demselben VPS-Tag mit `LastTaskResult=0`.
@@ -166,7 +169,7 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 
 ## Current cycle
 
-**T3.1 endgültig final (Stand 2026-04-29)** — alle drei Bolzen durch, alle 8 Scheduled Tasks vier Cron-Tage stabil grün, Health-Probe `deps` bestätigt vollständige Slice-Coverage. Beobachtungs-Fenster geschlossen. Vor T3.0-Start: Backup-End-to-End-Drill als verbleibende Vorarbeit.
+**T3.1 vollständig durch (Stand 2026-04-29)** — alle drei Bolzen, vier grüne Cron-Tage, Health-Probe `deps` bestätigt, Backup-End-to-End-Drill validiert. Definition-v1.0-Kriterium 5 endgültig auf `✅`. T3.0 Testphase ist startbereit; keine T3.1-Restposten mehr offen.
 
 **T3.1 Step 1 erledigt (2026-04-24):**
 - VPS-Bootstrap (Python 3.12 Venv unter `C:\newNFL`, 445 Tests grün auf VPS).
@@ -188,8 +191,7 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 - Full-Suite **490 grün**, 8 deselected; Ruff Delta -1 vs Baseline 45.
 - Operator-Closer 2026-04-25 23:30: alle 8 Scheduled Tasks (1 Backup + 7 Fetches) `LastTaskResult=0` nach manuellem Initial-Trigger. Backup-Task zusätzlich aus dem 04:00-Tick desselben Tages mit `LastTaskResult=0`.
 
-**T3.1 offen (Vorarbeit für T3.0):**
-- Backup-End-to-End-Drill (Snapshot → verify → Test-Restore) einmal durchspielen vor T3.0-Start.
+**T3.1 offen:** keine Restposten — Tranche vollständig abgeschlossen.
 
 ## Preferred next bolt
 
@@ -202,7 +204,7 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 - Bugfix-Tranchen T3.0A, T3.0B, … nach Bedarf.
 - DoD: 4 Wochen ununterbrochener Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation; Backup-End-to-End-Drill einmal durchgespielt; ADR-0030/0032 auf `Accepted`.
 
-**Sofortiger Vorlauf vor T3.0-Start:** Backup-End-to-End-Drill (Snapshot → `verify-snapshot` → Test-`restore-snapshot`). Beobachtungs-Fenster ist seit 2026-04-29 geschlossen; vier grüne Cron-Tage + Health-Probe `deps`-Bestätigung haben das 2-Tage-DoD überfüllt.
+**Sofortiger Vorlauf vor T3.0-Start:** keiner. Backup-Drill am 2026-04-29 21:07 durchgeführt (Snapshot → verify → Restore → DuckDB-Sanity, alle vier Schritte grün); Beobachtungs-Fenster seit 2026-04-29 geschlossen mit vier grünen Cron-Tagen. T3.0 startet ohne offene T3.1-Restposten.
 
 ## Zielkorridor v1.0
 

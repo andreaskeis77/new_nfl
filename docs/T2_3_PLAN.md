@@ -494,7 +494,7 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 **DoD T3.1 final:**
 - ✅ Alle 7 Fetch-Tasks + 1 Backup-Task aktiv mit `LastTaskResult=0` (Operator-Closer 2026-04-25 23:30).
 - ✅ Beobachtungs-Fenster mit vier grünen Cron-Tagen 2026-04-26 bis 2026-04-29 (überfüllt das 2-Tage-DoD): `LastTaskResult=0` für alle 8 Tasks am 2026-04-29 plus `health-probe --kind deps` Status `ok` mit `slices_without_events: 0` und allen 7 Primary-Slices auf `core_loaded` im 2026-04-29-Cron-Slot.
-- ⏳ Backup-End-to-End-Drill (Snapshot → `verify-snapshot` → Test-`restore-snapshot`) einmal durchspielen vor T3.0-Start (offen, T3.0-Vorarbeit).
+- ✅ Backup-End-to-End-Drill durchgeführt 2026-04-29 21:07: Snapshot mit 142 Files und Payload-Hash `2c028eaf...`, Verify `OK=true` (0 missing/mismatch/unexpected), Restore mit identischem Payload-Hash, DuckDB-Sanity-Read auf wiederhergestellter DB liefert `core.team=32`/`core.game=7276`/`core.player=24633`/`core.player_stats_weekly=19399`. Damit ist Definition-v1.0-Kriterium 5 (Backup/Restore + Replay real getestet) endgültig auf `✅`.
 
 ## 11. Risiken und Gegenmaßnahmen
 
