@@ -493,8 +493,8 @@ ADR-Stubs werden zusammen mit diesem Plan ausgeliefert, „Accepted" wird mit Ab
 
 **DoD T3.1 final:**
 - ✅ Alle 7 Fetch-Tasks + 1 Backup-Task aktiv mit `LastTaskResult=0` (Operator-Closer 2026-04-25 23:30).
-- ⏳ 2-Tage-Beobachtungsfenster läuft 2026-04-25 → 2026-04-27 — kein `meta.run_event` mit `severity in ('error','critical','fatal')` ausserhalb der dokumentierten Edge-Cases (z. B. die 7 invalid roster rows aus 2024).
-- ⏳ Backup-End-to-End-Drill (Snapshot → `verify-snapshot` → Test-`restore-snapshot`) einmal durchspielen vor T3.0-Start.
+- ✅ Beobachtungs-Fenster mit vier grünen Cron-Tagen 2026-04-26 bis 2026-04-29 (überfüllt das 2-Tage-DoD): `LastTaskResult=0` für alle 8 Tasks am 2026-04-29 plus `health-probe --kind deps` Status `ok` mit `slices_without_events: 0` und allen 7 Primary-Slices auf `core_loaded` im 2026-04-29-Cron-Slot.
+- ⏳ Backup-End-to-End-Drill (Snapshot → `verify-snapshot` → Test-`restore-snapshot`) einmal durchspielen vor T3.0-Start (offen, T3.0-Vorarbeit).
 
 ## 11. Risiken und Gegenmaßnahmen
 

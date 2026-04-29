@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**T3.1 VPS-Migration final (Stand 2026-04-25 23:30).** Alle drei T3.1-Bolzen durch — Step 1 (Bootstrap + URL-Drift-Fix), T3.1S (Schema-Drift-Fix + Network-Marker), Step 2 (sechs zusätzliche Fetch-Tasks). Operator-Closer auf VPS gleichen Tags: alle 8 Scheduled Tasks (1 Backup + 7 Fetches) im 04:00–06:30-Slot mit `LastTaskResult=0` aus dem manuellen Initial-Trigger; nächste Tick-Belegung steht. **2-Tage-Beobachtungsfenster läuft 2026-04-25 → 2026-04-27.** Git-Tag `v1.0.0-laptop` auf `main` (2026-04-24); HEAD bei einem T3.1-Closer-Commit. Test-Footprint **490 grün, 8 deselected (network)** in ~8:31 auf DEV-LAPTOP. Ruff Delta -1 gegenüber Baseline 45 (44 Errors, alle pre-existing UP035/UP037/E501/I001/B905/UP012/E741). **Reihenfolge T3.0 ↔ T3.1 umgekehrt** gegenüber Original-Plan (siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md)). Nächster Bolt: **T3.0 Testphase auf VPS** (Juli 2026, 4 Wochen ununterbrochener Scheduler-Lauf). Produktiv (Tailscale-only, Port 8001, `NewNFL-*`-Tasks): vor NFL-Preseason Anfang August 2026.
+**T3.1 VPS-Migration endgültig abgeschlossen (Stand 2026-04-29).** Alle drei T3.1-Bolzen durch — Step 1 (Bootstrap + URL-Drift-Fix), T3.1S (Schema-Drift-Fix + Network-Marker), Step 2 (sechs zusätzliche Fetch-Tasks). Beobachtungs-Fenster mit **vier grünen Cron-Tagen** (2026-04-26 bis 2026-04-29) statt der zwei geforderten überfüllt: alle 8 Scheduled Tasks (1 Backup + 7 Fetches) im 04:00–06:30-Slot mit `LastTaskResult=0` am 2026-04-29; `health-probe --kind deps` listet alle 7 Primary-Slices mit `last_event_status="core_loaded"` und Tagesstempel im Cron-Slot, `slices_without_events: 0`, Health-Status `ok`. Git-Tag `v1.0.0-laptop` auf `main` (2026-04-24); HEAD bei einem T3.1-Closer-Commit. Test-Footprint **490 grün, 8 deselected (network)** in ~8:31 auf DEV-LAPTOP. Ruff Delta -1 gegenüber Baseline 45 (44 Errors, alle pre-existing UP035/UP037/E501/I001/B905/UP012/E741). **Reihenfolge T3.0 ↔ T3.1 umgekehrt** gegenüber Original-Plan (siehe [ADR-0034](adr/ADR-0034-vps-first-before-testphase.md)). Nächster Bolt: **T3.0 Testphase auf VPS** (4 Wochen ununterbrochener Scheduler-Lauf, Designed Degradation, Backfill-Lasttest, ADR-0030/0032-Flips). Produktiv (Tailscale-only, Port 8001, `NewNFL-*`-Tasks): vor NFL-Preseason Anfang August 2026.
 
 ## Architektur-Baseline (freigegeben am 2026-04-13)
 
@@ -17,6 +17,10 @@
 
 ## Completed
 
+- T3.1 final — Beobachtungs-Fenster geschlossen (2026-04-29)
+  - Vier grüne Cron-Tage 2026-04-26 bis 2026-04-29 (überfüllt das 2-Tage-DoD-Fenster aus T2_3_PLAN.md §10.2). `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo` am 2026-04-29 zeigt für alle 8 Tasks `LastTaskResult=0` und `LastRunTime` im erwarteten Cron-Slot des 2026-04-29.
+  - `new-nfl health-probe --kind deps` am 2026-04-29 19:00 UTC zeigt Status `ok`, `slices_without_events: 0`, alle 7 Primary-Slices haben `last_event_status: "core_loaded"` mit Timestamp im 2026-04-29-Cron-Slot. Damit hat heute jeder Slice den vollständigen fetch+stage+core+mart-Pfad sauber durchlaufen.
+  - **T3.1-Tranche endgültig abgehakt.** Operator-Pflichtteile aus T2_3_PLAN.md §10.2 erfüllt (Tasks angelegt, Initial-Trigger grün, 2-Tage-Beobachtung gruen). Verbleibende Restpunkte für T3.0-Vorlauf: Backup-End-to-End-Drill (Snapshot → verify → Test-Restore) einmal manuell durchspielen.
 - T3.1 Step 2 Operator-Closer (2026-04-25 23:30) — alle 8 Scheduled Tasks `LastTaskResult=0`
   - VPS-Pull auf Commit `5a9e54c` und Skript-Lauf `vps_install_tasks_step2.ps1` registrierten sechs `NewNFL-Fetch-*`-Tasks idempotent (Schedule 05:15, Games 05:30, Players 05:45, Rosters 06:00, TeamStats 06:15, PlayerStats 06:30). Manueller Initial-Trigger pro Task innerhalb von ~3 Minuten ausgeführt (`Start-ScheduledTask`); jeder Task lief fetch+stage+core durch.
   - `Get-ScheduledTask -TaskName NewNFL-* | Get-ScheduledTaskInfo` zeigt für **alle 8 Tasks** (1 Backup + 7 Fetches) `LastTaskResult=0` und nächsten Tick im erwarteten Cron-Slot. Damit ist der DoD-Punkt „alle Tasks angelegt mit `LastTaskResult=0` nach manuellem Initial-Trigger" aus T2_3_PLAN.md §10.2 erfüllt. Backup-Task zusätzlich manuell getriggert; ursprünglicher 04:00-Tick lief auf demselben VPS-Tag mit `LastTaskResult=0`.
@@ -162,7 +166,7 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 
 ## Current cycle
 
-**T3.1 final (Stand 2026-04-25 23:30)** — alle drei Bolzen (Step 1, T3.1S, Step 2) durch; Operator-Closer hat alle 8 Scheduled Tasks auf `LastTaskResult=0` gebracht. 2-Tage-Beobachtungsfenster läuft.
+**T3.1 endgültig final (Stand 2026-04-29)** — alle drei Bolzen durch, alle 8 Scheduled Tasks vier Cron-Tage stabil grün, Health-Probe `deps` bestätigt vollständige Slice-Coverage. Beobachtungs-Fenster geschlossen. Vor T3.0-Start: Backup-End-to-End-Drill als verbleibende Vorarbeit.
 
 **T3.1 Step 1 erledigt (2026-04-24):**
 - VPS-Bootstrap (Python 3.12 Venv unter `C:\newNFL`, 445 Tests grün auf VPS).
@@ -184,9 +188,8 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 - Full-Suite **490 grün**, 8 deselected; Ruff Delta -1 vs Baseline 45.
 - Operator-Closer 2026-04-25 23:30: alle 8 Scheduled Tasks (1 Backup + 7 Fetches) `LastTaskResult=0` nach manuellem Initial-Trigger. Backup-Task zusätzlich aus dem 04:00-Tick desselben Tages mit `LastTaskResult=0`.
 
-**T3.1 offen (Beobachtungs-Fenster):**
-- 2 Tage Beobachtung der täglichen Läufe ohne Quarantäne-Eskalation (Fenster 2026-04-25 → 2026-04-27).
-- Backup-End-to-End-Drill (Snapshot → verify → Test-Restore) einmal durchspielen vor T3.0.
+**T3.1 offen (Vorarbeit für T3.0):**
+- Backup-End-to-End-Drill (Snapshot → verify → Test-Restore) einmal durchspielen vor T3.0-Start.
 
 ## Preferred next bolt
 
@@ -199,7 +202,7 @@ Was für T3.0 Testphase ansteht (**nach T3.1, auf VPS**, Juli 2026):
 - Bugfix-Tranchen T3.0A, T3.0B, … nach Bedarf.
 - DoD: 4 Wochen ununterbrochener Scheduler-Lauf ohne ungelöste Quarantäne-Eskalation; Backup-End-to-End-Drill einmal durchgespielt; ADR-0030/0032 auf `Accepted`.
 
-**Sofortiger Vorlauf vor T3.0-Start:** Beobachtungsfenster 2026-04-26 + 2026-04-27 abwarten (Tag 1 + Tag 2 der täglichen Cron-Belegung). Bei grünen `LastTaskResult=0` und keinem `meta.run_event severity='error'` ist T3.1 endgültig abgehakt.
+**Sofortiger Vorlauf vor T3.0-Start:** Backup-End-to-End-Drill (Snapshot → `verify-snapshot` → Test-`restore-snapshot`). Beobachtungs-Fenster ist seit 2026-04-29 geschlossen; vier grüne Cron-Tage + Health-Probe `deps`-Bestätigung haben das 2-Tage-DoD überfüllt.
 
 ## Zielkorridor v1.0
 
